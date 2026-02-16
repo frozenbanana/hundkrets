@@ -7,6 +7,8 @@ export interface User extends RecordModel {
   address_private?: string;
   latitude?: number;
   longitude?: number;
+  /** Set to true when user completes onboarding (capacity step). Add this field in PocketBase admin. */
+  onboarding_complete?: boolean;
 }
 
 export interface Dog extends RecordModel {

@@ -185,10 +185,14 @@ export default function Matches() {
             </div>
           </div>
           <Show when={viewMode() === "map"}>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0.5rem 0 0;">
+              Zooma in för att filtrera. Platser är ungefärliga.
+            </p>
             <MatchesMap
               listings={data()!.listings}
               myLat={pb.authStore.model?.latitude}
               myLon={pb.authStore.model?.longitude}
+              filterByBounds
             />
           </Show>
           <Show when={viewMode() === "list"}>

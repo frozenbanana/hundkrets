@@ -7,7 +7,9 @@ export default function Home() {
 
   onMount(() => {
     if (pb.authStore.isValid) {
-      nav(pb.authStore.model?.area ? "/app/matches" : "/onboarding/profile", { replace: true });
+      const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
+      const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
+      nav(done ? "/app/matches" : "/onboarding/profile", { replace: true });
     }
   });
 

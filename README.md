@@ -20,7 +20,7 @@ The PocketBase binary is included. Start it (migrations run automatically):
 Admin UI: http://127.0.0.1:8090/_/  
 API: http://127.0.0.1:8090/api/
 
-Create an admin account on first run. The schema (users, dogs, watch_needs, watch_capacity) is created via migrations in `pb_migrations/`.
+Create an admin account on first run. The schema (users, dogs, watch_needs, watch_capacity) is created via migrations in `pb_migrations/`. New users must complete onboarding (profile → dogs → needs → capacity) before seeing matches; the `onboarding_complete` field tracks this.
 
 ### 2. Frontend
 
@@ -37,14 +37,20 @@ Open http://localhost:3000
 In one terminal: `./pocketbase serve`  
 In another: `cd app && npm run dev`
 
-### 4. Dummy data (optional)
+### 4. Seed data (optional)
 
-A migration seeds 2 dummy users (Jane, Mike) in **Portland - Hawthorne** with dogs, needs, and capacity. To see matches:
+Reset and seed 10 Malmö users with dogs, needs, and capacities:
 
-1. Restart PocketBase to run migrations: `./pocketbase serve`
-2. Set your profile: City **Portland**, Neighborhood **Hawthorne**
-3. Go to **Matches** — you'll see Jane and Mike (no need to add your own needs/capacity)
-4. Click "I'm interested" on a listing; when they click too, phone numbers are exchanged
+```bash
+./scripts/reset-and-seed.sh
+```
+
+Or manually: stop PocketBase, `rm -rf pb_data`, start `./pocketbase serve`, create admin, then `cd app && npm run seed`.
+
+All seed users: **password123!**  
+Emails: anna.malmo@example.com, erik.malmo@example.com, etc.
+
+Set your profile to **Malmö** to see matches.
 
 ## Project Structure
 

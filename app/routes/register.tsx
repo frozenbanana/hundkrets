@@ -24,7 +24,13 @@ export default function Register() {
         password: password(),
         passwordConfirm: passwordConfirm(),
       });
-      await pb.collection("users").authWithPassword(email(), password());
+      const auth = await pb.collection("users").authWithPassword(email(), password());
+      try {
+        await pb.collection("users").update(auth.record!.id, { onboarding_complete: false });
+        pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, onboarding_complete: false });
+      } catch {
+        /* onboarding_complete field may not exist yet—add it in PocketBase admin */
+      }
       nav("/onboarding/profile", { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");

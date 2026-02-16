@@ -6,7 +6,8 @@
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
-    "test:geocode": "node scripts/test-geocode.mjs"
+    "test:geocode": "node scripts/test-geocode.mjs",
+    "seed": "node scripts/seed-malmo.mjs"
   },
   "dependencies": {
     "@solidjs/router": "^0.14.2",

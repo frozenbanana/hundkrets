@@ -20,7 +20,9 @@ export default function OnboardingProfile() {
       nav("/login", { replace: true });
       return;
     }
-    if (pb.authStore.model?.area) {
+    const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
+    const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
+    if (done) {
       nav("/app/matches", { replace: true });
       return;
     }

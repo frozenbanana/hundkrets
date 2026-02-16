@@ -11,7 +11,9 @@ export default function OnboardingCapacity() {
       nav("/login", { replace: true });
       return;
     }
-    if (pb.authStore.model?.area) {
+    const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
+    const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
+    if (done) {
       nav("/app/matches", { replace: true });
       return;
     }
@@ -66,6 +68,7 @@ export default function OnboardingCapacity() {
         data.end_date = endDate();
       }
       await pb.collection("watch_capacity").create(data);
+      await setOnboardingComplete();
       nav("/app/matches");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to add");
@@ -74,8 +77,19 @@ export default function OnboardingCapacity() {
     }
   }
 
-  function handleSkip() {
+  async function handleSkip() {
+    await setOnboardingComplete();
     nav("/app/matches");
+  }
+
+  async function setOnboardingComplete() {
+    const userId = pb.authStore.model?.id;
+    if (!userId) return;
+    await pb.collection("users").update(userId, { onboarding_complete: true });
+    pb.authStore.save(pb.authStore.token!, {
+      ...pb.authStore.model,
+      onboarding_complete: true,
+    });
   }
 
   return (

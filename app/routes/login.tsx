@@ -15,7 +15,9 @@ export default function Login() {
     setLoading(true);
     try {
       const auth = await pb.collection("users").authWithPassword(email(), password());
-      nav(auth.record?.area ? "/app/matches" : "/onboarding/profile", { replace: true });
+      const m = auth.record as { onboarding_complete?: boolean; area?: string } | null;
+      const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
+      nav(done ? "/app/matches" : "/onboarding/profile", { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
