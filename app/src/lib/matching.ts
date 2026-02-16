@@ -4,6 +4,9 @@ export interface User extends RecordModel {
   name?: string;
   phone?: string;
   area?: string;
+  address_private?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Dog extends RecordModel {
@@ -16,138 +19,147 @@ export interface Dog extends RecordModel {
 export interface WatchNeed extends RecordModel {
   user: string;
   dog: string;
-  start_date: string;
-  end_date: string;
+  start_date?: string;
+  end_date?: string;
+  flexible_dates?: boolean;
+  duration_weeks?: number;
   expand?: { user?: User; dog?: Dog };
 }
 
 export interface WatchCapacity extends RecordModel {
   user: string;
-  start_date: string;
-  end_date: string;
-  dog_sizes: string;
+  start_date?: string;
+  end_date?: string;
+  flexible_dates?: boolean;
+  duration_weeks?: number;
+  dog_sizes: string | string[];
   dog_genders: string;
   max_dogs: number;
   expand?: { user?: User };
 }
 
-export interface Match {
+export interface Listing {
   user: User;
-  theirNeed: WatchNeed;
-  theirCapacity: WatchCapacity;
-  myNeed: WatchNeed;
-  myCapacity: WatchCapacity;
-  theirDog: Dog;
-  myDog: Dog;
-}
-
-function datesOverlap(
-  aStart: string,
-  aEnd: string,
-  bStart: string,
-  bEnd: string
-): boolean {
-  const aS = new Date(aStart).getTime();
-  const aE = new Date(aEnd).getTime();
-  const bS = new Date(bStart).getTime();
-  const bE = new Date(bEnd).getTime();
-  return aS <= bE && bS <= aE;
-}
-
-function dogFitsCapacity(
-  dogSize: string,
-  dogGender: string,
-  capacity: WatchCapacity
-): boolean {
-  const sizeOk =
-    capacity.dog_sizes === "any" || capacity.dog_sizes === dogSize;
-  const genderOk =
-    capacity.dog_genders === "any" || capacity.dog_genders === dogGender;
-  return sizeOk && genderOk;
+  needs: WatchNeed[];
+  capacities: WatchCapacity[];
+  dogs: Dog[];
 }
 
 function normalizeArea(area: string | undefined): string {
-  return (area ?? "").trim().toLowerCase();
+  return (area ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[,;]/g, " - ")
+    .replace(/\s+/g, " ")
+    .replace(/\s*-\s*/g, " - ")
+    .trim();
 }
 
-export function findMatches(
+/**
+ * Haversine distance in km between two points.
+ */
+export function haversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+export interface ListingWithDistance extends Listing {
+  distanceKm?: number;
+}
+
+/**
+ * Find all users within maxDistanceKm who have at least one need OR one capacity.
+ * Uses lat/lng when available; falls back to area match for users without coordinates.
+ */
+export function findListings(
   needs: WatchNeed[],
   capacities: WatchCapacity[],
   currentUserId: string,
   users: User[],
-  dogs: Dog[]
-): Match[] {
-  const myNeeds = needs.filter((n) => n.user === currentUserId);
-  const myCapacities = capacities.filter((c) => c.user === currentUserId);
-  const myArea = normalizeArea(
-    users.find((u) => u.id === currentUserId)?.area
-  );
-  if (!myArea) return [];
+  dogs: Dog[],
+  maxDistanceKm: number = 50
+): ListingWithDistance[] {
+  const me = users.find((u) => u.id === currentUserId);
+  const myArea = normalizeArea(me?.area);
+  const myLat = me?.latitude;
+  const myLon = me?.longitude;
 
-  const userMap = new Map(users.map((u) => [u.id, u]));
+  const useDistance = typeof myLat === "number" && typeof myLon === "number";
+  if (!useDistance && !myArea) return [];
+
   const dogMap = new Map(dogs.map((d) => [d.id, d]));
 
-  const matches: Match[] = [];
+  const needsByUser = new Map<string, WatchNeed[]>();
+  for (const n of needs) {
+    if (!needsByUser.has(n.user)) needsByUser.set(n.user, []);
+    needsByUser.get(n.user)!.push(n);
+  }
+  const capacitiesByUser = new Map<string, WatchCapacity[]>();
+  for (const c of capacities) {
+    if (!capacitiesByUser.has(c.user)) capacitiesByUser.set(c.user, []);
+    capacitiesByUser.get(c.user)!.push(c);
+  }
 
-  for (const otherNeed of needs) {
-    if (otherNeed.user === currentUserId) continue;
-    const otherUser = userMap.get(otherNeed.user);
-    if (!otherUser) continue;
-    if (normalizeArea(otherUser.area) !== myArea) continue;
+  const listings: ListingWithDistance[] = [];
 
-    const otherDog = dogMap.get(otherNeed.dog) ?? (otherNeed.expand?.dog as Dog);
-    if (!otherDog) continue;
+  for (const user of users) {
+    if (user.id === currentUserId) continue;
 
-    for (const otherCapacity of capacities) {
-      if (otherCapacity.user !== otherNeed.user) continue;
+    if (useDistance) {
+      const theirLat = user.latitude;
+      const theirLon = user.longitude;
+      if (typeof theirLat !== "number" || typeof theirLon !== "number") continue;
+      const dist = haversineDistance(myLat!, myLon!, theirLat, theirLon);
+      if (dist > maxDistanceKm) continue;
 
-      for (const myNeed of myNeeds) {
-        const myDog = dogMap.get(myNeed.dog) ?? (myNeed.expand?.dog as Dog);
-        if (!myDog) continue;
+      const userNeeds = needsByUser.get(user.id) ?? [];
+      const userCapacities = capacitiesByUser.get(user.id) ?? [];
+      if (userNeeds.length === 0 && userCapacities.length === 0) continue;
 
-        for (const myCapacity of myCapacities) {
-          // Complementary: I watch their dog when they travel, they watch my dog when I travel
-          // Other's need (they travel) must overlap MY capacity (I can watch)
-          if (
-            !datesOverlap(
-              otherNeed.start_date,
-              otherNeed.end_date,
-              myCapacity.start_date,
-              myCapacity.end_date
-            )
-          )
-            continue;
-          // My need (I travel) must overlap OTHER's capacity (they can watch)
-          if (
-            !datesOverlap(
-              myNeed.start_date,
-              myNeed.end_date,
-              otherCapacity.start_date,
-              otherCapacity.end_date
-            )
-          )
-            continue;
+      const userDogIds = new Set<string>();
+      for (const n of userNeeds) userDogIds.add(n.dog);
+      const userDogs = [...userDogIds].map((id) => dogMap.get(id)).filter(Boolean) as Dog[];
 
-          // Their dog fits my capacity (I watch their dog)
-          if (!dogFitsCapacity(otherDog.size, otherDog.gender, myCapacity))
-            continue;
-          // My dog fits their capacity (they watch my dog)
-          if (!dogFitsCapacity(myDog.size, myDog.gender, otherCapacity))
-            continue;
+      listings.push({
+        user,
+        needs: userNeeds,
+        capacities: userCapacities,
+        dogs: userDogs,
+        distanceKm: dist,
+      });
+    } else {
+      if (normalizeArea(user.area) !== myArea) continue;
 
-          matches.push({
-            user: otherUser,
-            theirNeed: otherNeed,
-            theirCapacity: otherCapacity,
-            myNeed,
-            myCapacity,
-            theirDog: otherDog,
-            myDog: myDog,
-          });
-        }
-      }
+      const userNeeds = needsByUser.get(user.id) ?? [];
+      const userCapacities = capacitiesByUser.get(user.id) ?? [];
+      if (userNeeds.length === 0 && userCapacities.length === 0) continue;
+
+      const userDogIds = new Set<string>();
+      for (const n of userNeeds) userDogIds.add(n.dog);
+      const userDogs = [...userDogIds].map((id) => dogMap.get(id)).filter(Boolean) as Dog[];
+
+      listings.push({
+        user,
+        needs: userNeeds,
+        capacities: userCapacities,
+        dogs: userDogs,
+      });
     }
   }
 
-  return matches;
+  return listings.sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
 }

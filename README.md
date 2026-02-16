@@ -37,6 +37,15 @@ Open http://localhost:3000
 In one terminal: `./pocketbase serve`  
 In another: `cd app && npm run dev`
 
+### 4. Dummy data (optional)
+
+A migration seeds 2 dummy users (Jane, Mike) in **Portland - Hawthorne** with dogs, needs, and capacity. To see matches:
+
+1. Restart PocketBase to run migrations: `./pocketbase serve`
+2. Set your profile: City **Portland**, Neighborhood **Hawthorne**
+3. Go to **Matches** — you'll see Jane and Mike (no need to add your own needs/capacity)
+4. Click "I'm interested" on a listing; when they click too, phone numbers are exchanged
+
 ## Project Structure
 
 ```

@@ -5,8 +5,11 @@ export default function AppHome() {
   return (
     <AppShell>
     <div class="container">
-      <h1>Dashboard</h1>
-      <p>Welcome to Dog Watch Match.</p>
+      <div class="page-hero">
+        <span class="paw-emoji">🐕</span>
+        <h1>Dashboard</h1>
+        <p style="color: var(--color-text-muted);">Welcome to Dog Watch Match.</p>
+      </div>
       <div class="card">
         <h2>Quick actions</h2>
         <ul>

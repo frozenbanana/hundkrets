@@ -1,5 +1,11 @@
 import type { RecordModel } from "pocketbase";
 
+export {
+  findListings,
+  haversineDistance,
+  type ListingWithDistance,
+} from "../src/lib/matching";
+
 export interface User extends RecordModel {
   name?: string;
   phone?: string;

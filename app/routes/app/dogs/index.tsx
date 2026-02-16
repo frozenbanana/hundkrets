@@ -23,11 +23,16 @@ export default function DogsList() {
     return null;
   }
 
+  const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
+
   return (
     <AppShell>
     <div class="container">
-      <h1>My Dogs</h1>
-      <p>Add dogs you want to have watched when you travel.</p>
+      <div class="page-hero">
+        <span class="paw-emoji">🐕</span>
+        <h1>My Dogs</h1>
+        <p style="color: var(--color-text-muted);">Add dogs you want to have watched when you travel.</p>
+      </div>
       <A href="/app/dogs/new" class="btn">Add dog</A>
       <Show when={dogs.loading}>
         <p>Loading...</p>
@@ -43,10 +48,23 @@ export default function DogsList() {
           <For each={dogs()}>
             {(dog) => (
               <div class="card">
-                <h3>{dog.name}</h3>
-                <p>{dog.breed || "—"} • {dog.size} • {dog.gender}</p>
-                {dog.temperament && <p>{dog.temperament}</p>}
-                <A href={`/app/dogs/edit/${dog.id}`} class="btn btn-secondary" style="margin-right: 0.5rem;">Edit</A>
+                <div class="dog-card">
+                  {dog.image ? (
+                    <img src={`${baseUrl}/api/files/dogs/${dog.id}/${dog.image}`} alt={dog.name} class="dog-card-img" />
+                  ) : (
+                    <div class="dog-card-img-placeholder">🐕</div>
+                  )}
+                  <div>
+                    <h3>{dog.name}</h3>
+                    <p>{dog.breed || "—"} • {dog.size} • {dog.gender}</p>
+                    {(dog.temperament_new_people || dog.temperament_new_dogs_female || dog.temperament_new_dogs_male) && (
+                      <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+                        New people: {dog.temperament_new_people || "—"} • New dogs (F): {dog.temperament_new_dogs_female || "—"} • New dogs (M): {dog.temperament_new_dogs_male || "—"}
+                      </p>
+                    )}
+                    <A href={`/app/dogs/edit/${dog.id}`} class="btn btn-secondary" style="margin-right: 0.5rem;">Edit</A>
+                  </div>
+                </div>
               </div>
             )}
           </For>

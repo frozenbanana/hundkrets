@@ -1,17 +1,21 @@
-import { A, useNavigate, useParams } from "@solidjs/router";
-import { createEffect, createResource, createSignal } from "solid-js";
+import { A, useNavigate } from "@solidjs/router";
+import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { AppShell } from "~/components/AppShell";
+import { OnboardingShell } from "~/components/OnboardingShell";
 
-export default function EditDog() {
-  const params = useParams();
+export default function OnboardingDogs() {
   const nav = useNavigate();
 
-  const [dog] = createResource(
-    () => params.id,
-    async (id) => pb.collection("dogs").getOne(id)
-  );
-
+  onMount(() => {
+    if (!pb.authStore.isValid) {
+      nav("/login", { replace: true });
+      return;
+    }
+    if (pb.authStore.model?.area) {
+      nav("/app/matches", { replace: true });
+      return;
+    }
+  });
   const TEMPERAMENT_OPTS = [
     { value: "friendly", label: "Friendly" },
     { value: "cautious", label: "Cautious" },
@@ -27,33 +31,39 @@ export default function EditDog() {
   const [temperamentNewPeople, setTemperamentNewPeople] = createSignal("");
   const [temperamentNewDogsFemale, setTemperamentNewDogsFemale] = createSignal("");
   const [temperamentNewDogsMale, setTemperamentNewDogsMale] = createSignal("");
-  const [notes, setNotes] = createSignal("");
   const [imageFile, setImageFile] = createSignal<File | null>(null);
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
 
-  createEffect(() => {
-    const d = dog();
-    if (d) {
-      setName(d.name);
-      setBreed(d.breed ?? "");
-      setSize(d.size);
-      setGender(d.gender);
-      setTemperamentNewPeople(d.temperament_new_people ?? "");
-      setTemperamentNewDogsFemale(d.temperament_new_dogs_female ?? "");
-      setTemperamentNewDogsMale(d.temperament_new_dogs_male ?? "");
-      setNotes(d.notes ?? "");
+  const [dogs] = createResource(
+    () => pb.authStore.model?.id,
+    async (userId) => {
+      if (!userId) return [];
+      return pb.collection("dogs").getFullList({ filter: `owner = "${userId}"` });
     }
-  });
+  );
 
-  async function handleSubmit(e: Event) {
+  async function handleAddDog(e: Event) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
+      const userId = pb.authStore.model?.id;
+      if (!userId) throw new Error("Not authenticated");
+      const data: Record<string, unknown> = {
+        owner: userId,
+        name: name(),
+        breed: breed() || undefined,
+        size: size(),
+        gender: gender(),
+        temperament_new_people: temperamentNewPeople() || undefined,
+        temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
+        temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
+      };
       const file = imageFile();
       if (file) {
         const fd = new FormData();
+        fd.append("owner", userId);
         fd.append("name", name());
         fd.append("breed", breed());
         fd.append("size", size());
@@ -61,51 +71,52 @@ export default function EditDog() {
         fd.append("temperament_new_people", temperamentNewPeople());
         fd.append("temperament_new_dogs_female", temperamentNewDogsFemale());
         fd.append("temperament_new_dogs_male", temperamentNewDogsMale());
-        fd.append("notes", notes());
         fd.append("image", file);
-        await pb.collection("dogs").update(params.id, fd);
+        await pb.collection("dogs").create(fd);
       } else {
-        await pb.collection("dogs").update(params.id, {
-          name: name(),
-          breed: breed() || undefined,
-          size: size(),
-          gender: gender(),
-          temperament_new_people: temperamentNewPeople() || undefined,
-          temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
-          temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
-          notes: notes() || undefined,
-        });
+        await pb.collection("dogs").create(data);
       }
-      nav("/app/dogs");
+      setName("");
+      setBreed("");
+      setSize("medium");
+      setGender("male");
+      setTemperamentNewPeople("");
+      setTemperamentNewDogsFemale("");
+      setTemperamentNewDogsMale("");
+      setImageFile(null);
+      dogs.refetch();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update");
+      setError(err instanceof Error ? err.message : "Failed to add dog");
     } finally {
       setLoading(false);
     }
   }
 
+  function handleSkip() {
+    nav("/onboarding/needs");
+  }
+
+  const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
+
   return (
-    <AppShell>
-    <div class="container">
-      <h1>Edit dog</h1>
-      <Show when={dog.loading}>
-        <p>Loading...</p>
-      </Show>
-      <Show when={dog.error}>
-        <p style="color: #dc2626;">{dog.error?.message}</p>
-      </Show>
-      <Show when={dog()}>
-        <form onSubmit={handleSubmit}>
+    <OnboardingShell step={2} totalSteps={4} title="Your dogs">
+      <div class="card">
+        <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
+          Add at least one dog. You can add more later from your dashboard.
+        </p>
+        <form onSubmit={handleAddDog}>
           <div class="form-group">
-            <label for="name">Name *</label>
+            <label for="name">Dog name *</label>
             <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required />
           </div>
           <div class="form-group">
             <label for="image">Photo (optional)</label>
-            <input id="image" type="file" accept="image/*" onInput={(e) => setImageFile(e.currentTarget.files?.[0] ?? null)} />
-            {dog()?.image && (
-              <p style="margin-top: 0.25rem; color: var(--color-text-muted);">Current: {dog()!.image}</p>
-            )}
+            <input
+              id="image"
+              type="file"
+              accept="image/*"
+              onInput={(e) => setImageFile(e.currentTarget.files?.[0] ?? null)}
+            />
           </div>
           <div class="form-group">
             <label for="breed">Breed</label>
@@ -152,16 +163,43 @@ export default function EditDog() {
               </div>
             </div>
           </div>
-          <div class="form-group">
-            <label for="notes">Notes</label>
-            <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} />
-          </div>
           {error() && <p style="color: #dc2626;">{error()}</p>}
-          <button type="submit" class="btn" disabled={loading()}>{loading() ? "Saving..." : "Save"}</button>
-          <A href="/app/dogs" class="btn btn-secondary" style="margin-left: 0.5rem;">Cancel</A>
+          <button type="submit" class="btn" disabled={loading()}>
+            {loading() ? "Adding..." : "Add dog"}
+          </button>
         </form>
-      </Show>
-    </div>
-    </AppShell>
+        <Show when={dogs() && dogs()!.length > 0}>
+          <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--color-fur);">
+            <h3>Your dogs</h3>
+            <For each={dogs()}>
+              {(dog) => (
+                <div class="dog-card" style="margin-bottom: 0.75rem;">
+                  {dog.image ? (
+                    <img
+                      src={`${baseUrl}/api/files/dogs/${dog.id}/${dog.image}`}
+                      alt={dog.name}
+                      class="dog-card-img"
+                    />
+                  ) : (
+                    <div class="dog-card-img-placeholder">🐕</div>
+                  )}
+                  <div>
+                    <strong>{dog.name}</strong> • {dog.size} • {dog.gender}
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
+        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+          <button type="button" class="btn" onClick={() => nav("/onboarding/needs")}>
+            Continue
+          </button>
+          <button type="button" class="btn btn-secondary" onClick={handleSkip}>
+            Skip for now
+          </button>
+        </div>
+      </div>
+    </OnboardingShell>
   );
 }

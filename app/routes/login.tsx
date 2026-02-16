@@ -14,8 +14,8 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await pb.collection("users").authWithPassword(email(), password());
-      nav("/app", { replace: true });
+      const auth = await pb.collection("users").authWithPassword(email(), password());
+      nav(auth.record?.area ? "/app/matches" : "/onboarding/profile", { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -25,7 +25,11 @@ export default function Login() {
 
   return (
     <div class="container">
-      <h1>Log in</h1>
+      <div class="page-hero">
+        <span class="paw-emoji">🐾</span>
+        <h1>Log in</h1>
+      </div>
+      <div class="card">
       <form onSubmit={handleSubmit}>
         <div class="form-group">
           <label for="email">Email</label>
@@ -52,9 +56,10 @@ export default function Login() {
           {loading() ? "Logging in..." : "Log in"}
         </button>
       </form>
-      <p>
+      <p style="margin-top: 1rem;">
         <A href="/register">Create an account</A>
       </p>
+      </div>
     </div>
   );
 }

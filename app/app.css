@@ -1,98 +1,303 @@
+/* Dog Watch Match - Dog-themed styles */
+:root {
+  --color-bone: #f5e6d3;
+  --color-paw: #8b5a2b;
+  --color-paw-dark: #6d4420;
+  --color-grass: #7cb342;
+  --color-sky: #87ceeb;
+  --color-fur: #d4a574;
+  --color-fur-light: #f0dcc4;
+  --color-nose: #4a3728;
+  --color-text: #2d1f14;
+  --color-text-muted: #5c4a3a;
+  --shadow-paw: 0 2px 8px rgba(139, 90, 43, 0.15);
+  --radius-dog: 1rem;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  line-height: 1.5;
-  color: #1a1a1a;
-  background: #fafafa;
+  font-family: "Nunito", system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  color: var(--color-text);
+  background: linear-gradient(180deg, var(--color-bone) 0%, var(--color-fur-light) 50%, #e8d5c4 100%);
+  min-height: 100vh;
 }
 
 .loading {
   padding: 2rem;
   text-align: center;
+  color: var(--color-text-muted);
 }
 
 a {
-  color: #2563eb;
+  color: var(--color-paw);
   text-decoration: none;
+  font-weight: 600;
 }
 
 a:hover {
+  color: var(--color-paw-dark);
   text-decoration: underline;
 }
 
 .container {
   max-width: 640px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1.5rem;
 }
 
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 0.25rem;
-  font-weight: 500;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
+  padding: 0.6rem 0.9rem;
+  border: 2px solid var(--color-fur);
+  border-radius: var(--radius-dog);
   font-size: 1rem;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--color-paw);
 }
 
 .form-group textarea {
-  min-height: 80px;
+  min-height: 90px;
   resize: vertical;
 }
 
 .btn {
   display: inline-block;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.25rem;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   border: none;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-dog);
   cursor: pointer;
-  background: #2563eb;
+  background: var(--color-paw);
   color: white;
+  transition: background 0.2s, transform 0.1s;
 }
 
 .btn:hover {
-  background: #1d4ed8;
+  background: var(--color-paw-dark);
+}
+
+.btn:active {
+  transform: scale(0.98);
 }
 
 .btn-secondary {
-  background: #6b7280;
+  background: var(--color-text-muted);
 }
 
 .btn-secondary:hover {
-  background: #4b5563;
+  background: var(--color-nose);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--color-paw);
+  color: var(--color-paw);
+}
+
+.btn-outline:hover {
+  background: var(--color-paw);
+  color: white;
 }
 
 .card {
   background: white;
-  border-radius: 0.5rem;
-  padding: 1rem;
+  border-radius: var(--radius-dog);
+  padding: 1.25rem;
   margin-bottom: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-paw);
+  border: 1px solid rgba(139, 90, 43, 0.1);
+}
+
+.card h2, .card h3 {
+  margin-top: 0;
+  color: var(--color-paw-dark);
 }
 
 nav {
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 3px solid var(--color-paw);
   padding: 0.75rem 1rem;
+  box-shadow: var(--shadow-paw);
 }
 
 nav a {
   margin-right: 1rem;
+}
+
+/* Dog-themed page headers */
+.page-hero {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.page-hero h1 {
+  font-size: 1.75rem;
+  color: var(--color-paw-dark);
+  margin: 0 0 0.5rem;
+}
+
+.page-hero .paw-emoji {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* Avatar */
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--color-paw);
+  background: var(--color-fur-light);
+}
+
+.avatar-sm {
+  width: 48px;
+  height: 48px;
+  border-width: 2px;
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-fur-light);
+  border: 3px solid var(--color-paw);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-paw);
+}
+
+.avatar-placeholder.avatar-sm {
+  width: 48px;
+  height: 48px;
+  font-size: 1rem;
+}
+
+/* Dog card with image */
+.dog-card {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.dog-card-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-paw);
+  flex-shrink: 0;
+}
+
+.dog-card-img-placeholder {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--color-fur-light);
+  border: 2px solid var(--color-paw);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Onboarding progress */
+.onboarding-progress {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  justify-content: center;
+}
+
+.onboarding-progress .step {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-fur);
+  transition: background 0.2s;
+}
+
+.onboarding-progress .step.active {
+  background: var(--color-paw);
+  transform: scale(1.2);
+}
+
+.onboarding-progress .step.done {
+  background: var(--color-grass);
+}
+
+/* Checkbox for flexible dates */
+.flexible-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--color-fur-light);
+  border-radius: var(--radius-dog);
+  cursor: pointer;
+}
+
+.flexible-toggle input {
+  width: auto;
+  margin: 0;
+}
+
+.flexible-toggle label {
+  margin: 0;
+  cursor: pointer;
+  flex: 1;
+}
+
+/* Checkbox group for multi-select */
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.checkbox-label input {
+  width: auto;
+  margin: 0;
 }

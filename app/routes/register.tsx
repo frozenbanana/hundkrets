@@ -25,7 +25,7 @@ export default function Register() {
         passwordConfirm: passwordConfirm(),
       });
       await pb.collection("users").authWithPassword(email(), password());
-      nav("/app", { replace: true });
+      nav("/onboarding/profile", { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -35,7 +35,11 @@ export default function Register() {
 
   return (
     <div class="container">
-      <h1>Create account</h1>
+      <div class="page-hero">
+        <span class="paw-emoji">🐕</span>
+        <h1>Create account</h1>
+      </div>
+      <div class="card">
       <form onSubmit={handleSubmit}>
         <div class="form-group">
           <label for="email">Email</label>
@@ -73,9 +77,10 @@ export default function Register() {
           {loading() ? "Creating..." : "Create account"}
         </button>
       </form>
-      <p>
+      <p style="margin-top: 1rem;">
         <A href="/login">Already have an account? Log in</A>
       </p>
+      </div>
     </div>
   );
 }
