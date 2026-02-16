@@ -28,14 +28,14 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
           size="sm"
           class="avatar-sm"
         />
-        <A href="/app">Dashboard</A>
-        <A href="/app/profile">Profile</A>
-        <A href="/app/dogs">My Dogs</A>
-        <A href="/app/needs/new">Add Watch Need</A>
-        <A href="/app/capacity/new">Add Watch Capacity</A>
-        <A href="/app/matches">Matches</A>
+        <A href="/app">Översikt</A>
+        <A href="/app/profile">Profil</A>
+        <A href="/app/dogs">Mina hundar</A>
+        <A href="/app/needs/new">Mina behov</A>
+        <A href="/app/capacity/new">Min kapacitet</A>
+        <A href="/app/matches">Matchningar</A>
         <button type="button" class="btn btn-secondary" onClick={logout} style="margin-left: auto;">
-          Log out
+          Logga ut
         </button>
       </nav>
       {props.children}

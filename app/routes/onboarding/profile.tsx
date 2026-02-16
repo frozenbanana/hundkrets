@@ -2,6 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { createSignal, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { geocodeAddress } from "~/lib/geocode";
+import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { Avatar } from "~/components/Avatar";
 import { SwedishAddressInput, type AddressValue } from "~/components/SwedishAddressInput";
@@ -11,7 +12,9 @@ export default function OnboardingProfile() {
   const [name, setName] = createSignal("");
   const [phone, setPhone] = createSignal("");
   const [address, setAddress] = createSignal<Partial<AddressValue>>({});
+  const [bio, setBio] = createSignal("");
   const [breedsOwnedBefore, setBreedsOwnedBefore] = createSignal("");
+  const [avatarFile, setAvatarFile] = createSignal<File | null>(null);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
 
@@ -38,6 +41,7 @@ export default function OnboardingProfile() {
         neighborhood: user.neighborhood,
         area: user.area,
       });
+      setBio(user.bio ?? "");
       setBreedsOwnedBefore(user.breeds_owned_before ?? "");
     }
   });
@@ -79,18 +83,36 @@ export default function OnboardingProfile() {
       }
 
       const areaVal = addr.area ?? ([addr.city, addr.neighborhood].filter(Boolean).join(" - ") || "");
-      await pb.collection("users").update(userId, {
-        name: name(),
-        phone: phone(),
-        area: areaVal,
-        city: addr.city,
-        neighborhood: addr.neighborhood,
-        address_private: addr.address_private,
-        latitude: addr.latitude,
-        longitude: addr.longitude,
-        breeds_owned_before: breedsOwnedBefore() || undefined,
-      });
-      pb.authStore.save(pb.authStore.token!, {
+      const file = avatarFile();
+      if (file) {
+        const fd = new FormData();
+        fd.append("name", name());
+        fd.append("phone", phone() || "");
+        fd.append("area", areaVal);
+        fd.append("city", addr.city ?? "");
+        fd.append("neighborhood", addr.neighborhood ?? "");
+        fd.append("address_private", addr.address_private ?? "");
+        fd.append("latitude", String(addr.latitude ?? ""));
+        fd.append("longitude", String(addr.longitude ?? ""));
+        fd.append("bio", bio() || "");
+        fd.append("breeds_owned_before", breedsOwnedBefore() || "");
+        fd.append("avatar", file);
+        const updated = await pb.collection("users").update(userId, fd);
+        pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, ...updated });
+      } else {
+        await pb.collection("users").update(userId, {
+          name: name(),
+          phone: phone(),
+          area: areaVal,
+          city: addr.city,
+          neighborhood: addr.neighborhood,
+          address_private: addr.address_private,
+          latitude: addr.latitude,
+          longitude: addr.longitude,
+          bio: bio() || undefined,
+          breeds_owned_before: breedsOwnedBefore() || undefined,
+        });
+        pb.authStore.save(pb.authStore.token!, {
         ...pb.authStore.model,
         name: name(),
         phone: phone(),
@@ -100,8 +122,10 @@ export default function OnboardingProfile() {
         address_private: addr.address_private,
         latitude: addr.latitude,
         longitude: addr.longitude,
+        bio: bio(),
         breeds_owned_before: breedsOwnedBefore(),
-      });
+        });
+      }
       nav("/onboarding/dogs");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Update failed");
@@ -114,17 +138,41 @@ export default function OnboardingProfile() {
     <OnboardingShell step={1} totalSteps={4} title="Your profile">
       <div class="card">
         <div style="text-align: center; margin-bottom: 1.5rem;">
-          <Avatar name={name()} city={address().city} neighborhood={address().neighborhood} />
+          <Avatar
+            name={name()}
+            city={address().city}
+            neighborhood={address().neighborhood}
+            id={pb.authStore.model?.id}
+            avatar={avatarFile() ? undefined : pb.authStore.model?.avatar}
+            baseUrl={import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}
+          />
         </div>
-        <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
-          Vi riktar oss till Sverige. Din adress hjälper att hitta matchningar i närheten. Din fullständiga adress visas bara när ni kopplar ihop.
-        </p>
         <form onSubmit={handleSubmit}>
+          <ImageCaptureInput
+            id="avatar"
+            label="Profilbild (valfritt)"
+            capture="user"
+            value={avatarFile()}
+            onInput={setAvatarFile}
+            existingUrl={
+              pb.authStore.model?.avatar && pb.authStore.model?.id
+                ? `${import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}/api/files/users/${pb.authStore.model.id}/${pb.authStore.model.avatar}`
+                : undefined
+            }
+            hint="På mobil: tryck för att ta ett selfie. På dator: dra och släpp eller klicka för att välja."
+          />
+          <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
+            Vi riktar oss till Sverige. Din adress hjälper att hitta matchningar i närheten. Din fullständiga adress visas bara när ni kopplar ihop.
+          </p>
           <div class="form-group">
             <label for="name">Namn</label>
             <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} />
           </div>
           <SwedishAddressInput value={address()} onSelect={setAddress} />
+          <div class="form-group">
+            <label for="bio">Bio (valfritt)</label>
+            <textarea id="bio" value={bio()} onInput={(e) => setBio(e.currentTarget.value)} placeholder="Berätta lite om dig och din erfarenhet med hundar" rows={3} />
+          </div>
           <div class="form-group">
             <label for="breeds_owned_before">Vilka hundraser har du tidigare ägt?</label>
             <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />

@@ -7,6 +7,9 @@ export interface User extends RecordModel {
   address_private?: string;
   latitude?: number;
   longitude?: number;
+  city?: string;
+  neighborhood?: string;
+  avatar?: string;
   /** Set to true when user completes onboarding (capacity step). Add this field in PocketBase admin. */
   onboarding_complete?: boolean;
 }

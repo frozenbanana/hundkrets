@@ -1,6 +1,8 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { DogImage } from "~/components/DogImage";
+import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
 export default function OnboardingDogs() {
@@ -30,6 +32,7 @@ export default function OnboardingDogs() {
   const [breed, setBreed] = createSignal("");
   const [size, setSize] = createSignal<"small" | "medium" | "large">("medium");
   const [gender, setGender] = createSignal<"male" | "female">("male");
+  const [age, setAge] = createSignal<number | "">("");
   const [temperamentNewPeople, setTemperamentNewPeople] = createSignal("");
   const [temperamentNewDogsFemale, setTemperamentNewDogsFemale] = createSignal("");
   const [temperamentNewDogsMale, setTemperamentNewDogsMale] = createSignal("");
@@ -58,6 +61,7 @@ export default function OnboardingDogs() {
         breed: breed() || undefined,
         size: size(),
         gender: gender(),
+        age: age() !== "" ? age() : undefined,
         temperament_new_people: temperamentNewPeople() || undefined,
         temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
         temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
@@ -70,6 +74,7 @@ export default function OnboardingDogs() {
         fd.append("breed", breed());
         fd.append("size", size());
         fd.append("gender", gender());
+        if (age() !== "") fd.append("age", String(age()));
         fd.append("temperament_new_people", temperamentNewPeople());
         fd.append("temperament_new_dogs_female", temperamentNewDogsFemale());
         fd.append("temperament_new_dogs_male", temperamentNewDogsMale());
@@ -82,13 +87,19 @@ export default function OnboardingDogs() {
       setBreed("");
       setSize("medium");
       setGender("male");
+      setAge("");
       setTemperamentNewPeople("");
       setTemperamentNewDogsFemale("");
       setTemperamentNewDogsMale("");
       setImageFile(null);
       dogs.refetch();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add dog");
+      const e = err as { status?: number; data?: { name?: unknown } };
+      if (e?.status === 400 && e?.data?.name) {
+        setError("Du har redan en hund med det namnet. Välj ett annat.");
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to add dog");
+      }
     } finally {
       setLoading(false);
     }
@@ -111,15 +122,16 @@ export default function OnboardingDogs() {
             <label for="name">Dog name *</label>
             <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required />
           </div>
-          <div class="form-group">
-            <label for="image">Photo (optional)</label>
-            <input
-              id="image"
-              type="file"
-              accept="image/*"
-              onInput={(e) => setImageFile(e.currentTarget.files?.[0] ?? null)}
-            />
-          </div>
+          <ImageCaptureInput
+            id="image"
+            label="Photo (optional)"
+            capture="environment"
+            value={imageFile()}
+            onInput={setImageFile}
+            previewShape="rect"
+            hint="On mobile: tap to take a photo. On desktop: drag & drop or click to choose."
+            dropHint="Drop image here"
+          />
           <div class="form-group">
             <label for="breed">Breed</label>
             <input id="breed" type="text" value={breed()} onInput={(e) => setBreed(e.currentTarget.value)} />
@@ -138,6 +150,10 @@ export default function OnboardingDogs() {
               <option value="male">Male</option>
               <option value="female">Female</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label for="age">Ålder (år)</label>
+            <input id="age" type="number" min={0} max={25} value={age() === "" ? "" : age()} onInput={(e) => { const v = e.currentTarget.value; setAge(v === "" ? "" : parseInt(v, 10)); }} placeholder="T.ex. 3" />
           </div>
           <div class="form-group">
             <label>Temperament in different settings</label>
@@ -176,15 +192,7 @@ export default function OnboardingDogs() {
             <For each={dogs()}>
               {(dog) => (
                 <div class="dog-card" style="margin-bottom: 0.75rem;">
-                  {dog.image ? (
-                    <img
-                      src={`${baseUrl}/api/files/dogs/${dog.id}/${dog.image}`}
-                      alt={dog.name}
-                      class="dog-card-img"
-                    />
-                  ) : (
-                    <div class="dog-card-img-placeholder">🐕</div>
-                  )}
+                  <DogImage dog={dog} baseUrl={baseUrl} class="dog-card-img" />
                   <div>
                     <strong>{dog.name}</strong> • {dog.size} • {dog.gender}
                   </div>

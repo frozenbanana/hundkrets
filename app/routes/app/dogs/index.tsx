@@ -2,6 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { createResource, For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { AppShell } from "~/components/AppShell";
+import { DogImage } from "~/components/DogImage";
 
 export default function DogsList() {
   const nav = useNavigate();
@@ -30,7 +31,7 @@ export default function DogsList() {
     <div class="container">
       <div class="page-hero">
         <span class="paw-emoji">🐕</span>
-        <h1>My Dogs</h1>
+        <h1>Mina hundar</h1>
         <p style="color: var(--color-text-muted);">Add dogs you want to have watched when you travel.</p>
       </div>
       <A href="/app/dogs/new" class="btn">Add dog</A>
@@ -49,11 +50,7 @@ export default function DogsList() {
             {(dog) => (
               <div class="card">
                 <div class="dog-card">
-                  {dog.image ? (
-                    <img src={`${baseUrl}/api/files/dogs/${dog.id}/${dog.image}`} alt={dog.name} class="dog-card-img" />
-                  ) : (
-                    <div class="dog-card-img-placeholder">🐕</div>
-                  )}
+                  <DogImage dog={dog} baseUrl={baseUrl} class="dog-card-img" />
                   <div>
                     <h3>{dog.name}</h3>
                     <p>{dog.breed || "—"} • {dog.size} • {dog.gender}</p>

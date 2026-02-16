@@ -52,12 +52,33 @@ Emails: anna.malmo@example.com, erik.malmo@example.com, etc.
 
 Set your profile to **Malmö** to see matches.
 
+## Deployment (Docker Compose)
+
+For NixOS or any server with Docker:
+
+```bash
+# 1. Set the PocketBase URL (how the browser reaches it)
+export VITE_POCKETBASE_URL=http://YOUR_SERVER_IP:8090   # or https://your-domain.com
+
+# 2. Build and run
+docker compose up -d
+
+# 3. Open the app
+# App:    http://YOUR_SERVER_IP:3000
+# Admin:  http://YOUR_SERVER_IP:8090/_/
+```
+
+Create an admin account on first run at `http://YOUR_SERVER_IP:8090/_/`. Data persists in the `pb_data` volume.
+
+**ARM64 (Raspberry Pi):** Edit `docker/pocketbase/Dockerfile` and change `linux_amd64` to `linux_arm64` in the download URL.
+
 ## Project Structure
 
 ```
 dogwatchmatch/
+├── docker/            # Dockerfiles
 ├── pb_migrations/     # PocketBase schema migrations
 ├── app/               # SolidJS frontend (SolidStart)
-├── pocketbase         # PocketBase binary
+├── pocketbase         # PocketBase binary (dev only)
 └── README.md
 ```

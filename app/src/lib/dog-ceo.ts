@@ -1,0 +1,81 @@
+/**
+ * Dog CEO API: https://dog.ceo/dog-api/documentation/breed
+ * Returns a random dog image URL for a breed, or fallback random image.
+ */
+
+const DOG_CEO_BASE = "https://dog.ceo/api";
+
+/** Map common breed names to Dog CEO API path (breed or breed/subbreed) */
+const BREED_MAP: Record<string, string> = {
+  "golden retriever": "retriever/golden",
+  labrador: "labrador",
+  "cocker spaniel": "spaniel/cocker",
+  "german shepherd": "german/shepherd",
+  schäfer: "german/shepherd",
+  beagle: "beagle",
+  "border collie": "collie/border",
+  husky: "husky",
+  poodle: "poodle",
+  pudel: "poodle",
+  "cavalier king charles spaniel": "spaniel/cocker",
+  cavalier: "spaniel/cocker",
+  "cavalier spaniel": "spaniel/cocker",
+  blandras: "mix",
+  mix: "mix",
+  "english springer spaniel": "springer/english",
+  "welsh corgi": "corgi/cardigan",
+  "pembroke welsh corgi": "pembroke",
+  dachshund: "dachshund",
+  boxer: "boxer",
+  rottweiler: "rottweiler",
+  "australian shepherd": "australian/shepherd",
+  "yorkshire terrier": "terrier/yorkshire",
+  "siberian husky": "husky",
+  doberman: "doberman",
+  "shih tzu": "shihtzu",
+  "miniature schnauzer": "schnauzer/miniature",
+  chihuahua: "chihuahua",
+  pomeranian: "pomeranian",
+  "boston terrier": "bulldog/boston",
+  havanese: "havanese",
+  "great dane": "dane/great",
+  "cocker spaniel": "spaniel/cocker",
+};
+
+function toApiPath(breed: string): string | null {
+  const normalized = breed.trim().toLowerCase();
+  if (!normalized) return null;
+  const mapped = BREED_MAP[normalized];
+  if (mapped) return mapped;
+  const slug = normalized.replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  return slug || null;
+}
+
+export async function fetchBreedImageUrl(breed: string | undefined): Promise<string | null> {
+  const path = breed ? toApiPath(breed) : null;
+  const url = path
+    ? `${DOG_CEO_BASE}/breed/${path}/images/random`
+    : `${DOG_CEO_BASE}/breeds/image/random`;
+
+  try {
+    const res = await fetch(url);
+    const data = (await res.json()) as { message?: string; status?: string };
+    if (data?.status === "success" && typeof data.message === "string") {
+      return data.message;
+    }
+  } catch {
+    // Fallback to random if breed-specific fails
+    if (path) {
+      try {
+        const fallback = await fetch(`${DOG_CEO_BASE}/breeds/image/random`);
+        const data = (await fallback.json()) as { message?: string; status?: string };
+        if (data?.status === "success" && typeof data.message === "string") {
+          return data.message;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return null;
+}
