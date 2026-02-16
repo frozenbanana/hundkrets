@@ -3,6 +3,7 @@ import { createResource, createSignal, For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { findListings } from "~/lib/matching";
 import { AppShell } from "~/components/AppShell";
+import { MatchesMap } from "~/components/MatchesMap";
 
 const DISTANCE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
@@ -32,9 +33,12 @@ function getStoredMaxDistance(): number {
   return DISTANCE_OPTIONS.includes(n as (typeof DISTANCE_OPTIONS)[number]) ? n : 50;
 }
 
+type ViewMode = "list" | "map";
+
 export default function Matches() {
   const [refreshing, setRefreshing] = createSignal(false);
   const [maxDistanceKm, setMaxDistanceKm] = createSignal(getStoredMaxDistance());
+  const [viewMode, setViewMode] = createSignal<ViewMode>("list");
 
   const [data, { refetch }] = createResource(
     () => [pb.authStore.model?.id, maxDistanceKm()] as const,
@@ -114,45 +118,44 @@ export default function Matches() {
       <div class="container">
         <div class="page-hero">
           <span class="paw-emoji">🐾</span>
-          <h1>Matches</h1>
+          <h1>Matchningar</h1>
           <p style="color: var(--color-text-muted);">
-            People in your area looking to swap dog sitting. Click "I'm interested" to connect—when they do too, you'll
-            exchange phone numbers and addresses.
+            Hundägare i ditt område som vill byta hundpassning. Klicka "Jag är intresserad" för att koppla ihop—när de gör det samma byter ni telefonnummer och adresser.
           </p>
         </div>
         <Show when={!pb.authStore.model?.area && !pb.authStore.model?.city}>
           <p style="color: #dc2626;">
-            <A href="/app/profile">Set your address</A> in your profile to see matches.
+            <A href="/app/profile">Ange din adress</A> i profilen för att se matchningar.
           </p>
         </Show>
         <Show when={pb.authStore.model?.area && !pb.authStore.model?.latitude && !pb.authStore.model?.longitude}>
           <p style="color: var(--color-text-muted); margin-bottom: 0.5rem;">
-            <A href="/app/profile">Update your profile with a full address</A> to filter by distance and see the map.
+            <A href="/app/profile">Uppdatera din profil med full adress</A> för att filtrera på avstånd och se kartan.
           </p>
         </Show>
         <Show when={data.loading}>
-          <p>Loading...</p>
+          <p>Laddar...</p>
         </Show>
         <Show when={data.error}>
           <p style="color: #dc2626;">
-            Failed to load matches: {data.error?.message}
+            Kunde inte ladda matchningar: {data.error?.message}
           </p>
           <p style="color: var(--color-text-muted); font-size: 0.875rem;">
-            Check that PocketBase is running at {import.meta.env.VITE_POCKETBASE_URL || "http://localhost:8090"}
+            Kontrollera att PocketBase körs på {import.meta.env.VITE_POCKETBASE_URL || "http://localhost:8090"}
           </p>
           <button type="button" class="btn" onClick={() => refetch()}>
-            Retry
+            Försök igen
           </button>
         </Show>
         <Show when={data()?.listings.length === 0 && !data.loading && pb.authStore.model?.area}>
-          <p>No one in your area yet. Add your watch needs and capacity so others can find you.</p>
-          <A href="/app/needs/new" class="btn">Add watch need</A>
-          <A href="/app/capacity/new" class="btn btn-secondary" style="margin-left: 0.5rem;">Add watch capacity</A>
+          <p>Ingen i ditt område än. Lägg till dina behov och kapacitet så att andra kan hitta dig.</p>
+          <A href="/app/needs/new" class="btn">Lägg till behov</A>
+          <A href="/app/capacity/new" class="btn btn-secondary" style="margin-left: 0.5rem;">Lägg till kapacitet</A>
         </Show>
         <Show when={data()?.listings && data()!.listings.length > 0}>
           <div style="margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
             <label for="distance-filter" style="display: flex; align-items: center; gap: 0.5rem;">
-              <span>Within</span>
+              <span>Inom</span>
               <select
                 id="distance-filter"
                 value={maxDistanceKm()}
@@ -164,8 +167,31 @@ export default function Matches() {
                 ))}
               </select>
             </label>
-            <A href="/app/map" class="btn btn-secondary">Map view</A>
+            <div style="display: flex; gap: 0.25rem;">
+              <button
+                type="button"
+                class={viewMode() === "list" ? "btn" : "btn btn-secondary"}
+                onClick={() => setViewMode("list")}
+              >
+                Lista
+              </button>
+              <button
+                type="button"
+                class={viewMode() === "map" ? "btn" : "btn btn-secondary"}
+                onClick={() => setViewMode("map")}
+              >
+                Karta
+              </button>
+            </div>
           </div>
+          <Show when={viewMode() === "map"}>
+            <MatchesMap
+              listings={data()!.listings}
+              myLat={pb.authStore.model?.latitude}
+              myLon={pb.authStore.model?.longitude}
+            />
+          </Show>
+          <Show when={viewMode() === "list"}>
           <div style="margin-top: 1rem;">
             <For each={data()!.listings}>
               {(listing) => {
@@ -190,17 +216,17 @@ export default function Matches() {
                         )}
                         {"distanceKm" in listing && typeof listing.distanceKm === "number" && (
                           <p style="color: var(--color-text-muted); margin: 0.25rem 0; font-size: 0.875rem;">
-                            ~{Math.round(listing.distanceKm)} km away
+                            ~{Math.round(listing.distanceKm)} km bort
                           </p>
                         )}
                         {mutual && listing.user.phone && (
                           <p style="margin-top: 0.5rem;">
-                            <strong>Phone:</strong> <a href={`tel:${listing.user.phone}`}>{listing.user.phone}</a>
+                            <strong>Telefon:</strong> <a href={`tel:${listing.user.phone}`}>{listing.user.phone}</a>
                           </p>
                         )}
                         {mutual && listing.user.address_private && (
                           <p style="margin-top: 0.5rem;">
-                            <strong>Address:</strong> {listing.user.address_private}
+                            <strong>Adress:</strong> {listing.user.address_private}
                           </p>
                         )}
                       </div>
@@ -208,7 +234,7 @@ export default function Matches() {
 
                     {listing.needs.length > 0 && (
                       <div style="margin-bottom: 0.75rem;">
-                        <strong>Needs dog sitting:</strong>
+                        <strong>Behöver hundpassning:</strong>
                         <ul style="margin: 0.25rem 0 0 1.25rem; padding: 0;">
                           <For each={listing.needs}>
                             {(n) => {
@@ -225,7 +251,7 @@ export default function Matches() {
                     )}
                     {listing.capacities.length > 0 && (
                       <div style="margin-bottom: 0.75rem;">
-                        <strong>Can watch dogs:</strong>
+                        <strong>Kan passa hundar:</strong>
                         <ul style="margin: 0.25rem 0 0 1.25rem; padding: 0;">
                           <For each={listing.capacities}>
                             {(c) => (
@@ -241,11 +267,11 @@ export default function Matches() {
                     <div style="margin-top: 1rem;">
                       {mutual ? (
                         <span class="btn" style="background: var(--color-grass); cursor: default;">
-                          ✓ Connected
+                          ✓ Kopplad
                         </span>
                       ) : requested ? (
                         <span class="btn btn-secondary" style="cursor: default;">
-                          Interest sent
+                          Intresse skickat
                         </span>
                       ) : (
                         <button
@@ -254,7 +280,7 @@ export default function Matches() {
                           disabled={refreshing()}
                           onClick={() => handleInterested(listing.user.id)}
                         >
-                          I'm interested
+                          Jag är intresserad
                         </button>
                       )}
                     </div>
@@ -263,6 +289,7 @@ export default function Matches() {
               }}
             </For>
           </div>
+          </Show>
         </Show>
       </div>
     </AppShell>

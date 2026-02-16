@@ -4,7 +4,7 @@ import { pb } from "~/lib/pocketbase";
 import { geocodeAddress } from "~/lib/geocode";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { Avatar } from "~/components/Avatar";
-import { AddressAutocomplete, type AddressValue } from "~/components/AddressAutocomplete";
+import { SwedishAddressInput, type AddressValue } from "~/components/SwedishAddressInput";
 
 export default function OnboardingProfile() {
   const nav = useNavigate();
@@ -50,10 +50,13 @@ export default function OnboardingProfile() {
 
       let addr = address();
       if (!addr.latitude || !addr.longitude) {
-        const input = (e.target as HTMLFormElement).querySelector<HTMLInputElement>("#address");
-        const raw = input?.value?.trim();
+        const streetInput = (e.target as HTMLFormElement).querySelector<HTMLInputElement>("#street");
+        const cityInput = (e.target as HTMLFormElement).querySelector<HTMLInputElement>("#city");
+        const street = streetInput?.value?.trim();
+        const city = cityInput?.value?.trim();
+        const raw = street && city ? `${street}, ${city}, Sverige` : street || city;
         if (raw) {
-          const geocoded = await geocodeAddress(raw);
+          const geocoded = await geocodeAddress(raw, city || undefined);
           if (geocoded) {
             const area = [geocoded.city, geocoded.neighborhood].filter(Boolean).join(" - ") || geocoded.display_name;
             addr = {
@@ -68,7 +71,7 @@ export default function OnboardingProfile() {
         }
       }
       if (!addr.latitude || !addr.longitude) {
-        setError("Please select an address from the suggestions or enter a valid address.");
+        setError("Välj stad och adress från förslagen.");
         setLoading(false);
         return;
       }
@@ -112,20 +115,20 @@ export default function OnboardingProfile() {
           <Avatar name={name()} city={address().city} neighborhood={address().neighborhood} />
         </div>
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
-          Tell us about yourself. Your address helps find nearby matches. Your full address stays private until you connect with someone.
+          Vi riktar oss till Sverige. Din adress hjälper att hitta matchningar i närheten. Din fullständiga adress visas bara när ni kopplar ihop.
         </p>
         <form onSubmit={handleSubmit}>
           <div class="form-group">
-            <label for="name">Name</label>
+            <label for="name">Namn</label>
             <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} />
           </div>
-          <AddressAutocomplete value={address()} onSelect={setAddress} />
+          <SwedishAddressInput value={address()} onSelect={setAddress} />
           <div class="form-group">
-            <label for="breeds_owned_before">Which dog breeds have you owned before?</label>
-            <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="e.g. Labrador, Golden Retriever, mixed breeds" />
+            <label for="breeds_owned_before">Vilka hundraser har du tidigare ägt?</label>
+            <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />
           </div>
           <div class="form-group">
-            <label for="phone">Phone</label>
+            <label for="phone">Telefon</label>
             <input id="phone" type="tel" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} />
           </div>
           {error() && <p style="color: #dc2626;">{error()}</p>}

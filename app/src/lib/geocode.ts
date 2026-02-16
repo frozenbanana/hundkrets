@@ -26,10 +26,13 @@ interface PhotonFeature {
     housenumber?: string;
     postcode?: string;
     city?: string;
+    locality?: string;
     district?: string;
     state?: string;
     country?: string;
     countrycode?: string;
+    osm_key?: string;
+    osm_value?: string;
   };
 }
 
@@ -53,19 +56,72 @@ function buildDisplayName(f: PhotonFeature): string {
 }
 
 /**
- * Search for address suggestions. Debounce calls on your side (e.g. 300ms).
+ * Search for Swedish cities. Use for city picker.
  */
-export async function searchAddress(query: string): Promise<GeocodeResult[]> {
+export async function searchCitiesSweden(query: string): Promise<GeocodeResult[]> {
   const q = query.trim();
-  if (!q || q.length < 2) return [];
+  if (!q || q.length < 3) return [];
 
-  const params = new URLSearchParams({ q, limit: "10" });
-  const res = await fetch(`${PHOTON_BASE}/api/?${params}`, {
-    headers: { "Accept-Language": "en" },
+  const params = new URLSearchParams({
+    q: `${q} Sverige`,
+    limit: "8",
   });
+  const res = await fetch(`${PHOTON_BASE}/api/?${params}`);
   if (!res.ok) return [];
   const data = (await res.json()) as PhotonResponse;
-  return (data.features ?? []).map((f) => {
+  const all = (data.features ?? []).filter(
+    (f) => (f.properties?.countrycode ?? "").toUpperCase() === "SE"
+  );
+  // Prefer places (cities, municipalities) over addresses for city picker
+  const placeTypes = ["place", "boundary"];
+  const features = [
+    ...all.filter((f) => placeTypes.includes(f.properties?.osm_key ?? "")),
+    ...all.filter((f) => !placeTypes.includes(f.properties?.osm_key ?? "")),
+  ];
+  return features.slice(0, 5).map((f) => {
+    const [lon, lat] = f.geometry.coordinates;
+    const p = f.properties ?? {};
+    const city = p.city ?? p.name ?? p.state;
+    return {
+      display_name: p.name ?? city ?? "Unknown",
+      lat,
+      lon,
+      city,
+      neighborhood: p.district,
+      suburb: p.district,
+      village: p.city,
+      town: p.city,
+    };
+  });
+}
+
+/**
+ * Search for address suggestions in Sweden. Pass city to scope street search.
+ */
+export async function searchAddress(query: string, options?: { city?: string }): Promise<GeocodeResult[]> {
+  const q = query.trim();
+  if (!q || q.length < 3) return [];
+
+  const searchQuery = options?.city ? `${q}, ${options.city}, Sverige` : `${q} Sverige`;
+  const params = new URLSearchParams({
+    q: searchQuery,
+    limit: "15",
+  });
+  const res = await fetch(`${PHOTON_BASE}/api/?${params}`);
+  if (!res.ok) return [];
+  const data = (await res.json()) as PhotonResponse;
+  let features = (data.features ?? []).filter(
+    (f) => (f.properties?.countrycode ?? "").toUpperCase() === "SE"
+  );
+  // When city is specified, keep only results in that city (Photon may return other cities)
+  if (options?.city) {
+    const cityLower = options.city.toLowerCase().trim();
+    features = features.filter((f) => {
+      const fCity = (f.properties?.city ?? f.properties?.locality ?? "").toLowerCase();
+      return fCity === cityLower || fCity.includes(cityLower) || cityLower.includes(fCity);
+    });
+  }
+  return features.slice(0, 5).map((f) => {
     const [lon, lat] = f.geometry.coordinates;
     const p = f.properties ?? {};
     const city = p.city ?? p.state;
@@ -86,7 +142,7 @@ export async function searchAddress(query: string): Promise<GeocodeResult[]> {
 /**
  * Geocode a raw address string (e.g. on form submit if user didn't select from autocomplete).
  */
-export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
-  const results = await searchAddress(address);
+export async function geocodeAddress(address: string, city?: string): Promise<GeocodeResult | null> {
+  const results = await searchAddress(address, city ? { city } : undefined);
   return results[0] ?? null;
 }

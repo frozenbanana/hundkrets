@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "vinxi start",
+    "test:geocode": "node scripts/test-geocode.mjs"
   },
   "dependencies": {
     "@solidjs/router": "^0.14.2",
