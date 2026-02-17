@@ -1,1 +1,1 @@
-export { fetchBreedImageUrl } from "../src/lib/dog-ceo";
+export { fetchBreedImageUrl, fetchMultipleRandomDogs } from "../src/lib/dog-ceo";

@@ -28,8 +28,9 @@ export default function Login() {
   return (
     <div class="container">
       <div class="page-hero">
-        <span class="paw-emoji">🐾</span>
-        <h1>Log in</h1>
+        <img src="/logo-icon.png" alt="Hundkrets" width="48" height="48" style="border-radius: 10px;" />
+        <h1>Hundkrets</h1>
+        <p style="color: var(--color-text-muted); font-size: 0.95rem;">Logga in</p>
       </div>
       <div class="card">
       <form onSubmit={handleSubmit}>

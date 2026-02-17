@@ -79,3 +79,17 @@ export async function fetchBreedImageUrl(breed: string | undefined): Promise<str
   }
   return null;
 }
+
+/** Fetch multiple random dog image URLs for gallery display. */
+export async function fetchMultipleRandomDogs(count: number = 12): Promise<string[]> {
+  try {
+    const res = await fetch(`${DOG_CEO_BASE}/breeds/image/random/${Math.min(count, 50)}`);
+    const data = (await res.json()) as { message?: string | string[]; status?: string };
+    if (data?.status === "success" && Array.isArray(data.message)) {
+      return data.message.filter((url): url is string => typeof url === "string");
+    }
+  } catch {
+    /* ignore */
+  }
+  return [];
+}

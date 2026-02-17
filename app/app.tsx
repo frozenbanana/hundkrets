@@ -8,16 +8,16 @@ export default function App() {
     <ErrorBoundary
       fallback={(err, reset) => (
         <div class="container" style="padding: 2rem;">
-          <h1>Something went wrong</h1>
+          <h1>Något gick fel</h1>
           <p style="color: #dc2626;">{err?.message ?? String(err)}</p>
-          <button type="button" class="btn" onClick={reset}>Try again</button>
-          <a href="/" class="btn btn-secondary" style="margin-left: 0.5rem;">Go home</a>
+          <button type="button" class="btn" onClick={reset}>Försök igen</button>
+          <a href="/" class="btn btn-secondary" style="margin-left: 0.5rem;">Till Hundkrets</a>
         </div>
       )}
     >
       <Router
         root={(props) => (
-          <Suspense fallback={<div class="loading">Loading...</div>}>
+          <Suspense fallback={<div class="loading">Laddar Hundkrets…</div>}>
             {props.children}
           </Suspense>
         )}

@@ -21,6 +21,10 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   return (
     <div>
       <nav style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <A href="/app" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;">
+          <img src="/logo-icon.png" alt="" width="28" height="28" style="border-radius: 6px;" />
+          Hundkrets
+        </A>
         <Avatar
           name={user()?.name}
           city={user()?.city}

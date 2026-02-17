@@ -1,7 +1,8 @@
-import { A } from "@solidjs/router";
-import { createResource, createSignal, For, Show } from "solid-js";
+import { A, useSearchParams } from "@solidjs/router";
+import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { findListings } from "~/lib/matching";
+import { approximateCoords, pointInBounds, type MapBounds } from "~/lib/geocode";
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
 import { DogImage } from "~/components/DogImage";
@@ -37,17 +38,6 @@ const genderLabel: Record<string, string> = { male: "Hane", female: "Hona" };
 const sizeLabel: Record<string, string> = { small: "Liten", medium: "Mellan", large: "Stor" };
 const temperamentLabel: Record<string, string> = { friendly: "Vänlig", cautious: "Försiktig", shy: "Blyg", reactive: "Reaktiv", neutral: "Neutral", unknown: "Okänd" };
 
-function dogSummary(d: { name?: string; breed?: string; size?: string; gender?: string; age?: number }) {
-  const parts = [d.name ?? "Hund"];
-  if (d.breed) parts.push(d.breed);
-  const sizeStr = d.size ? d.size.charAt(0).toUpperCase() + d.size.slice(1) : "";
-  const genderStr = d.gender ? genderLabel[d.gender] ?? d.gender : "";
-  const ageStr = d.age != null ? `${d.age} år` : "";
-  const meta = [sizeStr, genderStr, ageStr].filter(Boolean).join(", ");
-  if (meta) parts.push(meta);
-  return parts.filter(Boolean).join(" • ");
-}
-
 function MatchCard(props: {
   listing: ReturnType<typeof findListings>[number];
   baseUrl: string;
@@ -55,19 +45,20 @@ function MatchCard(props: {
   iRequested: (id: string) => boolean;
   refreshing: () => boolean;
   onInterested: (id: string) => void;
+  onWithdraw?: (userId: string) => void;
+  onUnmatch?: (userId: string) => void;
   onSelect?: (userId: string) => void;
   isSelected?: boolean;
   dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
 }) {
-  const [expanded, setExpanded] = createSignal(false);
-  const { listing, baseUrl, isMutual, iRequested, refreshing, onInterested, onSelect, isSelected, dateStr, sizesStr } = props;
+  const { listing, baseUrl, isMutual, iRequested, refreshing, onInterested, onWithdraw, onUnmatch, onSelect, isSelected, dateStr, sizesStr } = props;
   const mutual = isMutual(listing.user.id);
   const requested = iRequested(listing.user.id);
 
   return (
     <div
-      class="card"
+      class="card match-card"
       classList={{ "match-card-selected": isSelected }}
       data-listing-id={listing.user.id}
       onClick={() => onSelect?.(listing.user.id)}
@@ -75,6 +66,9 @@ function MatchCard(props: {
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onSelect?.(listing.user.id)}
     >
+      {mutual && (
+        <span class="match-card-badge">matchad</span>
+      )}
       <div class="dog-card" style="margin-bottom: 1rem;">
         <Avatar
           name={listing.user.name}
@@ -102,10 +96,10 @@ function MatchCard(props: {
               ~{Math.round(listing.distanceKm)} km bort
             </p>
           )}
-          {listing.dogs.length > 0 && (
+          {listing.capacities.length > 0 && (
             <p style="font-size: 0.9rem; margin: 0.5rem 0 0; color: var(--color-text);">
-              <strong>Hundar:</strong>{" "}
-              {listing.dogs.map((d) => dogSummary(d as { name?: string; breed?: string; size?: string; gender?: string; age?: number })).join(" · ")}
+              <strong>Hundpassarförmåga:</strong>{" "}
+              {listing.capacities.map((c) => `${dateStr(c)} • ${sizesStr(c.dog_sizes)} • max ${c.max_dogs}`).join(" · ")}
             </p>
           )}
           {mutual && listing.user.phone && (
@@ -135,6 +129,10 @@ function MatchCard(props: {
                   gender?: string;
                   age?: number;
                   image?: string;
+                  notes?: string;
+                  temperament_new_people?: string;
+                  temperament_new_dogs_female?: string;
+                  temperament_new_dogs_male?: string;
                 } | undefined;
                 const d = dog ?? {};
                 return (
@@ -148,13 +146,27 @@ function MatchCard(props: {
                     </div>
                     <div class="need-card-content">
                       <strong>{d.name ?? "Hund"}</strong>
-                      {(d.breed || d.size || d.gender || d.age != null) && (
-                        <span style="color: var(--color-text-muted); font-size: 0.875rem;">
-                          {" "}
-                          — {[d.breed, d.size ? sizeLabel[d.size] ?? d.size : "", d.gender ? genderLabel[d.gender] : "", d.age != null ? `${d.age} år` : ""].filter(Boolean).join(" • ")}
-                        </span>
+                      {d.size && (
+                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Storlek:</span> {sizeLabel[d.size] ?? d.size}</p>
                       )}
-                      <p>{dateStr(n)}</p>
+                      {d.breed && (
+                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Ras:</span> {d.breed}</p>
+                      )}
+                      {d.gender && (
+                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Kön:</span> {genderLabel[d.gender] ?? d.gender}</p>
+                      )}
+                      {d.age != null && (
+                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Ålder:</span> {d.age} år</p>
+                      )}
+                      {(d.temperament_new_people || d.temperament_new_dogs_female || d.temperament_new_dogs_male) && (
+                        <p style="margin: 0.25rem 0; font-size: 0.875rem; color: var(--color-text-muted);">
+                          <span style="font-weight: 600;">Temperament:</span><br /> Nya människor - {temperamentLabel[d.temperament_new_people ?? ""] || d.temperament_new_people || "—"} <br /> Nya hundar (Hona) - {temperamentLabel[d.temperament_new_dogs_female ?? ""] || d.temperament_new_dogs_female || "—"} <br /> Nya hundar (Hane) - {temperamentLabel[d.temperament_new_dogs_male ?? ""] || d.temperament_new_dogs_male || "—"}
+                        </p>
+                      )}
+                      {d.notes && (
+                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Anteckningar:</span> <br /> {d.notes}</p>
+                      )}
+                      <p style="margin: 0.5rem 0 0; font-size: 0.875rem;"><span style="font-weight: 600;">Datum:</span> <br /> {dateStr(n)}</p>
                     </div>
                   </div>
                 );
@@ -163,114 +175,43 @@ function MatchCard(props: {
           </div>
         </div>
       )}
-      {listing.capacities.length > 0 && (
-        <div style="margin-bottom: 0.75rem;">
-          <strong>Kan passa hundar:</strong>
-          <ul style="margin: 0.25rem 0 0 1.25rem; padding: 0;">
-            <For each={listing.capacities}>
-              {(c) => (
-                <li>
-                  {dateStr(c)} • {sizesStr(c.dog_sizes)} • max {c.max_dogs}
-                </li>
-              )}
-            </For>
-          </ul>
-        </div>
-      )}
-
-      <button
-        type="button"
-        class="btn btn-secondary"
-        style="margin-bottom: 0.75rem; font-size: 0.875rem;"
-        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded()); }}
-      >
-        {expanded() ? "Visa mindre" : "Se mer"}
-      </button>
-
-      <Show when={expanded()}>
-        <div
-          style="padding: 0.75rem; background: var(--color-fur-light, #f8f4ef); border-radius: var(--radius); margin-bottom: 1rem; font-size: 0.9rem;"
-        >
-          <h4 style="margin: 0 0 0.5rem; font-size: 0.95rem;">Hundar</h4>
-          <For each={listing.dogs}>
-            {(d) => {
-                const dog = d as {
-                  name?: string;
-                  breed?: string;
-                  size?: string;
-                  gender?: string;
-                  age?: number;
-                  notes?: string;
-                  temperament_new_people?: string;
-                  temperament_new_dogs_female?: string;
-                  temperament_new_dogs_male?: string;
-                };
-              return (
-                <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--color-fur);">
-                  <strong>{dog.name ?? "Hund"}</strong>
-                  <span style="color: var(--color-text-muted);">
-                    {" "}
-                    {[dog.breed, dog.size ? sizeLabel[dog.size] : "", dog.gender ? genderLabel[dog.gender] : "", dog.age != null ? `${dog.age} år` : ""].filter(Boolean).join(" • ")}
-                  </span>
-                  <p style="margin: 0.25rem 0; color: var(--color-text-muted); font-size: 0.85rem;">
-                    Temperament: Nya människor {temperamentLabel[dog.temperament_new_people ?? ""] || dog.temperament_new_people || "—"} • Nya hundar (Hona) {temperamentLabel[dog.temperament_new_dogs_female ?? ""] || dog.temperament_new_dogs_female || "—"} • Nya hundar (Hane) {temperamentLabel[dog.temperament_new_dogs_male ?? ""] || dog.temperament_new_dogs_male || "—"}
-                  </p>
-                  {dog.notes && <p style="margin: 0.25rem 0;">{dog.notes}</p>}
-                </div>
-              );
-            }}
-          </For>
-
-          <h4 style="margin: 0.75rem 0 0.5rem; font-size: 0.95rem;">Behov (detaljer)</h4>
-          <For each={listing.needs}>
-            {(n) => {
-              const need = n as { notes?: string; duration_specific?: string };
-              const dog = listing.dogs.find((d) => d.id === n.dog);
-              return (
-                <div style="margin-bottom: 0.5rem;">
-                  <strong>{dog?.name ?? "Hund"}:</strong> {dateStr(n)}
-                  {need.duration_specific && <span style="color: var(--color-text-muted);"> — {need.duration_specific}</span>}
-                  {need.notes && <p style="margin: 0.25rem 0;">{need.notes}</p>}
-                </div>
-              );
-            }}
-          </For>
-
-          <h4 style="margin: 0.75rem 0 0.5rem; font-size: 0.95rem;">Kapacitet (detaljer)</h4>
-          <For each={listing.capacities}>
-            {(c) => {
-              const cap = c as { notes?: string; duration_specific?: string; dog_sizes?: string | string[]; dog_genders?: string; max_dogs?: number };
-              return (
-                <div style="margin-bottom: 0.5rem;">
-                  {dateStr(c)} • {sizesStr(c.dog_sizes)} • max {c.max_dogs}
-                  {cap.duration_specific && <span style="color: var(--color-text-muted);"> — {cap.duration_specific}</span>}
-                  {cap.notes && <p style="margin: 0.25rem 0;">{cap.notes}</p>}
-                </div>
-              );
-            }}
-          </For>
-        </div>
-      </Show>
-
-      <div style="margin-top: 1rem;" onClick={(e) => e.stopPropagation()}>
-        {mutual ? (
-          <span class="btn" style="background: var(--color-grass); cursor: default;">
-            ✓ Kopplad
-          </span>
-        ) : requested ? (
-          <span class="btn btn-secondary" style="cursor: default;">
-            Intresse skickat
-          </span>
-        ) : (
+      <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;" onClick={(e) => e.stopPropagation()}>
+        <Show when={!mutual}>
+          {requested ? (
+            <>
+              <span class="btn btn-secondary" style="cursor: default;">
+                Intresse skickat
+              </span>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                disabled={refreshing()}
+                onClick={() => onWithdraw?.(listing.user.id)}
+              >
+                Ångra
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              class="btn"
+              disabled={refreshing()}
+              onClick={() => onInterested(listing.user.id)}
+            >
+              Jag är intresserad
+            </button>
+          )}
+        </Show>
+        <Show when={mutual && onUnmatch}>
           <button
             type="button"
-            class="btn"
+            class="btn btn-secondary"
             disabled={refreshing()}
-            onClick={() => onInterested(listing.user.id)}
+            onClick={() => onUnmatch?.(listing.user.id)}
           >
-            Jag är intresserad
+            Avmatcha
           </button>
-        )}
+        </Show>
       </div>
     </div>
   );
@@ -283,6 +224,8 @@ function MatchCards(props: {
   iRequested: (id: string) => boolean;
   refreshing: () => boolean;
   onInterested: (id: string) => void;
+  onWithdraw?: (userId: string) => void;
+  onUnmatch?: (userId: string) => void;
   selectedUserId?: string;
   onSelect: (userId: string) => void;
   dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
@@ -299,6 +242,8 @@ function MatchCards(props: {
             iRequested={props.iRequested}
             refreshing={props.refreshing}
             onInterested={props.onInterested}
+            onWithdraw={props.onWithdraw}
+            onUnmatch={props.onUnmatch}
             onSelect={props.onSelect}
             isSelected={props.selectedUserId === listing.user.id}
             dateStr={props.dateStr}
@@ -324,10 +269,31 @@ function getStoredMaxDistance(): number {
   return DISTANCE_OPTIONS.includes(n as (typeof DISTANCE_OPTIONS)[number]) ? n : 50;
 }
 
+type MatchFilter = "all" | "matched" | "not_matched";
+
+function filterFromParams(params: { match?: string; not_matched?: string }): MatchFilter {
+  if (params.match === "true" || params.match === "1") return "matched";
+  if (params.not_matched === "true" || params.not_matched === "1") return "not_matched";
+  return "all";
+}
+
 export default function Matches() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [refreshing, setRefreshing] = createSignal(false);
   const [maxDistanceKm, setMaxDistanceKm] = createSignal(getStoredMaxDistance());
+  const [matchFilter, setMatchFilter] = createSignal<MatchFilter>(
+    filterFromParams(searchParams as { match?: string; not_matched?: string })
+  );
+
+  createEffect(() => {
+    const filter = matchFilter();
+    const next: Record<string, string> = {};
+    if (filter === "matched") next.match = "true";
+    else if (filter === "not_matched") next.not_matched = "true";
+    setSearchParams(next, { replace: true });
+  });
   const [selectedUserId, setSelectedUserId] = createSignal<string | undefined>(undefined);
+  const [mapBounds, setMapBounds] = createSignal<MapBounds | null>(null);
   let listContainerRef: HTMLDivElement | undefined;
 
   const [data, { refetch }] = createResource(
@@ -384,6 +350,41 @@ export default function Matches() {
     }
   }
 
+  async function handleWithdraw(toUserId: string) {
+    const me = pb.authStore.model?.id;
+    if (!me || !data()?.connections) return;
+    const conn = (data()!.connections as { id: string; from_user: string; to_user: string }[]).find(
+      (c) => c.from_user === me && c.to_user === toUserId
+    );
+    if (!conn?.id) return;
+    setRefreshing(true);
+    try {
+      await pb.collection("connection_requests").delete(conn.id);
+      refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function handleUnmatch(otherUserId: string) {
+    const me = pb.authStore.model?.id;
+    if (!me || !data()?.connections) return;
+    const conns = (data()!.connections as { id: string; from_user: string; to_user: string }[]).filter(
+      (c) =>
+        (c.from_user === me && c.to_user === otherUserId) ||
+        (c.from_user === otherUserId && c.to_user === me)
+    );
+    setRefreshing(true);
+    try {
+      for (const conn of conns) {
+        await pb.collection("connection_requests").delete(conn.id);
+      }
+      refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   function isMutual(listingUserId: string): boolean {
     const me = pb.authStore.model?.id;
     if (!me || !data()?.connections) return false;
@@ -415,6 +416,34 @@ export default function Matches() {
   }
 
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
+
+  const matchFilteredListings = createMemo(() => {
+    const listings = data()?.listings ?? [];
+    const filter = matchFilter();
+    if (filter === "matched") return listings.filter((l) => isMutual(l.user.id));
+    if (filter === "not_matched") return listings.filter((l) => !isMutual(l.user.id));
+    return listings;
+  });
+
+  const filteredListings = createMemo(() => {
+    const listings = matchFilteredListings();
+    const bounds = mapBounds();
+    if (!bounds) return listings;
+    return listings.filter((listing) => {
+      const u = listing.user as { id?: string; latitude?: number; longitude?: number };
+      if (typeof u.latitude !== "number" || typeof u.longitude !== "number") return false;
+      const [lat, lon] = approximateCoords(u.latitude, u.longitude, u.id ?? "");
+      return pointInBounds(lat, lon, bounds);
+    });
+  });
+
+  createEffect(() => {
+    const selected = selectedUserId();
+    const filtered = filteredListings();
+    if (selected && !filtered.some((l) => l.user.id === selected)) {
+      setSelectedUserId(undefined);
+    }
+  });
 
   return (
     <AppShell>
@@ -471,6 +500,19 @@ export default function Matches() {
                 ))}
               </select>
             </label>
+            <label for="match-filter" style="display: flex; align-items: center; gap: 0.5rem;">
+              <span>Visa</span>
+              <select
+                id="match-filter"
+                value={matchFilter()}
+                onInput={(e) => setMatchFilter((e.currentTarget as HTMLSelectElement).value as MatchFilter)}
+                style={{ padding: "0.25rem 0.5rem", "border-radius": "var(--radius)" }}
+              >
+                <option value="all">Alla</option>
+                <option value="matched">Endast matchade</option>
+                <option value="not_matched">Endast ej matchade</option>
+              </select>
+            </label>
           </div>
         </Show>
         </div>
@@ -478,10 +520,12 @@ export default function Matches() {
           <div class="matches-split">
             <div class="matches-map-panel">
               <MatchesMap
-                listings={data()!.listings}
+                listings={matchFilteredListings()}
+                mutualUserIds={(id) => isMutual(id)}
                 myLat={pb.authStore.model?.latitude}
                 myLon={pb.authStore.model?.longitude}
                 filterByBounds
+                onBoundsChange={setMapBounds}
                 selectedUserId={selectedUserId()}
                 onMarkerClick={handleMarkerClick}
                 style={{ height: "100%", "min-height": "400px" }}
@@ -492,12 +536,14 @@ export default function Matches() {
               ref={(el) => { listContainerRef = el; }}
             >
               <MatchCards
-                listings={data()!.listings}
+                listings={filteredListings()}
                 baseUrl={baseUrl}
                 isMutual={isMutual}
                 iRequested={iRequested}
                 refreshing={refreshing}
                 onInterested={handleInterested}
+                onWithdraw={handleWithdraw}
+                onUnmatch={handleUnmatch}
                 selectedUserId={selectedUserId()}
                 onSelect={handleSelect}
                 dateStr={dateStr}

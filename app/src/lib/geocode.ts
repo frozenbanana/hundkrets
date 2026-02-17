@@ -139,6 +139,29 @@ export async function searchAddress(query: string, options?: { city?: string }):
   });
 }
 
+/** ~500m jitter for privacy—approximate location only. Deterministic per userId. */
+export function approximateCoords(lat: number, lon: number, userId: string): [number, number] {
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) h = (h << 5) - h + userId.charCodeAt(i);
+  const seed = Math.abs(h % 1000) / 1000;
+  const jitter = 0.005; // ~500m
+  const latOff = (seed - 0.5) * 2 * jitter;
+  const lonOff = ((seed * 7) % 1 - 0.5) * 2 * jitter;
+  return [lat + latOff, lon + lonOff];
+}
+
+export interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+/** Check if a point is inside bounds (inclusive). */
+export function pointInBounds(lat: number, lon: number, bounds: MapBounds): boolean {
+  return lat >= bounds.south && lat <= bounds.north && lon >= bounds.west && lon <= bounds.east;
+}
+
 /**
  * Geocode a raw address string (e.g. on form submit if user didn't select from autocomplete).
  */

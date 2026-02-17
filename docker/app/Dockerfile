@@ -1,4 +1,4 @@
-# Dog Watch Match - SolidJS app
+# Hundkrets - SolidJS app
 FROM node:20-alpine AS builder
 
 WORKDIR /app

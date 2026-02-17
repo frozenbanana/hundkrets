@@ -1,5 +1,5 @@
 {
-  "name": "dogwatchmatch-app",
+  "name": "hundkrets-app",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
@@ -7,7 +7,9 @@
     "build": "vinxi build",
     "start": "vinxi start",
     "test:geocode": "node scripts/test-geocode.mjs",
-    "seed": "node scripts/seed-malmo.mjs"
+    "seed": "node scripts/seed-malmo.mjs",
+    "favicon:transparent": "node scripts/make-favicon-transparent.mjs",
+    "logo-icon:transparent": "node scripts/make-logo-icon-transparent.mjs"
   },
   "dependencies": {
     "@solidjs/router": "^0.14.2",
@@ -19,6 +21,7 @@
     "vinxi": "^0.5.7"
   },
   "devDependencies": {
+    "sharp": "^0.34.5",
     "typescript": "^5.6.3"
   }
 }

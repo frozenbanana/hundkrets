@@ -2,24 +2,28 @@ import { createEffect, createSignal, onCleanup } from "solid-js";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { ListingWithDistance } from "~/lib/matching";
+import { approximateCoords } from "~/lib/geocode";
+import type { MapBounds } from "~/lib/geocode";
 
-/** ~500m jitter for privacy—approximate location only. Deterministic per userId. */
-function approximateCoords(lat: number, lon: number, userId: string): [number, number] {
-  let h = 0;
-  for (let i = 0; i < userId.length; i++) h = (h << 5) - h + userId.charCodeAt(i);
-  const seed = Math.abs(h % 1000) / 1000;
-  const jitter = 0.005; // ~500m
-  const latOff = (seed - 0.5) * 2 * jitter;
-  const lonOff = ((seed * 7) % 1 - 0.5) * 2 * jitter;
-  return [lat + latOff, lon + lonOff];
+function extractBounds(b: L.LatLngBounds): MapBounds {
+  return {
+    north: b.getNorth(),
+    south: b.getSouth(),
+    east: b.getEast(),
+    west: b.getWest(),
+  };
 }
 
 interface Props {
   listings: ListingWithDistance[];
+  /** Returns true if user is mutually matched (both expressed interest) */
+  mutualUserIds?: (userId: string) => boolean;
   myLat?: number;
   myLon?: number;
   /** When true, filter markers to visible map bounds (zoom to narrow) */
   filterByBounds?: boolean;
+  /** Called when map bounds change (move/zoom). Use to filter search results. */
+  onBoundsChange?: (bounds: MapBounds | null) => void;
   /** Highlight and zoom to this user's listing */
   selectedUserId?: string;
   /** Called when a marker is clicked */
@@ -100,11 +104,15 @@ export function MatchesMap(props: Props) {
         const isSelected = selectedId === u.id;
         if (isSelected) selectedLatLng = [lat, lon];
 
+        const isMatched = props.mutualUserIds?.(u.id ?? "") ?? false;
+        const markerColor = isMatched ? "#e65100" : "#2563eb";
+        const size = isSelected ? 28 : 20;
+
         const providerIcon = L.divIcon({
           className: "marker-provider",
-          html: `<div style="width:${isSelected ? 28 : 20}px;height:${isSelected ? 28 : 20}px;background:#2563eb;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`,
-          iconSize: [isSelected ? 28 : 20, isSelected ? 28 : 20],
-          iconAnchor: [isSelected ? 14 : 10, isSelected ? 14 : 10],
+          html: `<div style="width:${size}px;height:${size}px;background:${markerColor};border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
         });
 
         const m = L.marker([lat, lon], { icon: providerIcon })
@@ -130,12 +138,22 @@ export function MatchesMap(props: Props) {
 
     let onMove: (() => void) | null = null;
     if (map && props.filterByBounds) {
-      onMove = () => updateMarkers(map!.getBounds(), true);
+      onMove = () => {
+        const b = map!.getBounds();
+        updateMarkers(b, true);
+        props.onBoundsChange?.(extractBounds(b));
+      };
       map.on("moveend", onMove);
       map.on("zoomend", onMove);
     }
 
-    updateMarkers(props.filterByBounds && map ? map.getBounds() : null, false);
+    const initialBounds = props.filterByBounds && map ? map.getBounds() : null;
+    updateMarkers(initialBounds, false);
+    if (props.filterByBounds && map && props.onBoundsChange) {
+      props.onBoundsChange(initialBounds ? extractBounds(initialBounds) : null);
+    } else if (!props.filterByBounds && props.onBoundsChange) {
+      props.onBoundsChange(null);
+    }
 
     return () => {
       if (onMove && map) {

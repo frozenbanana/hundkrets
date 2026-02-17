@@ -1,7 +1,7 @@
-# Dog Watch Match - Docker Compose for NixOS / home server
+# Hundkrets - Docker Compose for NixOS / home server
 #
 # Usage:
-#   1. Set PUBLIC_URL (e.g. http://192.168.1.100 or https://dogwatch.example.com)
+#   1. Set PUBLIC_URL (e.g. http://192.168.1.100 or https://hundkrets.example.com)
 #   2. docker compose up -d
 #   3. Open PUBLIC_URL in browser
 #   4. Create admin at PUBLIC_URL/api/ (PocketBase Admin UI)
@@ -30,6 +30,9 @@ services:
         VITE_POCKETBASE_URL: ${VITE_POCKETBASE_URL:-http://localhost:8090}
     environment:
       PORT: 3000
+      POCKETBASE_SERVICE_TOKEN: ${POCKETBASE_SERVICE_TOKEN:-}
+      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL:-}
+      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD:-}
     restart: unless-stopped
     ports:
       - "3000:3000"
