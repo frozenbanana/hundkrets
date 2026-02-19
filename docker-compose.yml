@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
     # Expose for direct access (optional - remove if using nginx only)
     ports:
-      - "8090:8090"
+      - "8099:8090"
 
   app:
     build:
@@ -29,13 +29,13 @@ services:
         # URL the browser uses to reach PocketBase (same host:port as app, or separate)
         VITE_POCKETBASE_URL: ${VITE_POCKETBASE_URL:-http://localhost:8090}
     environment:
-      PORT: 3000
+      PORT: 3123
       POCKETBASE_SERVICE_TOKEN: ${POCKETBASE_SERVICE_TOKEN:-}
       POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL:-}
       POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD:-}
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3123:3123"
     depends_on:
       - pocketbase
 
