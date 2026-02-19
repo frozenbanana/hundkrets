@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Deploy Hundkrets to home server
+# Copy to deploy.sh and set SERVER_HOST, SERVER_USER, DEPLOY_PATH.
+# Use SSH keys for auth (no password in script).
+
+set -e
+
+SERVER_HOST="${SERVER_HOST:-192.168.0.242}"
+SERVER_USER="${SERVER_USER:-henry}"
+DEPLOY_PATH="${DEPLOY_PATH:-/home/henry/Services/hundkrets}"
+NODE_BIN="${NODE_BIN:-npm}"
+
+echo "🚀 Deploying Hundkrets to ${SERVER_USER}@${SERVER_HOST}..."
+
+# 1. Build frontend
+echo "📦 Building frontend..."
+cd app
+$NODE_BIN run build
+cd ..
+
+# 2. Create deploy directory on server
+echo "📁 Creating deploy directory on server..."
+ssh ${SERVER_USER}@${SERVER_HOST} "mkdir -p ${DEPLOY_PATH}"
+
+# 3. Copy relevant files to server
+echo "📤 Copying files to server..."
+scp -r app/dist/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/app/
+scp docker-compose.yml ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
+scp .env ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
+scp -r pb_migrations/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
+scp -r pb_hooks/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
+scp -r docker/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
+scp -r scripts/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
+
+# 4. Start Docker Compose on server
+echo "🐳 Starting Docker Compose on server..."
+ssh ${SERVER_USER}@${SERVER_HOST} "cd ${DEPLOY_PATH} && export VITE_POCKETBASE_URL=http://localhost:8099 && docker compose up -d"
+
+echo "✅ Deployed successfully!"
+echo "📱 Access at: http://${SERVER_HOST}:3123"

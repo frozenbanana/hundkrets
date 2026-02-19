@@ -1,0 +1,182 @@
+# Hundkrets – Home Server Hosting Guide
+
+Step-by-step guide to host Hundkrets on your home server with Cloudflare Tunnel.
+
+---
+
+## Prerequisites
+
+- Home server with Docker and Docker Compose
+- Cloudflare account
+- Domain (e.g. hundkrets.se) added to Cloudflare
+
+---
+
+## Step 1: Configure Cloudflare Tunnel
+
+You need **two** public hostnames: one for the app, one for PocketBase.
+
+### 1.1 Open Cloudflare Zero Trust
+
+1. Go to [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/)
+2. Navigate to **Networks** → **Tunnels**
+3. Select your tunnel (or create one if needed)
+
+### 1.2 Add public hostnames
+
+Add or verify these routes:
+
+| Public hostname      | Service        | URL                    |
+|----------------------|----------------|------------------------|
+| `hundkrets.se`       | HTTP           | `http://localhost:3123` |
+| `api.hundkrets.se`   | HTTP           | `http://localhost:8099` |
+
+**How to add a hostname:**
+
+1. Click **Configure** on your tunnel
+2. Go to the **Public Hostname** tab
+3. Click **Add a public hostname**
+4. **Subdomain:** `api` (or leave empty for root domain)
+5. **Domain:** `hundkrets.se`
+6. **Service type:** HTTP
+7. **URL:** `localhost:8099` (for PocketBase) or `localhost:3123` (for app)
+8. Save
+
+Repeat so you have both hostnames configured.
+
+---
+
+## Step 2: Prepare the project on your server
+
+### 2.1 Clone or copy the repo
+
+```bash
+# If deploying from your dev machine, copy to server:
+scp -r /home/henry/Code/personal/dogwatchmatch henry@YOUR_SERVER_IP:/home/henry/Services/hundkrets
+```
+
+Or clone from git if the repo is remote.
+
+### 2.2 Create `.env` on the server
+
+On the server, create `/home/henry/Services/hundkrets/.env`:
+
+```bash
+# URL the browser uses to reach PocketBase (must match your Cloudflare hostname)
+VITE_POCKETBASE_URL=https://api.hundkrets.se
+
+# For landing page map (users list requires auth). Use your PocketBase admin credentials:
+POCKETBASE_ADMIN_EMAIL=your-admin@example.com
+POCKETBASE_ADMIN_PASSWORD=your-secure-password
+```
+
+Replace with your actual admin email and password (you’ll create the admin in Step 4).
+
+---
+
+## Step 3: Build and run with Docker Compose
+
+### 3.1 Build with the correct PocketBase URL
+
+`VITE_POCKETBASE_URL` is baked into the frontend at build time. Set it before building:
+
+```bash
+cd /home/henry/Services/hundkrets
+
+export VITE_POCKETBASE_URL=https://api.hundkrets.se
+docker compose build --no-cache app
+```
+
+### 3.2 Start the stack
+
+```bash
+docker compose up -d
+```
+
+### 3.3 Verify containers
+
+```bash
+docker compose ps
+```
+
+You should see `pocketbase` and `app` running.
+
+---
+
+## Step 4: Create PocketBase admin account
+
+1. Open **https://api.hundkrets.se/_/**
+2. Create an admin account (email + password)
+3. Use the **same** email and password in `.env` for `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD`
+
+### 4.1 Update `.env` and restart
+
+After creating the admin, update `.env` with those credentials, then:
+
+```bash
+docker compose up -d
+```
+
+---
+
+## Step 5: Configure PocketBase settings
+
+### 5.1 App URL (for email links)
+
+1. In PocketBase Admin: **Settings** → **Meta**
+2. Set **App URL** to: `https://hundkrets.se`
+3. Save
+
+### 5.2 Email (optional)
+
+To send connection requests and match confirmations:
+
+1. **Settings** → **Mail settings**
+2. Configure SMTP (e.g. Gmail, SendGrid, Resend)
+3. Save
+
+---
+
+## Step 6: Verify the app
+
+1. Open **https://hundkrets.se**
+2. Sign up or log in
+3. Complete onboarding (profile → dogs → needs → capacity)
+4. Check that matches and the map work
+
+---
+
+## Updating the app
+
+When you pull new code or make changes:
+
+```bash
+cd /home/henry/Services/hundkrets
+
+export VITE_POCKETBASE_URL=https://api.hundkrets.se
+docker compose build --no-cache app
+docker compose up -d
+```
+
+Data in `pb_data` persists across restarts.
+
+---
+
+## Troubleshooting
+
+| Issue | Check |
+|-------|--------|
+| App loads but login fails | `VITE_POCKETBASE_URL` must be `https://api.hundkrets.se` and match the Cloudflare hostname for PocketBase |
+| Map shows no users | Set `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` in `.env` and restart |
+| Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se` |
+| CORS errors | Ensure both hostnames use the same parent domain (`hundkrets.se` and `api.hundkrets.se`) |
+
+---
+
+## Summary
+
+| URL | Purpose |
+|-----|---------|
+| https://hundkrets.se | App (SolidJS frontend) |
+| https://api.hundkrets.se | PocketBase API + Admin UI |
+| https://api.hundkrets.se/_/ | PocketBase Admin |

@@ -1,7 +1,7 @@
 # PocketBase with migrations - based on https://pocketbase.io/docs/going-to-production/
 FROM alpine:3.19
 
-ARG PB_VERSION=0.22.22
+ARG PB_VERSION=0.36.4
 
 RUN apk add --no-cache \
     unzip \
@@ -13,6 +13,9 @@ RUN unzip /tmp/pb.zip -d /pb/ && rm /tmp/pb.zip
 
 # Copy migrations (run automatically on startup)
 COPY pb_migrations /pb/pb_migrations
+
+# Copy hooks (emails, etc.)
+COPY pb_hooks /pb/pb_hooks
 
 WORKDIR /pb
 
