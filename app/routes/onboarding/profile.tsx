@@ -153,7 +153,7 @@ export default function OnboardingProfile() {
             baseUrl={import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}
           />
         </div>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autocomplete="off">
           <ImageCaptureInput
             id="avatar"
             label="Profilbild (valfritt)"

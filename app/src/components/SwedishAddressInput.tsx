@@ -186,7 +186,8 @@ export function SwedishAddressInput(props: Props) {
           onBlur={() => setTimeout(() => setCityOpen(false), 150)}
           placeholder="T.ex. Malmö, Stockholm..."
           required
-          autocomplete="off"
+          autocomplete="nope"
+          data-lpignore="true"
         />
         <Show when={cityLoading()}>
           <span style="position: absolute; right: 0.75rem; top: 2.25rem; font-size: 0.875rem; color: var(--color-text-muted);">
@@ -206,7 +207,8 @@ export function SwedishAddressInput(props: Props) {
           onBlur={() => setTimeout(() => setStreetOpen(false), 150)}
           placeholder={selectedCity() ? `T.ex. Storgatan 1 i ${selectedCity()}` : "Välj stad först"}
           required
-          autocomplete="off"
+          autocomplete="nope"
+          data-lpignore="true"
           disabled={!selectedCity()}
         />
         <Show when={!selectedCity()}>

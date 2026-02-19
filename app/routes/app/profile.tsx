@@ -151,7 +151,7 @@ export default function Profile() {
       </div>
       <div class="card">
       <p style="color: var(--color-text-muted); margin-bottom: 1rem;">Din adress hjälper att hitta matchningar i närheten. Din fullständiga adress visas bara när ni kopplar ihop.</p>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} autocomplete="off">
         <ImageCaptureInput
           id="avatar"
           label="Profilbild (valfritt)"
