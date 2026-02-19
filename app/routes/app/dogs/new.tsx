@@ -1,6 +1,7 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 
@@ -65,12 +66,7 @@ export default function NewDog() {
       }
       nav("/app/dogs");
     } catch (err: unknown) {
-      const e = err as { status?: number; data?: { name?: { message?: string } } };
-      if (e?.status === 400 && e?.data?.name) {
-        setError("Du har redan en hund med det namnet. Välj ett annat.");
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to add dog");
-      }
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }

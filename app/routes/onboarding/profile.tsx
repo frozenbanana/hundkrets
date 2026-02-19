@@ -2,6 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { createSignal, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { geocodeAddress } from "~/lib/geocode";
+import { parseApiError } from "~/lib/errors";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { Avatar } from "~/components/Avatar";
@@ -81,6 +82,11 @@ export default function OnboardingProfile() {
         setLoading(false);
         return;
       }
+      if (!name().trim()) {
+        setError("Fyll i ditt namn.");
+        setLoading(false);
+        return;
+      }
 
       const areaVal = addr.area ?? ([addr.city, addr.neighborhood].filter(Boolean).join(" - ") || "");
       const file = avatarFile();
@@ -128,7 +134,7 @@ export default function OnboardingProfile() {
       }
       nav("/onboarding/dogs");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Update failed");
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }
@@ -165,8 +171,8 @@ export default function OnboardingProfile() {
             Vi riktar oss till Sverige. Din adress hjälper att hitta matchningar i närheten. Din fullständiga adress visas bara när ni kopplar ihop.
           </p>
           <div class="form-group">
-            <label for="name">Namn</label>
-            <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} />
+            <label for="name">Namn *</label>
+            <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required placeholder="Ditt namn" />
           </div>
           <SwedishAddressInput value={address()} onSelect={setAddress} />
           <div class="form-group">
@@ -178,12 +184,12 @@ export default function OnboardingProfile() {
             <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />
           </div>
           <div class="form-group">
-            <label for="phone">Telefon</label>
-            <input id="phone" type="tel" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} />
+            <label for="phone">Telefon *</label>
+            <input id="phone" type="tel" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} required placeholder="070-123 45 67" />
           </div>
-          {error() && <p style="color: #dc2626;">{error()}</p>}
+          {error() && <p class="form-error" role="alert">{error()}</p>}
           <button type="submit" class="btn" disabled={loading()}>
-            {loading() ? "Saving..." : "Continue"}
+            {loading() ? "Sparar..." : "Fortsätt"}
           </button>
         </form>
       </div>

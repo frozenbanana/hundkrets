@@ -1,6 +1,7 @@
 import { useNavigate } from "@solidjs/router";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
 export default function OnboardingNeeds() {
@@ -74,7 +75,7 @@ export default function OnboardingNeeds() {
       await pb.collection("watch_needs").create(data);
       nav("/onboarding/capacity");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add");
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }
@@ -154,7 +155,7 @@ export default function OnboardingNeeds() {
             <label for="notes">Notes</label>
             <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="Any special needs?" />
           </div>
-          {error() && <p style="color: #dc2626;">{error()}</p>}
+          {error() && <p class="form-error" role="alert">{error()}</p>}
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
             <button type="submit" class="btn" disabled={loading()}>
               {loading() ? "Saving..." : "Continue"}

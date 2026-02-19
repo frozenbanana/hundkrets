@@ -1,6 +1,7 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { parseApiError } from "~/lib/errors";
 import { DogImage } from "~/components/DogImage";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
@@ -94,12 +95,7 @@ export default function OnboardingDogs() {
       setImageFile(null);
       dogs.refetch();
     } catch (err: unknown) {
-      const e = err as { status?: number; data?: { name?: unknown } };
-      if (e?.status === 400 && e?.data?.name) {
-        setError("Du har redan en hund med det namnet. Välj ett annat.");
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to add dog");
-      }
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }
@@ -181,7 +177,7 @@ export default function OnboardingDogs() {
               </div>
             </div>
           </div>
-          {error() && <p style="color: #dc2626;">{error()}</p>}
+          {error() && <p class="form-error" role="alert">{error()}</p>}
           <button type="submit" class="btn" disabled={loading()}>
             {loading() ? "Adding..." : "Add dog"}
           </button>

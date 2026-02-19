@@ -85,6 +85,12 @@ a:hover {
   resize: vertical;
 }
 
+.form-error {
+  color: #dc2626;
+  font-weight: 500;
+  margin: 0.5rem 0 0;
+}
+
 /* Image capture - camera + file picker */
 .image-capture-row {
   display: flex;

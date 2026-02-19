@@ -1,6 +1,7 @@
 import { A, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 
@@ -83,12 +84,7 @@ export default function EditDog() {
       }
       nav("/app/dogs");
     } catch (err: unknown) {
-      const e = err as { status?: number; data?: { name?: unknown } };
-      if (e?.status === 400 && e?.data?.name) {
-        setError("Du har redan en hund med det namnet. Välj ett annat.");
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to update");
-      }
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }

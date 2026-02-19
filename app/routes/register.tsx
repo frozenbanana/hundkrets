@@ -1,6 +1,7 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { parseApiError } from "~/lib/errors";
 
 export default function Register() {
   const nav = useNavigate();
@@ -33,7 +34,7 @@ export default function Register() {
       }
       nav("/onboarding/profile", { replace: true });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }
@@ -79,7 +80,7 @@ export default function Register() {
             required
           />
         </div>
-        {error() && <p style="color: #dc2626;">{error()}</p>}
+        {error() && <p class="form-error" role="alert">{error()}</p>}
         <button type="submit" class="btn" disabled={loading()}>
           {loading() ? "Creating..." : "Create account"}
         </button>

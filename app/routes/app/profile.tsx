@@ -1,6 +1,7 @@
 import { createSignal, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { geocodeAddress } from "~/lib/geocode";
+import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
@@ -73,6 +74,11 @@ export default function Profile() {
         setLoading(false);
         return;
       }
+      if (!name().trim()) {
+        setError("Fyll i ditt namn.");
+        setLoading(false);
+        return;
+      }
 
       const areaVal = addr.area ?? ([addr.city, addr.neighborhood].filter(Boolean).join(" - ") || "");
       const file = avatarFile();
@@ -120,7 +126,7 @@ export default function Profile() {
       }
       setSaved(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Update failed");
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }
@@ -160,12 +166,14 @@ export default function Profile() {
           hint="På mobil: tryck för att ta ett selfie. På dator: dra och släpp eller klicka för att välja."
         />
         <div class="form-group">
-          <label for="name">Namn</label>
+          <label for="name">Namn *</label>
           <input
             id="name"
             type="text"
             value={name()}
             onInput={(e) => setName(e.currentTarget.value)}
+            required
+            placeholder="Ditt namn"
           />
         </div>
         <SwedishAddressInput value={address()} onSelect={setAddress} />
@@ -178,15 +186,17 @@ export default function Profile() {
           <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />
         </div>
         <div class="form-group">
-          <label for="phone">Telefon</label>
+          <label for="phone">Telefon *</label>
           <input
             id="phone"
             type="tel"
             value={phone()}
             onInput={(e) => setPhone(e.currentTarget.value)}
+            required
+            placeholder="070-123 45 67"
           />
         </div>
-        {error() && <p style="color: #dc2626;">{error()}</p>}
+        {error() && <p class="form-error" role="alert">{error()}</p>}
         {saved() && <p style="color: #16a34a;">Profile saved.</p>}
         <button type="submit" class="btn" disabled={loading()}>
           {loading() ? "Saving..." : "Save profile"}

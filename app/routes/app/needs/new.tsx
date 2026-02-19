@@ -1,6 +1,7 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createResource, createSignal, For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 
 export default function NewWatchNeed() {
@@ -61,7 +62,7 @@ export default function NewWatchNeed() {
       await pb.collection("watch_needs").create(data);
       nav("/app/matches");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add");
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { parseApiError } from "~/lib/errors";
 
 export default function Login() {
   const nav = useNavigate();
@@ -19,7 +20,7 @@ export default function Login() {
       const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
       nav(done ? "/app/matches" : "/onboarding/profile", { replace: true });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }
@@ -54,7 +55,7 @@ export default function Login() {
             required
           />
         </div>
-        {error() && <p style="color: #dc2626;">{error()}</p>}
+        {error() && <p class="form-error" role="alert">{error()}</p>}
         <button type="submit" class="btn" disabled={loading()}>
           {loading() ? "Logging in..." : "Log in"}
         </button>

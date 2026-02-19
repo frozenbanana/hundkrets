@@ -1,6 +1,7 @@
 import { useNavigate } from "@solidjs/router";
 import { createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
 export default function OnboardingCapacity() {
@@ -71,7 +72,7 @@ export default function OnboardingCapacity() {
       await setOnboardingComplete();
       nav("/app/matches");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add");
+      setError(parseApiError(err));
     } finally {
       setLoading(false);
     }
@@ -177,7 +178,7 @@ export default function OnboardingCapacity() {
             <label for="notes">Notes</label>
             <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} />
           </div>
-          {error() && <p style="color: #dc2626;">{error()}</p>}
+          {error() && <p class="form-error" role="alert">{error()}</p>}
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
             <button type="submit" class="btn" disabled={loading()}>
               {loading() ? "Saving..." : "See my matches"}
