@@ -37,11 +37,12 @@ export default function OnboardingDogs() {
   const [temperamentNewPeople, setTemperamentNewPeople] = createSignal("");
   const [temperamentNewDogsFemale, setTemperamentNewDogsFemale] = createSignal("");
   const [temperamentNewDogsMale, setTemperamentNewDogsMale] = createSignal("");
+  const [notes, setNotes] = createSignal("");
   const [imageFile, setImageFile] = createSignal<File | null>(null);
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
 
-  const [dogs] = createResource(
+  const [dogs, { refetch }] = createResource(
     () => pb.authStore.model?.id,
     async (userId) => {
       if (!userId) return [];
@@ -66,6 +67,7 @@ export default function OnboardingDogs() {
         temperament_new_people: temperamentNewPeople() || undefined,
         temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
         temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
+        notes: notes() || undefined,
       };
       const file = imageFile();
       if (file) {
@@ -79,6 +81,7 @@ export default function OnboardingDogs() {
         fd.append("temperament_new_people", temperamentNewPeople());
         fd.append("temperament_new_dogs_female", temperamentNewDogsFemale());
         fd.append("temperament_new_dogs_male", temperamentNewDogsMale());
+        fd.append("notes", notes());
         fd.append("image", file);
         await pb.collection("dogs").create(fd);
       } else {
@@ -92,8 +95,9 @@ export default function OnboardingDogs() {
       setTemperamentNewPeople("");
       setTemperamentNewDogsFemale("");
       setTemperamentNewDogsMale("");
+      setNotes("");
       setImageFile(null);
-      dogs.refetch();
+      refetch();
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -176,6 +180,10 @@ export default function OnboardingDogs() {
                 </select>
               </div>
             </div>
+          </div>
+          <div class="form-group">
+            <label for="notes">Anteckningar (valfritt)</label>
+            <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="T.ex. speciella behov, diet, mediciner" rows={3} />
           </div>
           {error() && <p class="form-error" role="alert">{error()}</p>}
           <button type="submit" class="btn" disabled={loading()}>
