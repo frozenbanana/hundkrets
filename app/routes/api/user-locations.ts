@@ -1,7 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL || "http://localhost:8090";
-const ADMIN_TOKEN = import.meta.env.VITE_POCKETBASE_ADMIN_TOKEN;
 
 export interface UserLocation {
   id: string;
@@ -10,18 +9,15 @@ export interface UserLocation {
   area?: string;
 }
 
-async function getAuthToken(): Promise<string | null> {
-  if (ADMIN_TOKEN) {
-    console.log("[user-locations] Using ADMIN_TOKEN");
-    return ADMIN_TOKEN;
-  }
- 
-  return null;
+function getAuthToken(): string | null {
+  return process.env.VITE_POCKETBASE_SERVICE_TOKEN || import.meta.env.VITE_POCKETBASE_SERVICE_TOKEN || null;
 }
 
 export async function GET(_event: APIEvent) {
+  console.log("[user-locations] GET request received");
   try {
-    const token = await getAuthToken();
+    const token = getAuthToken();
+    if (!token) console.log("[user-locations] No VITE_POCKETBASE_SERVICE_TOKEN in app/.env – fetch will fail");
     const filter = encodeURIComponent("latitude != null && longitude != null");
     const url = `${PB_URL}/api/collections/users/records?filter=${filter}&fields=id,latitude,longitude,area&perPage=200`;
     const headers: Record<string, string> = {};

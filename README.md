@@ -22,9 +22,7 @@ API: http://127.0.0.1:8090/api/
 
 Create an admin account on first run. The schema (users, dogs, watch_needs, watch_capacity) is created via migrations in `pb_migrations/`. New users must complete onboarding (profile → dogs → needs → capacity) before seeing matches; the `onboarding_complete` field tracks this.
 
-**Landing page map:** The homepage shows a map of users' approximate locations. Since the `users` list rule requires auth (`@request.auth.id != ''`), add to `.env` either:
-- **Superuser (recommended):** `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` — your PocketBase admin credentials. No token expiry.
-- **Service token:** `POCKETBASE_SERVICE_TOKEN` — get via `curl -X POST http://localhost:8090/api/collections/users/auth-with-password -H "Content-Type: application/json" -d '{"identity":"user@example.com","password":"..."}'` and copy the `token` from the response. Expires in ~2 weeks.
+**Landing page map:** The homepage shows a map of users' approximate locations. Add `VITE_POCKETBASE_SERVICE_TOKEN` to `app/.env`. Get a token via `curl -X POST http://localhost:8090/api/collections/users/auth-with-password -H "Content-Type: application/json" -d '{"identity":"user@example.com","password":"..."}'` and copy the `token` from the response. Expires in ~2 weeks.
 
 ### 2. Frontend
 

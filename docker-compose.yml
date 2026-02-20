@@ -28,11 +28,10 @@ services:
       args:
         # URL the browser uses to reach PocketBase (same host:port as app, or separate)
         VITE_POCKETBASE_URL: ${VITE_POCKETBASE_URL:-http://localhost:8090}
+    env_file:
+      - app/.env
     environment:
       PORT: 3123
-      POCKETBASE_SERVICE_TOKEN: ${POCKETBASE_SERVICE_TOKEN:-}
-      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL:-}
-      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD:-}
     restart: unless-stopped
     ports:
       - "3123:3123"

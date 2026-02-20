@@ -59,18 +59,17 @@ Or clone from git if the repo is remote.
 
 ### 2.2 Create `.env` on the server
 
-On the server, create `/home/henry/Services/hundkrets/.env`:
+On the server, create `app/.env` (and optionally `.env` in project root for build-time vars like `VITE_POCKETBASE_URL`):
 
 ```bash
 # URL the browser uses to reach PocketBase (must match your Cloudflare hostname)
 VITE_POCKETBASE_URL=https://api.hundkrets.se
 
-# For landing page map (users list requires auth). Use your PocketBase admin credentials:
-POCKETBASE_ADMIN_EMAIL=your-admin@example.com
-POCKETBASE_ADMIN_PASSWORD=your-secure-password
+# For landing page map (users list requires auth). Put in app/.env:
+VITE_POCKETBASE_SERVICE_TOKEN=eyJ...
 ```
 
-Replace with your actual admin email and password (you’ll create the admin in Step 4).
+Get a token (you’ll create the admin in Step 4).
 
 ---
 
@@ -107,7 +106,7 @@ You should see `pocketbase` and `app` running.
 
 1. Open **https://api.hundkrets.se/_/**
 2. Create an admin account (email + password)
-3. Use the **same** email and password in `.env` for `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD`
+3. Add `VITE_POCKETBASE_SERVICE_TOKEN` to `app/.env` (get token via API, see Step 2)
 
 ### 4.1 Update `.env` and restart
 
@@ -167,7 +166,7 @@ Data in `pb_data` persists across restarts.
 | Issue | Check |
 |-------|--------|
 | App loads but login fails | `VITE_POCKETBASE_URL` must be `https://api.hundkrets.se` and match the Cloudflare hostname for PocketBase |
-| Map shows no users | Set `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` in `.env` and restart |
+| Map shows no users | Set `VITE_POCKETBASE_SERVICE_TOKEN` in `app/.env` and restart |
 | Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se` |
 | CORS errors | Ensure both hostnames use the same parent domain (`hundkrets.se` and `api.hundkrets.se`) |
 
