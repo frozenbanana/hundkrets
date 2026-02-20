@@ -15,7 +15,7 @@ export default function Register() {
     e.preventDefault();
     setError("");
     if (password() !== passwordConfirm()) {
-      setError("Passwords do not match");
+      setError("Lösenorden matchar inte");
       return;
     }
     setLoading(true);
@@ -50,7 +50,7 @@ export default function Register() {
       <div class="card">
       <form onSubmit={handleSubmit}>
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="email">E-post</label>
           <input
             id="email"
             type="email"
@@ -60,7 +60,7 @@ export default function Register() {
           />
         </div>
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Lösenord</label>
           <input
             id="password"
             type="password"
@@ -71,7 +71,7 @@ export default function Register() {
           />
         </div>
         <div class="form-group">
-          <label for="passwordConfirm">Confirm password</label>
+          <label for="passwordConfirm">Bekräfta lösenord</label>
           <input
             id="passwordConfirm"
             type="password"
@@ -82,11 +82,11 @@ export default function Register() {
         </div>
         {error() && <p class="form-error" role="alert">{error()}</p>}
         <button type="submit" class="btn" disabled={loading()}>
-          {loading() ? "Creating..." : "Create account"}
+          {loading() ? "Skapar..." : "Skapa konto"}
         </button>
       </form>
       <p style="margin-top: 1rem;">
-        <A href="/login">Already have an account? Log in</A>
+        <A href="/login">Har du redan konto? Logga in</A>
       </p>
       </div>
     </div>

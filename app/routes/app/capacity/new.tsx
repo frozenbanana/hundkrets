@@ -22,19 +22,19 @@ export default function NewWatchCapacity() {
     e.preventDefault();
     setError("");
     if (!flexible() && (!startDate() || !endDate())) {
-      setError("Enter dates or choose flexible");
+      setError("Ange datum eller välj flexibel");
       return;
     }
     if (!flexible()) {
       const start = new Date(startDate());
       const end = new Date(endDate());
       if (end < start) {
-        setError("End date must be after start date");
+        setError("Slutdatum måste vara efter startdatum");
         return;
       }
     }
     if (dogSizes().length === 0) {
-      setError("Select at least one dog size");
+      setError("Välj minst en hundstorlek");
       return;
     }
     setLoading(true);
@@ -56,7 +56,7 @@ export default function NewWatchCapacity() {
         data.end_date = endDate();
       }
       await pb.collection("watch_capacity").create(data);
-      nav("/app/matches");
+      nav("/app/capacity");
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -69,44 +69,44 @@ export default function NewWatchCapacity() {
     <div class="container">
       <div class="page-hero">
         <span class="paw-emoji">🏠</span>
-        <h1>Add watch capacity</h1>
-        <p style="color: var(--color-text-muted);">When can you watch someone else's dog? Exact times can be arranged privately.</p>
+        <h1>Lägg till kapacitet</h1>
+        <p style="color: var(--color-text-muted);">När kan du passa andras hundar? Exakta tider bestäms privat med matchningen.</p>
       </div>
       <div class="card">
       <form onSubmit={handleSubmit}>
         <div class="flexible-toggle" onClick={() => setFlexible(!flexible())}>
           <input type="checkbox" id="flexible" checked={flexible()} onInput={(e) => setFlexible(e.currentTarget.checked)} />
-          <label for="flexible">Flexible—open anytime</label>
+          <label for="flexible">Flexibel—öppen när som helst</label>
         </div>
         <Show when={flexible()}>
           <div class="flexible-toggle" onClick={() => setOpenAnyDuration(!openAnyDuration())}>
             <input type="checkbox" id="openAnyDuration" checked={openAnyDuration()} onInput={(e) => setOpenAnyDuration(e.currentTarget.checked)} />
-            <label for="openAnyDuration">Open for any duration</label>
+            <label for="openAnyDuration">Öppen för valfri längd</label>
           </div>
           <Show when={!openAnyDuration()}>
             <div class="form-group">
-              <label for="durationSpecific">Describe exactly when you can help</label>
+              <label for="durationSpecific">Beskriv exakt när du kan hjälpa till</label>
               <textarea
                 id="durationSpecific"
                 value={durationSpecific()}
                 onInput={(e) => setDurationSpecific(e.currentTarget.value)}
-                placeholder="e.g. During lunch on Wednesdays, or weekday mornings only"
+                placeholder="T.ex. under lunch på onsdagar, eller vardagsmorgnar"
               />
             </div>
           </Show>
         </Show>
         <Show when={!flexible()}>
           <div class="form-group">
-            <label for="startDate">Start date</label>
+            <label for="startDate">Startdatum</label>
             <input id="startDate" type="date" value={startDate()} onInput={(e) => setStartDate(e.currentTarget.value)} />
           </div>
           <div class="form-group">
-            <label for="endDate">End date</label>
+            <label for="endDate">Slutdatum</label>
             <input id="endDate" type="date" value={endDate()} onInput={(e) => setEndDate(e.currentTarget.value)} />
           </div>
         </Show>
         <div class="form-group">
-          <label>Dog sizes you can watch (select all that apply)</label>
+          <label>Hundstorlekar du kan passa (välj alla som passar)</label>
           <div class="checkbox-group">
             {(["small", "medium", "large"] as const).map((size) => (
               <label class="checkbox-label">
@@ -121,30 +121,30 @@ export default function NewWatchCapacity() {
                     }
                   }}
                 />
-                {size.charAt(0).toUpperCase() + size.slice(1)}
+                {size === "small" ? "Liten" : size === "medium" ? "Mellan" : "Stor"}
               </label>
             ))}
           </div>
         </div>
         <div class="form-group">
-          <label for="dogGenders">Dog genders</label>
+          <label for="dogGenders">Hundkön</label>
           <select id="dogGenders" value={dogGenders()} onInput={(e) => setDogGenders(e.currentTarget.value as "male" | "female" | "any")}>
-            <option value="male">Male only</option>
-            <option value="female">Female only</option>
-            <option value="any">Any</option>
+            <option value="male">Endast hane</option>
+            <option value="female">Endast hona</option>
+            <option value="any">Valfritt</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="maxDogs">Max dogs</label>
+          <label for="maxDogs">Max antal hundar</label>
           <input id="maxDogs" type="number" min="1" value={maxDogs()} onInput={(e) => setMaxDogs(parseInt(e.currentTarget.value) || 1)} />
         </div>
         <div class="form-group">
-          <label for="notes">Notes</label>
+          <label for="notes">Anteckningar</label>
           <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} />
         </div>
-        {error() && <p style="color: #dc2626;">{error()}</p>}
-        <button type="submit" class="btn" disabled={loading()}>{loading() ? "Adding..." : "Add"}</button>
-        <A href="/app" class="btn btn-secondary" style="margin-left: 0.5rem;">Cancel</A>
+        {error() && <p class="form-error" role="alert">{error()}</p>}
+        <button type="submit" class="btn" disabled={loading()}>{loading() ? "Lägger till..." : "Lägg till"}</button>
+        <A href="/app/capacity" class="btn btn-secondary" style="margin-left: 0.5rem;">Avbryt</A>
       </form>
       </div>
     </div>

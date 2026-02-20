@@ -31,12 +31,12 @@ export default function Login() {
       <div class="page-hero">
         <img src="/logo-icon.png" alt="Hundkrets" width="48" height="48" style="border-radius: 10px;" />
         <h1>Hundkrets</h1>
-        <p style="color: var(--color-text-muted); font-size: 0.95rem;">Logga in</p>
+        <p style="color: var(--color-text-muted); font-size: 0.95rem;">Logga in på ditt konto</p>
       </div>
       <div class="card">
       <form onSubmit={handleSubmit}>
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="email">E-post</label>
           <input
             id="email"
             type="email"
@@ -46,7 +46,7 @@ export default function Login() {
           />
         </div>
         <div class="form-group">
-          <label for="password">Password</label>
+          <label for="password">Lösenord</label>
           <input
             id="password"
             type="password"
@@ -57,11 +57,11 @@ export default function Login() {
         </div>
         {error() && <p class="form-error" role="alert">{error()}</p>}
         <button type="submit" class="btn" disabled={loading()}>
-          {loading() ? "Logging in..." : "Log in"}
+          {loading() ? "Loggar in..." : "Logga in"}
         </button>
       </form>
       <p style="margin-top: 1rem;">
-        <A href="/register">Create an account</A>
+        <A href="/register">Skapa konto</A>
       </p>
       </div>
     </div>

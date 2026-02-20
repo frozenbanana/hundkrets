@@ -9,8 +9,8 @@ interface ConnectionRequest {
   from_user: string;
   to_user: string;
   expand?: {
-    from_user?: { id: string; name?: string; area?: string; avatar?: string };
-    to_user?: { id: string; name?: string; area?: string; avatar?: string };
+    from_user?: { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string };
+    to_user?: { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string };
   };
 }
 
@@ -29,6 +29,7 @@ export default function AppHome() {
       try {
         const list = await pb.collection("connection_requests").getFullList<ConnectionRequest>({
           expand: "from_user,to_user",
+          requestKey: "app-connections",
         });
         return list;
       } catch {
@@ -88,7 +89,7 @@ export default function AppHome() {
   const matches = createMemo(() => {
     const conns = connections() ?? [];
     const mutual = mutualUserIds();
-    const expanded = new Map<string, { id: string; name?: string; area?: string; avatar?: string }>();
+    const expanded = new Map<string, { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string }>();
     for (const c of conns) {
       const otherId = c.from_user === me() ? c.to_user : c.to_user === me() ? c.from_user : null;
       if (otherId && mutual.has(otherId)) {
@@ -98,6 +99,28 @@ export default function AppHome() {
     }
     return Array.from(mutual).map((id) => expanded.get(id) ?? { id });
   });
+
+  const [dogsByOwner] = createResource(
+    () => {
+      const conns = connections() ?? [];
+      const ids = new Set<string>();
+      for (const c of conns) {
+        if (c.from_user !== me()) ids.add(c.from_user);
+        if (c.to_user !== me()) ids.add(c.to_user);
+      }
+      return Array.from(ids);
+    },
+    async (userIds) => {
+      if (userIds.length === 0) return new Map<string, { name?: string; breed?: string }[]>();
+      const allDogs = await pb.collection("dogs").getFullList();
+      const map = new Map<string, { name?: string; breed?: string }[]>();
+      for (const uid of userIds) {
+        const userDogs = allDogs.filter((d: { owner: string }) => d.owner === uid);
+        map.set(uid, userDogs.map((d: { name?: string; breed?: string }) => ({ name: d.name, breed: d.breed })));
+      }
+      return map;
+    }
+  );
 
   const quickActions = createMemo(() => {
     const data = dashboardData();
@@ -127,10 +150,10 @@ export default function AppHome() {
       }
     }
     if (needs.length === 0) {
-      actions.push({ href: "/app/needs/new", label: "Lägg till när du behöver hundpassning" });
+      actions.push({ href: "/app/needs", label: "Lägg till när du behöver hundpassning" });
     }
     if (capacity.length === 0) {
-      actions.push({ href: "/app/capacity/new", label: "Lägg till när du kan passa hundar" });
+      actions.push({ href: "/app/capacity", label: "Lägg till när du kan passa hundar" });
     }
     actions.push({ href: "/app/matches", label: "Se matchningar" });
     return actions;
@@ -143,6 +166,24 @@ export default function AppHome() {
     setActionLoading(true);
     try {
       await pb.collection("connection_requests").delete(connId);
+      refetchConnections();
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleAcceptIncoming(fromUserId: string) {
+    const myId = me();
+    if (!myId) return;
+    setActionLoading(true);
+    try {
+      await pb.collection("connection_requests").create({
+        from_user: myId,
+        to_user: fromUserId,
+      });
+      refetchConnections();
+    } catch (err) {
+      console.error("Accept failed:", err);
       refetchConnections();
     } finally {
       setActionLoading(false);
@@ -212,34 +253,42 @@ export default function AppHome() {
               <p style="color: var(--color-text-muted); margin-bottom: 1rem;">Ni har kopplat ihop—kontakta varandra via matchningar.</p>
               <ul class="connection-list">
                 <For each={matches()}>
-                  {(m) => (
-                    <li class="connection-item">
-                      <Avatar
-                        name={m.name}
-                        area={m.area}
-                        id={m.id}
-                        avatar={m.avatar}
-                        baseUrl={baseUrl}
-                        class="dog-card-img"
-                      />
-                      <div style="flex: 1;">
-                        <strong>{m.name || "Okänd"}</strong>
-                        {m.area && <span style="color: var(--color-text-muted);"> — {m.area}</span>}
-                        <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">
-                          <A href="/app/matches?match=true">Visa i matchningar</A> för telefon och adress.
-                        </p>
-                        <button
-                          type="button"
-                          class="btn btn-secondary"
-                          style="margin-top: 0.5rem; font-size: 0.85rem;"
-                          disabled={actionLoading()}
-                          onClick={() => handleUnmatch(m.id)}
-                        >
-                          Avmatcha
-                        </button>
-                      </div>
-                    </li>
-                  )}
+                  {(m) => {
+                    const dogs = dogsByOwner()?.get(m.id) ?? [];
+                    return (
+                      <li class="connection-item">
+                        <A href={`/app/matches?match=true&user=${m.id}`} class="connection-item-link">
+                          <Avatar
+                            name={m.name}
+                            area={m.area}
+                            id={m.id}
+                            avatar={m.avatar}
+                            baseUrl={baseUrl}
+                            class="dog-card-img"
+                          />
+                          <div style="flex: 1; min-width: 0;">
+                            <strong>{m.name || "Okänd"}</strong>
+                            {m.area && <span style="color: var(--color-text-muted);"> — {m.area}</span>}
+                            {m.bio && <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">{m.bio}</p>}
+                            {m.breeds_owned_before && <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-text-muted);">Tidigare raser: {m.breeds_owned_before}</p>}
+                            {dogs.length > 0 && <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">Hundar: {dogs.map((d) => d.name || "Hund").join(", ")}</p>}
+                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-paw);">Klicka för att se på kartan →</p>
+                          </div>
+                        </A>
+                        <div class="connection-item-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            class="btn btn-secondary"
+                            style="font-size: 0.85rem;"
+                            disabled={actionLoading()}
+                            onClick={() => handleUnmatch(m.id)}
+                          >
+                            Avmatcha
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  }}
                 </For>
               </ul>
             </div>
@@ -258,26 +307,41 @@ export default function AppHome() {
                 <For each={incoming()}>
                   {(req) => {
                     const from = req.expand?.from_user;
+                    const dogs = dogsByOwner()?.get(req.from_user) ?? [];
                     return (
                       <li class="connection-item">
-                        <Avatar
-                          name={from?.name}
-                          area={from?.area}
-                          id={from?.id}
-                          avatar={from?.avatar}
-                          baseUrl={baseUrl}
-                          class="dog-card-img"
-                        />
-                        <div style="flex: 1;">
-                          <strong>{from?.name || "Okänd"}</strong>
-                          {from?.area && <span style="color: var(--color-text-muted);"> — {from.area}</span>}
-                          <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">
-                            <A href="/app/matches">Visa i matchningar</A> och klicka "Jag är intresserad" för att koppla ihop.
-                          </p>
+                        <A href={`/app/matches?request=true&user=${req.from_user}`} class="connection-item-link">
+                          <Avatar
+                            name={from?.name}
+                            area={from?.area}
+                            id={from?.id}
+                            avatar={from?.avatar}
+                            baseUrl={baseUrl}
+                            class="dog-card-img"
+                          />
+                          <div style="flex: 1; min-width: 0;">
+                            <strong>{from?.name || "Okänd"}</strong>
+                            {from?.area && <span style="color: var(--color-text-muted);"> — {from.area}</span>}
+                            {from?.bio && <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">{from.bio}</p>}
+                            {from?.breeds_owned_before && <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-text-muted);">Tidigare raser: {from.breeds_owned_before}</p>}
+                            {dogs.length > 0 && <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">Hundar: {dogs.map((d) => d.name || "Hund").join(", ")}</p>}
+                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-paw);">Vill koppla ihop — klicka för att se på kartan →</p>
+                          </div>
+                        </A>
+                        <div class="connection-item-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            class="btn"
+                            style="font-size: 0.85rem;"
+                            disabled={actionLoading()}
+                            onClick={() => handleAcceptIncoming(req.from_user)}
+                          >
+                            Acceptera
+                          </button>
                           <button
                             type="button"
                             class="btn btn-secondary"
-                            style="margin-top: 0.5rem; font-size: 0.85rem;"
+                            style="font-size: 0.85rem;"
                             disabled={actionLoading()}
                             onClick={() => handleRejectIncoming(req.id)}
                           >
@@ -305,26 +369,35 @@ export default function AppHome() {
                 <For each={outgoing()}>
                   {(req) => {
                     const to = req.expand?.to_user;
+                    const dogs = dogsByOwner()?.get(req.to_user) ?? [];
                     return (
                       <li class="connection-item">
-                        <Avatar
-                          name={to?.name}
-                          area={to?.area}
-                          id={to?.id}
-                          avatar={to?.avatar}
-                          baseUrl={baseUrl}
-                          class="dog-card-img"
-                        />
-                        <div style="flex: 1;">
-                          <strong>{to?.name || "Okänd"}</strong>
-                          {to?.area && <span style="color: var(--color-text-muted);"> — {to.area}</span>}
-                          <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">
-                            Väntar på svar från {to?.name || "dem"}.
-                          </p>
+                        <A href={`/app/matches?user=${req.to_user}`} class="connection-item-link">
+                          <Avatar
+                            name={to?.name}
+                            area={to?.area}
+                            id={to?.id}
+                            avatar={to?.avatar}
+                            baseUrl={baseUrl}
+                            class="dog-card-img"
+                          />
+                          <div style="flex: 1; min-width: 0;">
+                            <strong>{to?.name || "Okänd"}</strong>
+                            {to?.area && <span style="color: var(--color-text-muted);"> — {to.area}</span>}
+                            {to?.bio && <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">{to.bio}</p>}
+                            {to?.breeds_owned_before && <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-text-muted);">Tidigare raser: {to.breeds_owned_before}</p>}
+                            {dogs.length > 0 && <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">Hundar: {dogs.map((d) => d.name || "Hund").join(", ")}</p>}
+                            <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">
+                              Väntar på svar från {to?.name || "dem"}.
+                            </p>
+                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-paw);">Klicka för att se på kartan →</p>
+                          </div>
+                        </A>
+                        <div class="connection-item-actions" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             class="btn btn-secondary"
-                            style="margin-top: 0.5rem; font-size: 0.85rem;"
+                            style="font-size: 0.85rem;"
                             disabled={actionLoading()}
                             onClick={() => handleWithdrawOutgoing(req.id)}
                           >

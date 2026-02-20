@@ -28,18 +28,18 @@ export default function NewWatchNeed() {
     e.preventDefault();
     setError("");
     if (!dogId()) {
-      setError("Select a dog");
+      setError("Välj en hund");
       return;
     }
     if (!flexible() && (!startDate() || !endDate())) {
-      setError("Enter dates or choose flexible");
+      setError("Ange datum eller välj flexibel");
       return;
     }
     if (!flexible()) {
       const start = new Date(startDate());
       const end = new Date(endDate());
       if (end < start) {
-        setError("End date must be after start date");
+        setError("Slutdatum måste vara efter startdatum");
         return;
       }
     }
@@ -60,7 +60,7 @@ export default function NewWatchNeed() {
         data.end_date = endDate();
       }
       await pb.collection("watch_needs").create(data);
-      nav("/app/matches");
+      nav("/app/needs");
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -73,15 +73,15 @@ export default function NewWatchNeed() {
     <div class="container">
       <div class="page-hero">
         <span class="paw-emoji">🐕</span>
-        <h1>Add watch need</h1>
-        <p style="color: var(--color-text-muted);">When do you need someone to watch your dog? Exact times can be worked out privately.</p>
+        <h1>Lägg till behov</h1>
+        <p style="color: var(--color-text-muted);">När behöver du hundpassning? Exakta tider bestäms privat med matchningen.</p>
       </div>
       <div class="card">
       <form onSubmit={handleSubmit}>
         <div class="form-group">
-          <label for="dog">Dog *</label>
+          <label for="dog">Hund *</label>
           <select id="dog" value={dogId()} onInput={(e) => setDogId(e.currentTarget.value)} required>
-            <option value="">Select a dog</option>
+            <option value="">Välj hund</option>
             <Show when={dogs()}>
               <For each={dogs()}>
                 {(d) => <option value={d.id}>{d.name}</option>}
@@ -91,42 +91,42 @@ export default function NewWatchNeed() {
         </div>
         <div class="flexible-toggle" onClick={() => setFlexible(!flexible())}>
           <input type="checkbox" id="flexible" checked={flexible()} onInput={(e) => setFlexible(e.currentTarget.checked)} />
-          <label for="flexible">Flexible—open anytime</label>
+          <label for="flexible">Flexibel—öppen när som helst</label>
         </div>
         <Show when={flexible()}>
           <div class="flexible-toggle" onClick={() => setOpenAnyDuration(!openAnyDuration())}>
             <input type="checkbox" id="openAnyDuration" checked={openAnyDuration()} onInput={(e) => setOpenAnyDuration(e.currentTarget.checked)} />
-            <label for="openAnyDuration">Open for any duration</label>
+            <label for="openAnyDuration">Öppen för valfri längd</label>
           </div>
           <Show when={!openAnyDuration()}>
             <div class="form-group">
-              <label for="durationSpecific">Describe exactly what you need</label>
+              <label for="durationSpecific">Beskriv exakt vad du behöver</label>
               <textarea
                 id="durationSpecific"
                 value={durationSpecific()}
                 onInput={(e) => setDurationSpecific(e.currentTarget.value)}
-                placeholder="e.g. During lunch on Wednesdays, or weekday mornings only"
+                placeholder="T.ex. under lunch på onsdagar, eller vardagsmorgnar"
               />
             </div>
           </Show>
         </Show>
         <Show when={!flexible()}>
           <div class="form-group">
-            <label for="startDate">Start date</label>
+            <label for="startDate">Startdatum</label>
             <input id="startDate" type="date" value={startDate()} onInput={(e) => setStartDate(e.currentTarget.value)} />
           </div>
           <div class="form-group">
-            <label for="endDate">End date</label>
+            <label for="endDate">Slutdatum</label>
             <input id="endDate" type="date" value={endDate()} onInput={(e) => setEndDate(e.currentTarget.value)} />
           </div>
         </Show>
         <div class="form-group">
-          <label for="notes">Notes</label>
+          <label for="notes">Anteckningar</label>
           <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} />
         </div>
-        {error() && <p style="color: #dc2626;">{error()}</p>}
-        <button type="submit" class="btn" disabled={loading()}>{loading() ? "Adding..." : "Add"}</button>
-        <A href="/app" class="btn btn-secondary" style="margin-left: 0.5rem;">Cancel</A>
+        {error() && <p class="form-error" role="alert">{error()}</p>}
+        <button type="submit" class="btn" disabled={loading()}>{loading() ? "Lägger till..." : "Lägg till"}</button>
+        <A href="/app/needs" class="btn btn-secondary" style="margin-left: 0.5rem;">Avbryt</A>
       </form>
       </div>
     </div>

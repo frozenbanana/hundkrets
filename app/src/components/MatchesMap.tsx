@@ -18,6 +18,8 @@ interface Props {
   listings: ListingWithDistance[];
   /** Returns true if user is mutually matched (both expressed interest) */
   mutualUserIds?: (userId: string) => boolean;
+  /** Set of user IDs who have sent a connection request to me */
+  requestedMeUserIds?: Set<string>;
   myLat?: number;
   myLon?: number;
   /** When true, filter markers to visible map bounds (zoom to narrow) */
@@ -105,7 +107,8 @@ export function MatchesMap(props: Props) {
         if (isSelected) selectedLatLng = [lat, lon];
 
         const isMatched = props.mutualUserIds?.(u.id ?? "") ?? false;
-        const markerColor = isMatched ? "#e65100" : "#2563eb";
+        const requestedMe = props.requestedMeUserIds?.has(u.id ?? "") ?? false;
+        const markerColor = isMatched ? "#e65100" : requestedMe ? "#16a34a" : "#2563eb";
         const size = isSelected ? 28 : 20;
 
         const providerIcon = L.divIcon({

@@ -216,6 +216,28 @@ nav a {
   margin-right: 1rem;
 }
 
+.nav-link-with-badge {
+  position: relative;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: white;
+  background: #e65100;
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+
 /* Dog-themed page headers */
 .page-hero {
   text-align: center;
@@ -503,13 +525,33 @@ nav a {
 .connection-item {
   display: flex;
   gap: 1rem;
-  align-items: center;
+  align-items: flex-start;
   padding: 0.75rem 0;
   border-bottom: 1px solid rgba(139, 90, 43, 0.1);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.connection-item:hover {
+  background: var(--color-fur-light);
 }
 
 .connection-item:last-child {
   border-bottom: none;
+}
+
+.connection-item-link {
+  flex: 1;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+.connection-item-actions {
+  flex-shrink: 0;
 }
 
 /* Dog card with image */
@@ -623,6 +665,57 @@ nav a {
   align-items: center;
 }
 
+.matches-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  background: rgba(139, 90, 43, 0.1);
+  padding: 0.25rem;
+  border-radius: var(--radius-dog);
+}
+
+.matches-filter-tab {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: calc(var(--radius-dog) - 2px);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.matches-filter-tab:hover {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--color-text);
+}
+
+.matches-filter-tab-active {
+  background: white;
+  color: var(--color-paw-dark);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.matches-filter-tab-with-badge {
+  position: relative;
+}
+
+.matches-filter-tab-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: white;
+  background: #e65100;
+  border-radius: 9px;
+}
+
 .matches-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -643,6 +736,11 @@ nav a {
   height: calc(100vh - 200px);
   min-height: 400px;
   background: var(--color-fur-light);
+}
+
+.matches-empty-state {
+  padding: 2rem 1rem;
+  text-align: center;
 }
 
 .matches-list-panel {

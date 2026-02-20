@@ -1,4 +1,5 @@
-import { A, useSearchParams } from "@solidjs/router";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
+import { getRequestsSeenAt, markRequestsSeen, requestsSeenVersion } from "~/lib/requestsSeen";
 import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { findListings } from "~/lib/matching";
@@ -8,7 +9,7 @@ import { Avatar } from "~/components/Avatar";
 import { DogImage } from "~/components/DogImage";
 import { MatchesMap } from "~/components/MatchesMap";
 
-const DISTANCE_OPTIONS = [5, 10, 25, 50, 100] as const;
+const DEFAULT_MAX_DISTANCE_KM = 100;
 
 function formatDate(s: string | undefined): string {
   if (!s) return "—";
@@ -41,8 +42,7 @@ const temperamentLabel: Record<string, string> = { friendly: "Vänlig", cautious
 function MatchCard(props: {
   listing: ReturnType<typeof findListings>[number];
   baseUrl: string;
-  isMutual: (id: string) => boolean;
-  iRequested: (id: string) => boolean;
+  getConnections: () => { from_user: string; to_user: string }[];
   refreshing: () => boolean;
   onInterested: (id: string) => void;
   onWithdraw?: (userId: string) => void;
@@ -52,10 +52,21 @@ function MatchCard(props: {
   dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
 }) {
-  const { listing, baseUrl, isMutual, iRequested, refreshing, onInterested, onWithdraw, onUnmatch, onSelect, isSelected, dateStr, sizesStr } = props;
-  const mutual = isMutual(listing.user.id);
-  const requested = iRequested(listing.user.id);
-
+  const { listing, baseUrl, getConnections, refreshing, onInterested, onWithdraw, onUnmatch, onSelect, isSelected, dateStr, sizesStr } = props;
+  const conns = () => getConnections();
+  const mutual = () => {
+    const me = pb.authStore.model?.id;
+    if (!me) return false;
+    const c = conns();
+    const iReq = c.some((x) => x.from_user === me && x.to_user === listing.user.id);
+    const theyReq = c.some((x) => x.from_user === listing.user.id && x.to_user === me);
+    return iReq && theyReq;
+  };
+  const requested = () => {
+    const me = pb.authStore.model?.id;
+    if (!me) return false;
+    return conns().some((x) => x.from_user === me && x.to_user === listing.user.id);
+  };
   return (
     <div
       class="card match-card"
@@ -66,7 +77,7 @@ function MatchCard(props: {
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onSelect?.(listing.user.id)}
     >
-      {mutual && (
+      {mutual() && (
         <span class="match-card-badge">matchad</span>
       )}
       <div class="dog-card" style="margin-bottom: 1rem;">
@@ -102,12 +113,12 @@ function MatchCard(props: {
               {listing.capacities.map((c) => `${dateStr(c)} • ${sizesStr(c.dog_sizes)} • max ${c.max_dogs}`).join(" · ")}
             </p>
           )}
-          {mutual && listing.user.phone && (
+          {mutual() && listing.user.phone && (
             <p style="margin-top: 0.5rem;">
               <strong>Telefon:</strong> <a href={`tel:${listing.user.phone}`}>{listing.user.phone}</a>
             </p>
           )}
-          {mutual && listing.user.address_private && (
+          {mutual() && listing.user.address_private && (
             <p style="margin-top: 0.5rem;">
               <strong>Adress:</strong> {listing.user.address_private}
             </p>
@@ -176,8 +187,8 @@ function MatchCard(props: {
         </div>
       )}
       <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;" onClick={(e) => e.stopPropagation()}>
-        <Show when={!mutual}>
-          {requested ? (
+        <Show when={!mutual()}>
+          {requested() ? (
             <>
               <span class="btn btn-secondary" style="cursor: default;">
                 Intresse skickat
@@ -202,7 +213,7 @@ function MatchCard(props: {
             </button>
           )}
         </Show>
-        <Show when={mutual && onUnmatch}>
+        <Show when={mutual() && onUnmatch}>
           <button
             type="button"
             class="btn btn-secondary"
@@ -220,8 +231,7 @@ function MatchCard(props: {
 function MatchCards(props: {
   listings: ReturnType<typeof findListings>;
   baseUrl: string;
-  isMutual: (id: string) => boolean;
-  iRequested: (id: string) => boolean;
+  getConnections: () => { from_user: string; to_user: string }[];
   refreshing: () => boolean;
   onInterested: (id: string) => void;
   onWithdraw?: (userId: string) => void;
@@ -238,8 +248,7 @@ function MatchCards(props: {
           <MatchCard
             listing={listing}
             baseUrl={props.baseUrl}
-            isMutual={props.isMutual}
-            iRequested={props.iRequested}
+            getConnections={props.getConnections}
             refreshing={props.refreshing}
             onInterested={props.onInterested}
             onWithdraw={props.onWithdraw}
@@ -262,43 +271,76 @@ function sizesStr(s: string | string[] | undefined) {
   return arr.map((x) => sizeLabel[x] ?? x.charAt(0).toUpperCase() + x.slice(1)).join(", ");
 }
 
-function getStoredMaxDistance(): number {
-  if (typeof localStorage === "undefined") return 50;
-  const v = localStorage.getItem("matches_max_distance_km");
-  const n = v ? parseInt(v, 10) : NaN;
-  return DISTANCE_OPTIONS.includes(n as (typeof DISTANCE_OPTIONS)[number]) ? n : 50;
-}
+type MatchFilter = "all" | "matched" | "not_matched" | "requested_me" | "outgoing";
 
-type MatchFilter = "all" | "matched" | "not_matched";
-
-function filterFromParams(params: { match?: string; not_matched?: string }): MatchFilter {
+function filterFromParams(params: { match?: string; not_matched?: string; request?: string; outgoing?: string }): MatchFilter {
+  if (params.request === "true" || params.request === "1") return "requested_me";
+  if (params.outgoing === "true" || params.outgoing === "1") return "outgoing";
   if (params.match === "true" || params.match === "1") return "matched";
   if (params.not_matched === "true" || params.not_matched === "1") return "not_matched";
   return "all";
 }
 
+function filterToParams(filter: MatchFilter): Record<string, string> {
+  const next: Record<string, string> = {};
+  if (filter === "matched") next.match = "true";
+  else if (filter === "not_matched") next.not_matched = "true";
+  else if (filter === "requested_me") next.request = "true";
+  else if (filter === "outgoing") next.outgoing = "true";
+  return next;
+}
+
+function buildMatchesUrl(filter: MatchFilter, user?: string): string {
+  const params = new URLSearchParams();
+  const fp = filterToParams(filter);
+  for (const [k, v] of Object.entries(fp)) {
+    if (v) params.set(k, v);
+  }
+  if (user) params.set("user", user);
+  const qs = params.toString();
+  return `/app/matches${qs ? "?" + qs : ""}`;
+}
+
 export default function Matches() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [refreshing, setRefreshing] = createSignal(false);
-  const [maxDistanceKm, setMaxDistanceKm] = createSignal(getStoredMaxDistance());
   const [matchFilter, setMatchFilter] = createSignal<MatchFilter>(
-    filterFromParams(searchParams as { match?: string; not_matched?: string })
+    filterFromParams(searchParams as { match?: string; not_matched?: string; request?: string; outgoing?: string })
   );
 
   createEffect(() => {
-    const filter = matchFilter();
-    const next: Record<string, string> = {};
-    if (filter === "matched") next.match = "true";
-    else if (filter === "not_matched") next.not_matched = "true";
-    setSearchParams(next, { replace: true });
+    const next = filterFromParams(searchParams as { match?: string; not_matched?: string; request?: string; outgoing?: string });
+    setMatchFilter(next);
   });
-  const [selectedUserId, setSelectedUserId] = createSignal<string | undefined>(undefined);
+  const [selectedUserId, setSelectedUserId] = createSignal<string | undefined>(
+    (searchParams as { user?: string }).user
+  );
+
+  createEffect(() => {
+    if (typeof window === "undefined") return;
+    const filter = matchFilter();
+    const params = searchParams as { user?: string };
+    const url = buildMatchesUrl(filter, params.user);
+    const current = window.location.pathname + (window.location.search || "");
+    console.log("[matches] URL sync", { filter, url, current, willNavigate: current !== url });
+    if (current !== url) navigate(url, { replace: true });
+  });
+
+  createEffect(() => {
+    const user = (searchParams as { user?: string }).user;
+    if (user) setSelectedUserId(user);
+  });
+
+  createEffect(() => {
+    if ((searchParams as { request?: string }).request === "true") markRequestsSeen();
+  });
   const [mapBounds, setMapBounds] = createSignal<MapBounds | null>(null);
   let listContainerRef: HTMLDivElement | undefined;
 
-  const [data, { refetch }] = createResource(
-    () => [pb.authStore.model?.id, maxDistanceKm()] as const,
-    async ([userId, maxDist]) => {
+  const [data, { refetch, mutate }] = createResource(
+    () => pb.authStore.model?.id,
+    async (userId) => {
       if (!userId) return null;
       try {
         const [needs, capacities, users, dogs, connectionsResult] = await Promise.all([
@@ -306,18 +348,80 @@ export default function Matches() {
           pb.collection("watch_capacity").getFullList(),
           pb.collection("users").getFullList(),
           pb.collection("dogs").getFullList(),
-          pb.collection("connection_requests").getFullList().catch(() => []),
+          pb.collection("connection_requests").getFullList({ requestKey: "matches-connections" }).catch((err) => {
+            console.error("[matches] connection_requests fetch failed", err);
+            return [];
+          }),
         ]);
-        const connections = connectionsResult;
-        const listings = findListings(
+        const connections = connectionsResult as unknown[];
+        const extractId = (v: unknown): string => {
+          if (typeof v === "string") return v;
+          if (v && typeof v === "object") {
+            const o = v as { id?: string };
+            if (typeof o.id === "string") return o.id;
+          }
+          if (Array.isArray(v) && v.length > 0) return extractId(v[0]);
+          return "";
+        };
+        const connFrom = (c: unknown) => extractId((c as { from_user?: unknown }).from_user);
+        const connTo = (c: unknown) => extractId((c as { to_user?: unknown }).to_user);
+        const connId = (c: unknown) => (typeof (c as { id?: string }).id === "string" ? (c as { id: string }).id : "");
+        const baseListings = findListings(
           needs as Parameters<typeof findListings>[0],
           capacities as Parameters<typeof findListings>[1],
           userId,
           users as Parameters<typeof findListings>[3],
           dogs as Parameters<typeof findListings>[4],
-          maxDist
+          DEFAULT_MAX_DISTANCE_KM
         );
-        return { listings, connections };
+        const listingUserIds = new Set(baseListings.map((l) => l.user.id));
+        const requestedMeIds = connections.filter((c) => connTo(c) === userId).map((c) => connFrom(c));
+        const outgoingIds = connections.filter(
+          (c) => connFrom(c) === userId && !connections.some((r) => connFrom(r) === connTo(c) && connTo(r) === userId)
+        ).map((c) => connTo(c));
+        const usersArr = users as { id: string; latitude?: number; longitude?: number; [k: string]: unknown }[];
+        const needsArr = needs as { user: string; dog: string; [k: string]: unknown }[];
+        const capacitiesArr = capacities as { user: string; [k: string]: unknown }[];
+        const dogsArr = dogs as { id: string; owner: string; [k: string]: unknown }[];
+        const needsByUser = new Map<string, typeof needsArr>();
+        for (const n of needsArr) {
+          if (!needsByUser.has(n.user)) needsByUser.set(n.user, []);
+          needsByUser.get(n.user)!.push(n);
+        }
+        const capacitiesByUser = new Map<string, typeof capacitiesArr>();
+        for (const c of capacitiesArr) {
+          if (!capacitiesByUser.has(c.user)) capacitiesByUser.set(c.user, []);
+          capacitiesByUser.get(c.user)!.push(c);
+        }
+        const dogMap = new Map(dogsArr.map((d) => [d.id, d]));
+        const extraListings: typeof baseListings = [];
+        const addExtraListing = (uid: string) => {
+          if (listingUserIds.has(uid)) return;
+          const user = usersArr.find((u) => u.id === uid);
+          if (!user) return;
+          const userNeeds = needsByUser.get(uid) ?? [];
+          const userCapacities = capacitiesByUser.get(uid) ?? [];
+          const userDogIds = new Set(userNeeds.map((n) => n.dog));
+          const userDogs = [...userDogIds].map((id) => dogMap.get(id)).filter(Boolean) as typeof dogsArr;
+          extraListings.push({
+            user: user as (typeof baseListings)[0]["user"],
+            needs: userNeeds as (typeof baseListings)[0]["needs"],
+            capacities: userCapacities as (typeof baseListings)[0]["capacities"],
+            dogs: userDogs,
+          });
+          listingUserIds.add(uid);
+        };
+        for (const uid of requestedMeIds) addExtraListing(uid);
+        for (const uid of outgoingIds) addExtraListing(uid);
+        const listings = [...baseListings, ...extraListings].sort(
+          (a, b) => ((a as { distanceKm?: number }).distanceKm ?? 999) - ((b as { distanceKm?: number }).distanceKm ?? 999)
+        );
+        const normalizedConnections = connections.map((c) => ({
+          id: connId(c),
+          from_user: connFrom(c),
+          to_user: connTo(c),
+        }));
+        return { listings, connections: normalizedConnections };
       } catch (err) {
         const e = err as { status?: number; message?: string; url?: string };
         console.error("Matches fetch failed:", e?.status, e?.message, e?.url);
@@ -326,23 +430,24 @@ export default function Matches() {
     }
   );
 
-  function handleDistanceChange(e: Event) {
-    const v = parseInt((e.currentTarget as HTMLSelectElement).value, 10);
-    setMaxDistanceKm(v);
-    localStorage.setItem("matches_max_distance_km", String(v));
-  }
-
   async function handleInterested(toUserId: string) {
     const fromUserId = pb.authStore.model?.id;
     if (!fromUserId) return;
     setRefreshing(true);
     try {
-      await pb.collection("connection_requests").create({
+      const created = await pb.collection("connection_requests").create({
         from_user: fromUserId,
         to_user: toUserId,
       });
-      refetch();
+      mutate((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const next = { ...prev, connections: [...prev.connections, created] };
+        return next;
+      });
     } catch (e) {
+      console.error("[matches] handleInterested error", e);
       if ((e as { status?: number })?.status !== 400) console.error(e);
       refetch();
     } finally {
@@ -360,7 +465,10 @@ export default function Matches() {
     setRefreshing(true);
     try {
       await pb.collection("connection_requests").delete(conn.id);
-      refetch();
+      mutate((prev) => {
+        if (!prev) return prev;
+        return { ...prev, connections: prev.connections.filter((c: { id: string }) => c.id !== conn.id) };
+      });
     } finally {
       setRefreshing(false);
     }
@@ -369,41 +477,62 @@ export default function Matches() {
   async function handleUnmatch(otherUserId: string) {
     const me = pb.authStore.model?.id;
     if (!me || !data()?.connections) return;
-    const conns = (data()!.connections as { id: string; from_user: string; to_user: string }[]).filter(
+    const conns = (data()!.connections as { id?: string; from_user: string; to_user: string }[]).filter(
       (c) =>
-        (c.from_user === me && c.to_user === otherUserId) ||
-        (c.from_user === otherUserId && c.to_user === me)
+        c.id &&
+        ((c.from_user === me && c.to_user === otherUserId) ||
+          (c.from_user === otherUserId && c.to_user === me))
     );
+    const idsToRemove = new Set(conns.map((c) => c.id).filter(Boolean));
     setRefreshing(true);
     try {
       for (const conn of conns) {
-        await pb.collection("connection_requests").delete(conn.id);
+        if (conn.id) await pb.collection("connection_requests").delete(conn.id);
       }
+      mutate((prev) => {
+        if (!prev) return prev;
+        return { ...prev, connections: prev.connections.filter((c: { id?: string }) => !c.id || !idsToRemove.has(c.id)) };
+      });
+    } catch (e) {
+      console.error("[matches] handleUnmatch error", e);
       refetch();
     } finally {
       setRefreshing(false);
     }
   }
 
+
   function isMutual(listingUserId: string): boolean {
     const me = pb.authStore.model?.id;
-    if (!me || !data()?.connections) return false;
-    const conns = data()!.connections as { from_user: string; to_user: string }[];
-    const iRequested = conns.some((c) => c.from_user === me && c.to_user === listingUserId);
-    const theyRequested = conns.some((c) => c.from_user === listingUserId && c.to_user === me);
-    return iRequested && theyRequested;
+    const conns = data()?.connections;
+    if (!me || !conns) return false;
+    const connsArr = conns as { from_user: string; to_user: string }[];
+    const iReq = connsArr.some((c) => c.from_user === me && c.to_user === listingUserId);
+    const theyReq = connsArr.some((c) => c.from_user === listingUserId && c.to_user === me);
+    const result = iReq && theyReq;
+    return result;
   }
 
   function iRequested(listingUserId: string): boolean {
     const me = pb.authStore.model?.id;
-    if (!me || !data()?.connections) return false;
-    return (data()!.connections as { from_user: string; to_user: string }[]).some(
+    const conns = data()?.connections;
+    if (!me || !conns) return false;
+    return (conns as { from_user: string; to_user: string }[]).some(
       (c) => c.from_user === me && c.to_user === listingUserId
     );
   }
 
   function handleSelect(userId: string) {
     setSelectedUserId((prev) => (prev === userId ? undefined : userId));
+  }
+
+  function handleFilterChange(filter: MatchFilter) {
+    setMatchFilter(filter);
+    if (filter === "requested_me") markRequestsSeen();
+    const params = searchParams as { user?: string };
+    const url = buildMatchesUrl(filter, params.user);
+    console.log("[matches] Tab click", { filter, url });
+    navigate(url, { replace: true });
   }
 
   function handleMarkerClick(userId: string) {
@@ -417,11 +546,76 @@ export default function Matches() {
 
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
+  const requestedMeUserIds = createMemo(() => {
+    const me = pb.authStore.model?.id;
+    const conns = data()?.connections;
+    if (!me || !conns) return new Set<string>();
+    const set = new Set<string>();
+    for (const c of conns as { from_user: string; to_user: string }[]) {
+      if (c.to_user === me) set.add(c.from_user);
+    }
+    return set;
+  });
+
+  const outgoingUserIds = createMemo(() => {
+    const me = pb.authStore.model?.id;
+    const conns = data()?.connections;
+    if (!me || !conns) return new Set<string>();
+    const mutual = new Set<string>();
+    for (const c of conns as { from_user: string; to_user: string }[]) {
+      const other = c.from_user === me ? c.to_user : c.to_user === me ? c.from_user : null;
+      if (!other) continue;
+      const iReq = conns.some((x: { from_user: string; to_user: string }) => x.from_user === me && x.to_user === other);
+      const theyReq = conns.some((x: { from_user: string; to_user: string }) => x.from_user === other && x.to_user === me);
+      if (iReq && theyReq) mutual.add(other);
+    }
+    const set = new Set<string>();
+    for (const c of conns as { from_user: string; to_user: string }[]) {
+      if (c.from_user === me && !mutual.has(c.to_user)) set.add(c.to_user);
+    }
+    return set;
+  });
+
+  const requestedMeUnseenCount = createMemo(() => {
+    requestsSeenVersion();
+    const conns = data()?.connections ?? [];
+    const me = pb.authStore.model?.id;
+    if (!me) return 0;
+    const mutual = new Set<string>();
+    for (const c of conns as { from_user: string; to_user: string }[]) {
+      const other = c.from_user === me ? c.to_user : c.to_user === me ? c.from_user : null;
+      if (!other) continue;
+      const iReq = conns.some((x: { from_user: string; to_user: string }) => x.from_user === me && x.to_user === other);
+      const theyReq = conns.some((x: { from_user: string; to_user: string }) => x.from_user === other && x.to_user === me);
+      if (iReq && theyReq) mutual.add(other);
+    }
+    const incoming = (conns as { from_user: string; to_user: string; created?: string }[]).filter(
+      (c) => c.to_user === me && !mutual.has(c.from_user)
+    );
+    const seenAt = getRequestsSeenAt();
+    return seenAt ? incoming.filter((c) => c.created && c.created > seenAt).length : incoming.length;
+  });
+
+  const tabCounts = createMemo(() => {
+    const listings = data()?.listings ?? [];
+    const requestedMe = requestedMeUserIds();
+    const outgoing = outgoingUserIds();
+    return {
+      all: listings.length,
+      matched: listings.filter((l) => isMutual(l.user.id)).length,
+      not_matched: listings.filter((l) => !isMutual(l.user.id)).length,
+      outgoing: listings.filter((l) => outgoing.has(l.user.id)).length,
+      requested_me: listings.filter((l) => requestedMe.has(l.user.id)).length,
+    };
+  });
+
   const matchFilteredListings = createMemo(() => {
     const listings = data()?.listings ?? [];
     const filter = matchFilter();
     if (filter === "matched") return listings.filter((l) => isMutual(l.user.id));
     if (filter === "not_matched") return listings.filter((l) => !isMutual(l.user.id));
+    if (filter === "requested_me") return listings.filter((l) => requestedMeUserIds().has(l.user.id));
+    if (filter === "outgoing") return listings.filter((l) => outgoingUserIds().has(l.user.id));
     return listings;
   });
 
@@ -466,7 +660,7 @@ export default function Matches() {
             <A href="/app/profile">Uppdatera din profil med full adress</A> för att filtrera på avstånd och se kartan.
           </p>
         </Show>
-        <Show when={data.loading}>
+        <Show when={data.loading && !data()}>
           <p>Laddar...</p>
         </Show>
         <Show when={data.error}>
@@ -482,37 +676,63 @@ export default function Matches() {
         </Show>
         <Show when={data()?.listings.length === 0 && !data.loading && pb.authStore.model?.area}>
           <p>Ingen i ditt område än. Lägg till dina behov och kapacitet så att andra kan hitta dig.</p>
-          <A href="/app/needs/new" class="btn">Lägg till behov</A>
-          <A href="/app/capacity/new" class="btn btn-secondary" style="margin-left: 0.5rem;">Lägg till kapacitet</A>
+          <A href="/app/needs" class="btn">Lägg till behov</A>
+          <A href="/app/capacity" class="btn btn-secondary" style="margin-left: 0.5rem;">Lägg till kapacitet</A>
         </Show>
         <Show when={data()?.listings && data()!.listings.length > 0}>
           <div class="matches-toolbar">
-            <label for="distance-filter" style="display: flex; align-items: center; gap: 0.5rem;">
-              <span>Inom</span>
-              <select
-                id="distance-filter"
-                value={maxDistanceKm()}
-                onInput={handleDistanceChange}
-                style={{ padding: "0.25rem 0.5rem", "border-radius": "var(--radius)" }}
+            <div class="matches-filter-tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                class="matches-filter-tab"
+                classList={{ "matches-filter-tab-active": matchFilter() === "all" }}
+                onClick={() => handleFilterChange("all")}
               >
-                {DISTANCE_OPTIONS.map((km) => (
-                  <option value={km}>{km} km</option>
-                ))}
-              </select>
-            </label>
-            <label for="match-filter" style="display: flex; align-items: center; gap: 0.5rem;">
-              <span>Visa</span>
-              <select
-                id="match-filter"
-                value={matchFilter()}
-                onInput={(e) => setMatchFilter((e.currentTarget as HTMLSelectElement).value as MatchFilter)}
-                style={{ padding: "0.25rem 0.5rem", "border-radius": "var(--radius)" }}
+                Alla ({tabCounts().all})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="matches-filter-tab"
+                classList={{ "matches-filter-tab-active": matchFilter() === "matched" }}
+                onClick={() => handleFilterChange("matched")}
               >
-                <option value="all">Alla</option>
-                <option value="matched">Endast matchade</option>
-                <option value="not_matched">Endast ej matchade</option>
-              </select>
-            </label>
+                Matchade ({tabCounts().matched})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="matches-filter-tab"
+                classList={{ "matches-filter-tab-active": matchFilter() === "not_matched" }}
+                onClick={() => handleFilterChange("not_matched")}
+              >
+                Ej matchade ({tabCounts().not_matched})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="matches-filter-tab"
+                classList={{ "matches-filter-tab-active": matchFilter() === "outgoing" }}
+                onClick={() => handleFilterChange("outgoing")}
+              >
+                Skickade ({tabCounts().outgoing})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="matches-filter-tab matches-filter-tab-with-badge"
+                classList={{ "matches-filter-tab-active": matchFilter() === "requested_me" }}
+                onClick={() => handleFilterChange("requested_me")}
+              >
+                Mottagna ({tabCounts().requested_me})
+                <Show when={requestedMeUnseenCount() > 0}>
+                  <span class="matches-filter-tab-badge" aria-label={`${requestedMeUnseenCount()} nya`}>
+                    {requestedMeUnseenCount()}
+                  </span>
+                </Show>
+              </button>
+            </div>
           </div>
         </Show>
         </div>
@@ -522,6 +742,7 @@ export default function Matches() {
               <MatchesMap
                 listings={matchFilteredListings()}
                 mutualUserIds={(id) => isMutual(id)}
+                requestedMeUserIds={requestedMeUserIds()}
                 myLat={pb.authStore.model?.latitude}
                 myLon={pb.authStore.model?.longitude}
                 filterByBounds
@@ -535,11 +756,24 @@ export default function Matches() {
               class="matches-list-panel"
               ref={(el) => { listContainerRef = el; }}
             >
+              <Show when={filteredListings().length === 0} fallback={null}>
+                <div class="matches-empty-state">
+                  <p style="color: var(--color-text-muted); margin: 0;">
+                    {matchFilter() === "outgoing"
+                      ? "Du har inte skickat några förfrågningar än. Bläddra bland Alla eller Ej matchade och klicka på \"Jag är intresserad\" för att koppla ihop."
+                      : matchFilter() === "requested_me"
+                        ? "Ingen har skickat förfrågan till dig än."
+                        : matchFilter() === "matched"
+                          ? "Du har inga matchningar än. När ni båda klickar \"Jag är intresserad\" blir ni matchade."
+                          : "Ingen att visa i denna vy. Prova att zooma ut på kartan eller byt filter."}
+                  </p>
+                </div>
+              </Show>
+              <Show when={filteredListings().length > 0}>
               <MatchCards
                 listings={filteredListings()}
                 baseUrl={baseUrl}
-                isMutual={isMutual}
-                iRequested={iRequested}
+                getConnections={() => (data()?.connections ?? []) as { from_user: string; to_user: string }[]}
                 refreshing={refreshing}
                 onInterested={handleInterested}
                 onWithdraw={handleWithdraw}
@@ -549,6 +783,7 @@ export default function Matches() {
                 dateStr={dateStr}
                 sizesStr={sizesStr}
               />
+              </Show>
             </div>
           </div>
           <div class="container">

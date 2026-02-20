@@ -22,12 +22,12 @@ export default function OnboardingDogs() {
     }
   });
   const TEMPERAMENT_OPTS = [
-    { value: "friendly", label: "Friendly" },
-    { value: "cautious", label: "Cautious" },
-    { value: "shy", label: "Shy" },
-    { value: "reactive", label: "Reactive" },
+    { value: "friendly", label: "Vänlig" },
+    { value: "cautious", label: "Försiktig" },
+    { value: "shy", label: "Blyg" },
+    { value: "reactive", label: "Reaktiv" },
     { value: "neutral", label: "Neutral" },
-    { value: "unknown", label: "Unknown" },
+    { value: "unknown", label: "Okänd" },
   ] as const;
   const [name, setName] = createSignal("");
   const [breed, setBreed] = createSignal("");
@@ -112,43 +112,43 @@ export default function OnboardingDogs() {
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
   return (
-    <OnboardingShell step={2} totalSteps={4} title="Your dogs">
+    <OnboardingShell step={2} totalSteps={4} title="Dina hundar">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
-          Add at least one dog. You can add more later from your dashboard.
+          Lägg till minst en hund. Du kan lägga till fler senare från översikten.
         </p>
         <form onSubmit={handleAddDog}>
           <div class="form-group">
-            <label for="name">Dog name *</label>
+            <label for="name">Hundens namn *</label>
             <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required />
           </div>
           <ImageCaptureInput
             id="image"
-            label="Photo (optional)"
+            label="Foto (valfritt)"
             capture="environment"
             value={imageFile()}
             onInput={setImageFile}
             previewShape="rect"
-            hint="On mobile: tap to take a photo. On desktop: drag & drop or click to choose."
+            hint="På mobil: tryck för att ta foto. På dator: dra och släpp eller klicka för att välja."
             dropHint="Drop image here"
           />
           <div class="form-group">
-            <label for="breed">Breed</label>
+            <label for="breed">Ras</label>
             <input id="breed" type="text" value={breed()} onInput={(e) => setBreed(e.currentTarget.value)} />
           </div>
           <div class="form-group">
-            <label for="size">Size *</label>
+            <label for="size">Storlek *</label>
             <select id="size" value={size()} onInput={(e) => setSize(e.currentTarget.value as "small" | "medium" | "large")}>
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
+              <option value="small">Liten</option>
+              <option value="medium">Mellan</option>
+              <option value="large">Stor</option>
             </select>
           </div>
           <div class="form-group">
-            <label for="gender">Gender *</label>
+            <label for="gender">Kön *</label>
             <select id="gender" value={gender()} onInput={(e) => setGender(e.currentTarget.value as "male" | "female")}>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
+              <option value="male">Hane</option>
+              <option value="female">Hona</option>
             </select>
           </div>
           <div class="form-group">
@@ -156,24 +156,24 @@ export default function OnboardingDogs() {
             <input id="age" type="number" min={0} max={25} value={age() === "" ? "" : age()} onInput={(e) => { const v = e.currentTarget.value; setAge(v === "" ? "" : parseInt(v, 10)); }} placeholder="T.ex. 3" />
           </div>
           <div class="form-group">
-            <label>Temperament in different settings</label>
+            <label>Temperament i olika situationer</label>
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
               <div>
-                <label for="temp_people" style="font-weight: 500; font-size: 0.9rem;">Meeting new people</label>
+                <label for="temp_people" style="font-weight: 500; font-size: 0.9rem;">Mötande nya människor</label>
                 <select id="temp_people" value={temperamentNewPeople()} onInput={(e) => setTemperamentNewPeople(e.currentTarget.value)}>
                   <option value="">—</option>
                   {TEMPERAMENT_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
-                <label for="temp_dogs_f" style="font-weight: 500; font-size: 0.9rem;">Meeting new dogs (female)</label>
+                <label for="temp_dogs_f" style="font-weight: 500; font-size: 0.9rem;">Mötande nya hundar (hona)</label>
                 <select id="temp_dogs_f" value={temperamentNewDogsFemale()} onInput={(e) => setTemperamentNewDogsFemale(e.currentTarget.value)}>
                   <option value="">—</option>
                   {TEMPERAMENT_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
-                <label for="temp_dogs_m" style="font-weight: 500; font-size: 0.9rem;">Meeting new dogs (male)</label>
+                <label for="temp_dogs_m" style="font-weight: 500; font-size: 0.9rem;">Mötande nya hundar (hane)</label>
                 <select id="temp_dogs_m" value={temperamentNewDogsMale()} onInput={(e) => setTemperamentNewDogsMale(e.currentTarget.value)}>
                   <option value="">—</option>
                   {TEMPERAMENT_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
@@ -187,12 +187,12 @@ export default function OnboardingDogs() {
           </div>
           {error() && <p class="form-error" role="alert">{error()}</p>}
           <button type="submit" class="btn" disabled={loading()}>
-            {loading() ? "Adding..." : "Add dog"}
+            {loading() ? "Lägger till..." : "Lägg till hund"}
           </button>
         </form>
         <Show when={dogs() && dogs()!.length > 0}>
           <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--color-fur);">
-            <h3>Your dogs</h3>
+            <h3>Dina hundar</h3>
             <For each={dogs()}>
               {(dog) => (
                 <div class="dog-card" style="margin-bottom: 0.75rem;">
@@ -207,10 +207,10 @@ export default function OnboardingDogs() {
         </Show>
         <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
           <button type="button" class="btn" onClick={() => nav("/onboarding/needs")}>
-            Continue
+            Fortsätt
           </button>
           <button type="button" class="btn btn-secondary" onClick={handleSkip}>
-            Skip for now
+            Hoppa över
           </button>
         </div>
       </div>

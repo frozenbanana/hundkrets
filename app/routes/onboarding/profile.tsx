@@ -141,7 +141,7 @@ export default function OnboardingProfile() {
   }
 
   return (
-    <OnboardingShell step={1} totalSteps={4} title="Your profile">
+    <OnboardingShell step={1} totalSteps={4} title="Din profil">
       <div class="card">
         <div style="text-align: center; margin-bottom: 1.5rem;">
           <Avatar

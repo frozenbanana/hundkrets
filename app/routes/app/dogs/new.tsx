@@ -8,12 +8,12 @@ import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 export default function NewDog() {
   const nav = useNavigate();
   const TEMPERAMENT_OPTS = [
-    { value: "friendly", label: "Friendly" },
-    { value: "cautious", label: "Cautious" },
-    { value: "shy", label: "Shy" },
-    { value: "reactive", label: "Reactive" },
+    { value: "friendly", label: "Vänlig" },
+    { value: "cautious", label: "Försiktig" },
+    { value: "shy", label: "Blyg" },
+    { value: "reactive", label: "Reaktiv" },
     { value: "neutral", label: "Neutral" },
-    { value: "unknown", label: "Unknown" },
+    { value: "unknown", label: "Okänd" },
   ] as const;
   const [name, setName] = createSignal("");
   const [breed, setBreed] = createSignal("");
@@ -77,41 +77,41 @@ export default function NewDog() {
     <div class="container">
       <div class="page-hero">
         <span class="paw-emoji">🐕</span>
-        <h1>Add dog</h1>
+        <h1>Lägg till hund</h1>
       </div>
       <div class="card">
       <form onSubmit={handleSubmit}>
         <div class="form-group">
-          <label for="name">Name *</label>
+          <label for="name">Namn *</label>
           <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required />
         </div>
         <ImageCaptureInput
           id="image"
-          label="Photo (optional)"
+          label="Foto (valfritt)"
           capture="environment"
           value={imageFile()}
           onInput={setImageFile}
           previewShape="rect"
-          hint="On mobile: tap to take a photo. On desktop: drag & drop or click to choose."
-          dropHint="Drop image here"
+          hint="På mobil: tryck för att ta foto. På dator: dra och släpp eller klicka för att välja."
+          dropHint="Släpp bild här"
         />
         <div class="form-group">
-          <label for="breed">Breed</label>
+          <label for="breed">Ras</label>
           <input id="breed" type="text" value={breed()} onInput={(e) => setBreed(e.currentTarget.value)} />
         </div>
         <div class="form-group">
-          <label for="size">Size *</label>
+          <label for="size">Storlek *</label>
           <select id="size" value={size()} onInput={(e) => setSize(e.currentTarget.value as "small" | "medium" | "large")}>
-            <option value="small">Small</option>
-            <option value="medium">Medium</option>
-            <option value="large">Large</option>
+            <option value="small">Liten</option>
+            <option value="medium">Mellan</option>
+            <option value="large">Stor</option>
           </select>
         </div>
           <div class="form-group">
-            <label for="gender">Gender *</label>
+            <label for="gender">Kön *</label>
             <select id="gender" value={gender()} onInput={(e) => setGender(e.currentTarget.value as "male" | "female")}>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
+              <option value="male">Hane</option>
+              <option value="female">Hona</option>
             </select>
           </div>
           <div class="form-group">
@@ -119,24 +119,24 @@ export default function NewDog() {
             <input id="age" type="number" min={0} max={25} value={age() === "" ? "" : age()} onInput={(e) => { const v = e.currentTarget.value; setAge(v === "" ? "" : parseInt(v, 10)); }} placeholder="T.ex. 3" />
           </div>
           <div class="form-group">
-            <label>Temperament in different settings</label>
+            <label>Temperament i olika situationer</label>
           <div style="display: flex; flex-direction: column; gap: 0.75rem;">
             <div>
-              <label for="temp_people" style="font-weight: 500; font-size: 0.9rem;">Meeting new people</label>
+              <label for="temp_people" style="font-weight: 500; font-size: 0.9rem;">Mötande nya människor</label>
               <select id="temp_people" value={temperamentNewPeople()} onInput={(e) => setTemperamentNewPeople(e.currentTarget.value)}>
                 <option value="">—</option>
                 {TEMPERAMENT_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div>
-              <label for="temp_dogs_f" style="font-weight: 500; font-size: 0.9rem;">Meeting new dogs (female)</label>
+              <label for="temp_dogs_f" style="font-weight: 500; font-size: 0.9rem;">Mötande nya hundar (hona)</label>
               <select id="temp_dogs_f" value={temperamentNewDogsFemale()} onInput={(e) => setTemperamentNewDogsFemale(e.currentTarget.value)}>
                 <option value="">—</option>
                 {TEMPERAMENT_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div>
-              <label for="temp_dogs_m" style="font-weight: 500; font-size: 0.9rem;">Meeting new dogs (male)</label>
+              <label for="temp_dogs_m" style="font-weight: 500; font-size: 0.9rem;">Mötande nya hundar (hane)</label>
               <select id="temp_dogs_m" value={temperamentNewDogsMale()} onInput={(e) => setTemperamentNewDogsMale(e.currentTarget.value)}>
                 <option value="">—</option>
                 {TEMPERAMENT_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
@@ -145,12 +145,12 @@ export default function NewDog() {
           </div>
         </div>
         <div class="form-group">
-          <label for="notes">Notes (special needs, diet)</label>
+          <label for="notes">Anteckningar (speciella behov, diet)</label>
           <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} />
         </div>
-        {error() && <p style="color: #dc2626;">{error()}</p>}
-        <button type="submit" class="btn" disabled={loading()}>{loading() ? "Adding..." : "Add dog"}</button>
-        <A href="/app/dogs" class="btn btn-secondary" style="margin-left: 0.5rem;">Cancel</A>
+        {error() && <p class="form-error" role="alert">{error()}</p>}
+        <button type="submit" class="btn" disabled={loading()}>{loading() ? "Lägger till..." : "Lägg till hund"}</button>
+        <A href="/app/dogs" class="btn btn-secondary" style="margin-left: 0.5rem;">Avbryt</A>
       </form>
       </div>
     </div>

@@ -41,19 +41,19 @@ export default function OnboardingNeeds() {
     e.preventDefault();
     setError("");
     if (!flexible() && (!startDate() || !endDate())) {
-      setError("Enter dates or choose flexible");
+      setError("Ange datum eller välj flexibel");
       return;
     }
     if (!flexible()) {
       const start = new Date(startDate());
       const end = new Date(endDate());
       if (end < start) {
-        setError("End date must be after start date");
+        setError("Slutdatum måste vara efter startdatum");
         return;
       }
     }
     if (dogs()?.length && !dogId()) {
-      setError("Select a dog");
+      setError("Välj en hund");
       return;
     }
     setLoading(true);
@@ -88,22 +88,22 @@ export default function OnboardingNeeds() {
   const hasDogs = () => dogs() && dogs()!.length > 0;
 
   return (
-    <OnboardingShell step={3} totalSteps={4} title="When you need dog sitting">
+    <OnboardingShell step={3} totalSteps={4} title="När du behöver hundpassning">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
-          When do you need someone to watch your dog? You can be flexible—exact times are worked out privately.
+          När behöver du att någon passar din hund? Du kan vara flexibel—exakta tider bestäms privat.
         </p>
         <Show when={!hasDogs()}>
-          <p style="margin-bottom: 1rem;">You haven't added any dogs yet. Add dogs in the previous step, or skip to continue.</p>
-          <button type="button" class="btn" onClick={handleSkip}>Continue</button>
+          <p style="margin-bottom: 1rem;">Du har inte lagt till några hundar än. Lägg till hundar i föregående steg, eller hoppa över för att fortsätta.</p>
+          <button type="button" class="btn" onClick={handleSkip}>Fortsätt</button>
         </Show>
         <Show when={hasDogs()}>
         <form onSubmit={handleSubmit}>
           <Show when={dogs() && dogs()!.length > 0}>
             <div class="form-group">
-              <label for="dog">Which dog? *</label>
+              <label for="dog">Vilken hund? *</label>
               <select id="dog" value={dogId()} onInput={(e) => setDogId(e.currentTarget.value)}>
-                <option value="">Select a dog</option>
+                <option value="">Välj hund</option>
                 <For each={dogs()}>
                   {(d) => <option value={d.id}>{d.name}</option>}
                 </For>
@@ -117,7 +117,7 @@ export default function OnboardingNeeds() {
               checked={flexible()}
               onInput={(e) => setFlexible(e.currentTarget.checked)}
             />
-            <label for="flexible">Flexible—open anytime</label>
+            <label for="flexible">Flexibel—öppen när som helst</label>
           </div>
           <Show when={flexible()}>
             <div class="flexible-toggle" onClick={() => setOpenAnyDuration(!openAnyDuration())}>
@@ -127,41 +127,41 @@ export default function OnboardingNeeds() {
                 checked={openAnyDuration()}
                 onInput={(e) => setOpenAnyDuration(e.currentTarget.checked)}
               />
-              <label for="openAnyDuration">Open for any duration</label>
+              <label for="openAnyDuration">Öppen för valfri längd</label>
             </div>
             <Show when={!openAnyDuration()}>
               <div class="form-group">
-                <label for="durationSpecific">Describe exactly what you need</label>
+                <label for="durationSpecific">Beskriv exakt vad du behöver</label>
                 <textarea
                   id="durationSpecific"
                   value={durationSpecific()}
                   onInput={(e) => setDurationSpecific(e.currentTarget.value)}
-                  placeholder="e.g. During lunch on Wednesdays, or weekday mornings only"
+                  placeholder="T.ex. under lunch på onsdagar, eller vardagsmorgnar"
                 />
               </div>
             </Show>
           </Show>
           <Show when={!flexible()}>
             <div class="form-group">
-              <label for="startDate">Start date</label>
+              <label for="startDate">Startdatum</label>
               <input id="startDate" type="date" value={startDate()} onInput={(e) => setStartDate(e.currentTarget.value)} />
             </div>
             <div class="form-group">
-              <label for="endDate">End date</label>
+              <label for="endDate">Slutdatum</label>
               <input id="endDate" type="date" value={endDate()} onInput={(e) => setEndDate(e.currentTarget.value)} />
             </div>
           </Show>
           <div class="form-group">
-            <label for="notes">Notes</label>
-            <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="Any special needs?" />
+            <label for="notes">Anteckningar</label>
+            <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="Några speciella behov?" />
           </div>
           {error() && <p class="form-error" role="alert">{error()}</p>}
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
             <button type="submit" class="btn" disabled={loading()}>
-              {loading() ? "Saving..." : "Continue"}
+              {loading() ? "Sparar..." : "Fortsätt"}
             </button>
             <button type="button" class="btn btn-secondary" onClick={handleSkip}>
-              Skip for now
+              Hoppa över
             </button>
           </div>
         </form>

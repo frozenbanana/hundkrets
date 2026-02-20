@@ -137,7 +137,7 @@ export default function Profile() {
     <div class="container">
       <div class="page-hero">
         <span class="paw-emoji">👤</span>
-        <h1>Profile</h1>
+        <h1>Profil</h1>
         <div style="text-align: center; margin: 1rem 0;">
           <Avatar
             name={name()}
@@ -197,9 +197,9 @@ export default function Profile() {
           />
         </div>
         {error() && <p class="form-error" role="alert">{error()}</p>}
-        {saved() && <p style="color: #16a34a;">Profile saved.</p>}
+        {saved() && <p style="color: #16a34a;">Profil sparad.</p>}
         <button type="submit" class="btn" disabled={loading()}>
-          {loading() ? "Saving..." : "Save profile"}
+          {loading() ? "Sparar..." : "Spara profil"}
         </button>
       </form>
       </div>

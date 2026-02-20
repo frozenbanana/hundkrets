@@ -32,17 +32,17 @@ export default function DogsList() {
       <div class="page-hero">
         <span class="paw-emoji">🐕</span>
         <h1>Mina hundar</h1>
-        <p style="color: var(--color-text-muted);">Add dogs you want to have watched when you travel.</p>
+        <p style="color: var(--color-text-muted);">Lägg till hundar du vill ha passade när du reser.</p>
       </div>
-      <A href="/app/dogs/new" class="btn">Add dog</A>
+      <A href="/app/dogs/new" class="btn">Lägg till hund</A>
       <Show when={dogs.loading}>
-        <p>Loading...</p>
+        <p style="color: var(--color-text-muted);">Laddar...</p>
       </Show>
       <Show when={dogs.error}>
         <p style="color: #dc2626;">{dogs.error?.message}</p>
       </Show>
       <Show when={dogs() && dogs()!.length === 0}>
-        <p>No dogs yet. Add one to get started.</p>
+        <p style="color: var(--color-text-muted);">Inga hundar ännu. Lägg till en för att komma igång.</p>
       </Show>
       <Show when={dogs() && dogs()!.length > 0}>
         <div style="margin-top: 1rem;">
@@ -56,10 +56,10 @@ export default function DogsList() {
                     <p>{dog.breed || "—"} • {dog.size} • {dog.gender}</p>
                     {(dog.temperament_new_people || dog.temperament_new_dogs_female || dog.temperament_new_dogs_male) && (
                       <p style="font-size: 0.9rem; color: var(--color-text-muted);">
-                        New people: {dog.temperament_new_people || "—"} • New dogs (F): {dog.temperament_new_dogs_female || "—"} • New dogs (M): {dog.temperament_new_dogs_male || "—"}
+                        Nya människor: {dog.temperament_new_people || "—"} • Nya hundar (Hona): {dog.temperament_new_dogs_female || "—"} • Nya hundar (Hane): {dog.temperament_new_dogs_male || "—"}
                       </p>
                     )}
-                    <A href={`/app/dogs/edit/${dog.id}`} class="btn btn-secondary" style="margin-right: 0.5rem;">Edit</A>
+                    <A href={`/app/dogs/edit/${dog.id}`} class="btn btn-secondary" style="margin-right: 0.5rem;">Redigera</A>
                   </div>
                 </div>
               </div>
