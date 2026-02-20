@@ -10,6 +10,8 @@
   --color-nose: #4a3728;
   --color-text: #2d1f14;
   --color-text-muted: #5c4a3a;
+  /** Higher-contrast text for choice descriptions on buttons */
+  --color-choice-desc: #4a3d2e;
   --shadow-paw: 0 2px 8px rgba(139, 90, 43, 0.15);
   --radius-dog: 1rem;
 }

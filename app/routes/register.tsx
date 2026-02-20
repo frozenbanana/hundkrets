@@ -32,7 +32,7 @@ export default function Register() {
       } catch {
         /* onboarding_complete field may not exist yet—add it in PocketBase admin */
       }
-      nav("/onboarding/profile", { replace: true });
+      nav("/onboarding/choice", { replace: true });
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {

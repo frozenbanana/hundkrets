@@ -1,6 +1,7 @@
 import { useNavigate } from "@solidjs/router";
 import { createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { isSitterOnly, clearOnboardingUserType } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -91,10 +92,11 @@ export default function OnboardingCapacity() {
       ...pb.authStore.model,
       onboarding_complete: true,
     });
+    clearOnboardingUserType();
   }
 
   return (
-    <OnboardingShell step={4} totalSteps={4} title="När du kan passa hundar">
+    <OnboardingShell step={isSitterOnly() ? 2 : 4} totalSteps={isSitterOnly() ? 2 : 4} title="När du kan passa hundar">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           När kan du passa andras hundar? Var flexibel—exakta tider bestäms privat.

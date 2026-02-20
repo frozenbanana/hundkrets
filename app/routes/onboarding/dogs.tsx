@@ -1,6 +1,7 @@
-import { A, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { DogImage } from "~/components/DogImage";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
@@ -18,6 +19,10 @@ export default function OnboardingDogs() {
     const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
     if (done) {
       nav("/app/matches", { replace: true });
+      return;
+    }
+    if (isSitterOnly()) {
+      nav("/onboarding/capacity", { replace: true });
       return;
     }
   });
@@ -52,6 +57,7 @@ export default function OnboardingDogs() {
 
   async function handleAddDog(e: Event) {
     e.preventDefault();
+    if (!name().trim()) return;
     setError("");
     setLoading(true);
     try {
@@ -105,22 +111,18 @@ export default function OnboardingDogs() {
     }
   }
 
-  function handleSkip() {
-    nav("/onboarding/needs");
-  }
-
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
   return (
     <OnboardingShell step={2} totalSteps={4} title="Dina hundar">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
-          Lägg till minst en hund. Du kan lägga till fler senare från översikten.
+          Lägg till hundar om du har (valfritt). Du kan lägga till fler senare från översikten.
         </p>
         <form onSubmit={handleAddDog}>
           <div class="form-group">
-            <label for="name">Hundens namn *</label>
-            <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required />
+            <label for="name">Hundens namn</label>
+            <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} placeholder="T.ex. Bella" />
           </div>
           <ImageCaptureInput
             id="image"
@@ -193,6 +195,7 @@ export default function OnboardingDogs() {
         <Show when={dogs() && dogs()!.length > 0}>
           <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--color-fur);">
             <h3>Dina hundar</h3>
+            <p style="font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">Lägg till fler hundar nedan om du vill.</p>
             <For each={dogs()}>
               {(dog) => (
                 <div class="dog-card" style="margin-bottom: 0.75rem;">
@@ -205,12 +208,9 @@ export default function OnboardingDogs() {
             </For>
           </div>
         </Show>
-        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+        <div style="margin-top: 1.5rem;">
           <button type="button" class="btn" onClick={() => nav("/onboarding/needs")}>
             Fortsätt
-          </button>
-          <button type="button" class="btn btn-secondary" onClick={handleSkip}>
-            Hoppa över
           </button>
         </div>
       </div>

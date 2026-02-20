@@ -11,7 +11,7 @@ export default function Home() {
     if (pb.authStore.isValid) {
       const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
       const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-      nav(done ? "/app/matches" : "/onboarding/profile", { replace: true });
+      nav(done ? "/app/matches" : "/onboarding/choice", { replace: true });
     }
   });
 

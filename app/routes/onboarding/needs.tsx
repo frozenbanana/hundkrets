@@ -1,6 +1,7 @@
 import { useNavigate } from "@solidjs/router";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -16,6 +17,10 @@ export default function OnboardingNeeds() {
     const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
     if (done) {
       nav("/app/matches", { replace: true });
+      return;
+    }
+    if (isSitterOnly()) {
+      nav("/onboarding/capacity", { replace: true });
       return;
     }
   });

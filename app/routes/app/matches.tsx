@@ -93,6 +93,11 @@ function MatchCard(props: {
         />
         <div style="flex: 1;">
           <h3 style="margin: 0;">{listing.user.name || "Okänd"}</h3>
+          {listing.dogs.length === 0 && listing.needs.length === 0 && listing.capacities.length > 0 && (
+            <p style="color: var(--color-paw); font-size: 0.9rem; font-weight: 600; margin: 0.25rem 0;">
+              Vill bara passa hundar – har inte egen hund
+            </p>
+          )}
           {listing.user.area && (
             <p style="color: var(--color-text-muted); margin: 0.25rem 0;">{listing.user.area}</p>
           )}
@@ -725,8 +730,11 @@ export default function Matches() {
                 classList={{ "matches-filter-tab-active": matchFilter() === "requested_me" }}
                 onClick={() => handleFilterChange("requested_me")}
               >
-                Mottagna ({tabCounts().requested_me})
-                <Show when={requestedMeUnseenCount() > 0}>
+                <Show
+                  when={requestedMeUnseenCount() > 0}
+                  fallback={<>Mottagna ({tabCounts().requested_me})</>}
+                >
+                  Mottagna
                   <span class="matches-filter-tab-badge" aria-label={`${requestedMeUnseenCount()} nya`}>
                     {requestedMeUnseenCount()}
                   </span>

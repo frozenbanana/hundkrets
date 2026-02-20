@@ -1,6 +1,7 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createSignal, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { getOnboardingUserType, isSitterOnly } from "~/lib/onboarding";
 import { geocodeAddress } from "~/lib/geocode";
 import { parseApiError } from "~/lib/errors";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
@@ -28,6 +29,10 @@ export default function OnboardingProfile() {
     const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
     if (done) {
       nav("/app/matches", { replace: true });
+      return;
+    }
+    if (!getOnboardingUserType()) {
+      nav("/onboarding/choice", { replace: true });
       return;
     }
     const user = pb.authStore.model;
@@ -132,7 +137,7 @@ export default function OnboardingProfile() {
         breeds_owned_before: breedsOwnedBefore(),
         });
       }
-      nav("/onboarding/dogs");
+      nav(isSitterOnly() ? "/onboarding/capacity" : "/onboarding/dogs");
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -141,7 +146,7 @@ export default function OnboardingProfile() {
   }
 
   return (
-    <OnboardingShell step={1} totalSteps={4} title="Din profil">
+    <OnboardingShell step={1} totalSteps={isSitterOnly() ? 2 : 4} title="Din profil">
       <div class="card">
         <div style="text-align: center; margin-bottom: 1.5rem;">
           <Avatar
