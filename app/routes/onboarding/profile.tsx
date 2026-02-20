@@ -162,6 +162,7 @@ export default function OnboardingProfile() {
           <ImageCaptureInput
             id="avatar"
             label="Profilbild (valfritt)"
+            variant="profile"
             capture="user"
             value={avatarFile()}
             onInput={setAvatarFile}

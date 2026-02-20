@@ -19,6 +19,8 @@ interface ImageCaptureInputProps {
   dropHint?: string;
   /** "circle" for avatar, "rect" for dog/photo */
   previewShape?: "circle" | "rect";
+  /** "profile" = centered card layout with styled button, for profile picture */
+  variant?: "default" | "profile";
 }
 
 export function ImageCaptureInput(props: ImageCaptureInputProps) {
@@ -65,33 +67,58 @@ export function ImageCaptureInput(props: ImageCaptureInputProps) {
   });
 
   const previewUrl = () => blobUrl() ?? props.existingUrl;
+  const isProfile = () => props.variant === "profile";
 
   return (
-    <div class="form-group">
+    <div class="form-group" classList={{ "image-capture-profile": isProfile() }}>
       <label for={props.id}>{props.label}</label>
       <div
         class="image-capture-row"
-        classList={{ "image-capture-dragging": isDragging() }}
+        classList={{
+          "image-capture-dragging": isDragging(),
+          "image-capture-profile-row": isProfile(),
+        }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <Show when={previewUrl()}>
-          <div
-            class="image-capture-preview"
-            classList={{ "image-capture-preview-rect": props.previewShape === "rect" }}
-          >
+        <label
+          for={props.id}
+          class="image-capture-preview"
+          classList={{
+            "image-capture-preview-rect": props.previewShape === "rect",
+            "image-capture-preview-profile": isProfile(),
+            "image-capture-preview-clickable": isProfile(),
+          }}
+        >
+          <Show when={previewUrl()} fallback={
+            <div class="image-capture-placeholder">
+              <span class="image-capture-placeholder-icon">📷</span>
+              <span class="image-capture-placeholder-text">{isProfile() ? "Lägg till foto" : "Välj bild"}</span>
+            </div>
+          }>
             <img src={previewUrl()!} alt="Preview" />
-          </div>
-        </Show>
-        <div class="image-capture-actions">
+          </Show>
+          {isProfile() && previewUrl() && (
+            <span class="image-capture-overlay">
+              <span class="image-capture-overlay-text">Byt foto</span>
+            </span>
+          )}
+        </label>
+        <div class="image-capture-actions" classList={{ "image-capture-actions-profile": isProfile() }}>
           <input
             id={props.id}
             type="file"
             accept="image/*"
             capture={props.capture}
+            class="image-capture-input"
             onInput={(e) => props.onInput(e.currentTarget.files?.[0] ?? null)}
           />
+          {!isProfile() && (
+            <label for={props.id} class="image-capture-btn">
+              Välj bild
+            </label>
+          )}
           {props.hint && (
             <p class="image-capture-hint">{props.hint}</p>
           )}

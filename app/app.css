@@ -106,9 +106,10 @@ a:hover {
   height: 96px;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid var(--color-paw);
+  border: 2px solid var(--color-fur);
   flex-shrink: 0;
   background: var(--color-fur-light);
+  position: relative;
 }
 
 .image-capture-preview img {
@@ -123,20 +124,133 @@ a:hover {
   border-radius: var(--radius-dog);
 }
 
+/* Profile variant - modern centered picker */
+.form-group.image-capture-profile > label:first-of-type {
+  margin-bottom: 0.75rem;
+}
+
+.image-capture-profile-row {
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, rgba(244, 230, 211, 0.5) 0%, rgba(240, 220, 196, 0.3) 100%);
+  border: 2px solid var(--color-fur);
+  border-radius: var(--radius-dog);
+  gap: 1rem;
+}
+
+.image-capture-preview-profile {
+  width: 120px;
+  height: 120px;
+  border: 3px solid var(--color-paw);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.image-capture-preview-profile:hover {
+  border-color: var(--color-paw-dark);
+  box-shadow: 0 4px 12px rgba(139, 90, 43, 0.2);
+}
+
+.image-capture-preview-clickable {
+  cursor: pointer;
+}
+
+.image-capture-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 0.35rem;
+  color: var(--color-text-muted);
+}
+
+.image-capture-placeholder-icon {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+.image-capture-placeholder-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.image-capture-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 31, 20, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.image-capture-preview-profile:hover .image-capture-overlay {
+  opacity: 1;
+}
+
+.image-capture-overlay-text {
+  padding: 0.4rem 0.75rem;
+  background: white;
+  color: var(--color-paw);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-dog);
+}
+
+.image-capture-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
 .image-capture-actions {
   flex: 1;
   min-width: 0;
 }
 
-.image-capture-actions input[type="file"] {
+.image-capture-actions-profile {
+  flex: none;
+  width: 100%;
+  text-align: center;
+}
+
+.image-capture-actions input[type="file"]:not(.image-capture-input) {
   padding: 0.5rem 0;
   font-size: 0.9rem;
+}
+
+.image-capture-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-paw);
+  background: white;
+  border: 2px solid var(--color-fur);
+  border-radius: var(--radius-dog);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.image-capture-btn:hover {
+  background: var(--color-fur-light);
+  border-color: var(--color-paw);
 }
 
 .image-capture-hint {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;
   color: var(--color-text-muted);
+}
+
+.image-capture-profile-row .image-capture-hint {
+  margin-top: 0;
 }
 
 .image-capture-dragging {
@@ -208,6 +322,7 @@ a:hover {
 }
 
 nav {
+  position: relative;
   background: white;
   border-bottom: 3px solid var(--color-paw);
   padding: 0.75rem 1rem;
@@ -216,6 +331,90 @@ nav {
 
 nav a {
   margin-right: 1rem;
+}
+
+/* Mobile navigation */
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.app-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+
+.app-nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  background: transparent;
+  border: 2px solid var(--color-fur);
+  border-radius: var(--radius-dog);
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.app-nav-hamburger-bar {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--color-paw);
+  border-radius: 1px;
+}
+
+.app-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .app-nav {
+    flex-wrap: nowrap;
+  }
+
+  .app-nav-hamburger {
+    display: flex;
+  }
+
+  .app-nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    background: white;
+    border-bottom: 3px solid var(--color-paw);
+    box-shadow: var(--shadow-paw);
+    padding: 1rem;
+    gap: 0.5rem;
+    z-index: 100;
+  }
+
+  .app-nav-links a,
+  .app-nav-links button {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-radius: var(--radius-dog);
+  }
+
+  .app-nav-links-open {
+    display: flex !important;
+  }
 }
 
 .nav-link-with-badge {
@@ -554,6 +753,9 @@ nav a {
 
 .connection-item-actions {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Dog card with image */
@@ -652,6 +854,29 @@ nav a {
 .checkbox-label input {
   width: auto;
   margin: 0;
+}
+
+/* Profile incomplete - empty state on matches */
+.profile-incomplete-card {
+  background: white;
+  border: 2px solid var(--color-paw);
+  border-radius: var(--radius-dog);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-paw);
+}
+
+.profile-incomplete-card-subtle {
+  border-color: var(--color-fur);
+}
+
+.profile-incomplete-checklist {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+}
+
+.profile-incomplete-checklist li {
+  margin-bottom: 0.25rem;
 }
 
 /* Matches page - Airbnb-style split layout */

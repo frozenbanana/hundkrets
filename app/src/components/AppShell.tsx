@@ -1,5 +1,5 @@
 import { A, useNavigate } from "@solidjs/router";
-import { createMemo, createResource, onMount, Show } from "solid-js";
+import { createMemo, createResource, createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { Avatar } from "~/components/Avatar";
 import { getRequestsSeenAt, requestsSeenVersion } from "~/lib/requestsSeen";
@@ -8,6 +8,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   const nav = useNavigate();
   const user = () => pb.authStore.model;
   const me = () => pb.authStore.model?.id;
+  const [menuOpen, setMenuOpen] = createSignal(false);
 
   const [connections] = createResource(
     () => me(),
@@ -58,32 +59,47 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
 
   return (
     <div>
-      <nav style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <A href="/app" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;">
-          <img src="/logo-icon.png" alt="" width="28" height="28" style="border-radius: 6px;" />
-          Hundkrets
-        </A>
-        <Avatar
-          name={user()?.name}
-          city={user()?.city}
-          neighborhood={user()?.neighborhood}
-          size="sm"
-          class="avatar-sm"
-        />
-        <A href="/app">Översikt</A>
-        <A href="/app/profile">Profil</A>
-        <A href="/app/dogs">Mina hundar</A>
-        <A href="/app/needs">Mina behov</A>
-        <A href="/app/capacity">Min kapacitet</A>
-        <A href="/app/matches" class="nav-link-with-badge" style="position: relative;">
-          Matchningar
-          <Show when={badgeCount() > 0}>
-            <span class="nav-badge" aria-label={`${badgeCount()} nya`}>{badgeCount()}</span>
-          </Show>
-        </A>
-        <button type="button" class="btn btn-secondary" onClick={logout} style="margin-left: auto;">
-          Logga ut
+      <nav class="app-nav">
+        <div class="app-nav-brand">
+          <A href="/app" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;">
+            <img src="/logo-icon.png" alt="" width="28" height="28" style="border-radius: 6px;" />
+            Hundkrets
+          </A>
+          <Avatar
+            name={user()?.name}
+            city={user()?.city}
+            neighborhood={user()?.neighborhood}
+            size="sm"
+            class="avatar-sm app-nav-avatar"
+          />
+        </div>
+        <button
+          type="button"
+          class="app-nav-hamburger"
+          aria-label={menuOpen() ? "Stäng meny" : "Öppna meny"}
+          aria-expanded={menuOpen()}
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          <span class="app-nav-hamburger-bar" />
+          <span class="app-nav-hamburger-bar" />
+          <span class="app-nav-hamburger-bar" />
         </button>
+        <div class="app-nav-links" classList={{ "app-nav-links-open": menuOpen() }}>
+          <A href="/app" onClick={() => setMenuOpen(false)}>Översikt</A>
+          <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
+          <A href="/app/dogs" onClick={() => setMenuOpen(false)}>Mina hundar</A>
+          <A href="/app/needs" onClick={() => setMenuOpen(false)}>Mina behov</A>
+          <A href="/app/capacity" onClick={() => setMenuOpen(false)}>Min kapacitet</A>
+          <A href="/app/matches" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
+            Matchningar
+            <Show when={badgeCount() > 0}>
+              <span class="nav-badge" aria-label={`${badgeCount()} nya`}>{badgeCount()}</span>
+            </Show>
+          </A>
+          <button type="button" class="btn btn-secondary" onClick={() => { setMenuOpen(false); logout(); }}>
+            Logga ut
+          </button>
+        </div>
       </nav>
       {props.children}
     </div>

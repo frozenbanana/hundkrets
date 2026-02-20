@@ -656,14 +656,27 @@ export default function Matches() {
           </p>
         </div>
         <Show when={!pb.authStore.model?.area && !pb.authStore.model?.city}>
-          <p style="color: #dc2626;">
-            <A href="/app/profile">Ange din adress</A> i profilen för att se matchningar.
-          </p>
+          <div class="profile-incomplete-card">
+            <h3 style="margin: 0 0 0.5rem; color: var(--color-paw-dark);">Profilen behöver uppdateras</h3>
+            <p style="margin: 0 0 1rem; color: var(--color-text-muted);">
+              Din adress behövs för att hitta hundägare i ditt område. Matchningar visas baserat på närhet—utan adress kan vi inte visa relevanta personer.
+            </p>
+            <ul class="profile-incomplete-checklist">
+              <li style="color: #dc2626;">Adress saknas</li>
+              <Show when={!pb.authStore.model?.avatar}>
+                <li style="color: var(--color-text-muted);">Profilbild (valfritt)</li>
+              </Show>
+            </ul>
+            <A href="/app/profile" class="btn">Gå till profil och ange adress</A>
+          </div>
         </Show>
         <Show when={pb.authStore.model?.area && !pb.authStore.model?.latitude && !pb.authStore.model?.longitude}>
-          <p style="color: var(--color-text-muted); margin-bottom: 0.5rem;">
-            <A href="/app/profile">Uppdatera din profil med full adress</A> för att filtrera på avstånd och se kartan.
-          </p>
+          <div class="profile-incomplete-card profile-incomplete-card-subtle">
+            <p style="margin: 0 0 0.75rem; color: var(--color-text-muted);">
+              Uppdatera din profil med full adress för att filtrera på avstånd och se kartan.
+            </p>
+            <A href="/app/profile" class="btn btn-secondary">Uppdatera adress</A>
+          </div>
         </Show>
         <Show when={data.loading && !data()}>
           <p>Laddar...</p>
