@@ -17,6 +17,9 @@ pb_migrations/*.pb
 .env.local
 .env.*.local
 
+# Deploy (contains secrets)
+scripts/deploy.sh
+
 # IDE
 .idea/
 .vscode/
