@@ -176,7 +176,6 @@ export default function OnboardingProfile() {
             id="avatar"
             label="Profilbild (valfritt)"
             variant="profile"
-            capture="user"
             value={avatarFile()}
             onInput={setAvatarFile}
             existingUrl={
@@ -184,7 +183,7 @@ export default function OnboardingProfile() {
                 ? `${import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}/api/files/users/${pb.authStore.model.id}/${pb.authStore.model.avatar}`
                 : undefined
             }
-            hint="På mobil: tryck för att ta ett selfie. På dator: dra och släpp eller klicka för att välja."
+            hint="På mobil: ta selfie eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
           />
           <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
             Vi riktar oss till Sverige. Din adress hjälper att hitta matchningar i närheten. Din fullständiga adress visas bara när ni kopplar ihop.

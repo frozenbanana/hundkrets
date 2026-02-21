@@ -169,7 +169,6 @@ export default function Profile() {
           id="avatar"
           label="Profilbild (valfritt)"
           variant="profile"
-          capture="user"
           value={avatarFile()}
           onInput={setAvatarFile}
           existingUrl={
@@ -177,7 +176,7 @@ export default function Profile() {
               ? `${baseUrl}/api/files/users/${pb.authStore.model.id}/${pb.authStore.model.avatar}`
               : undefined
           }
-          hint="På mobil: ta selfie. På dator: dra och släpp eller klicka för att välja."
+          hint="På mobil: ta selfie eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
         />
         <div class="form-group">
           <label for="name">Namn *</label>

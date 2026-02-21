@@ -88,11 +88,10 @@ export default function NewDog() {
         <ImageCaptureInput
           id="image"
           label="Foto (valfritt)"
-          capture="environment"
           value={imageFile()}
           onInput={setImageFile}
           previewShape="rect"
-          hint="På mobil: tryck för att ta foto. På dator: dra och släpp eller klicka för att välja."
+          hint="På mobil: ta foto eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
           dropHint="Släpp bild här"
         />
         <div class="form-group">
