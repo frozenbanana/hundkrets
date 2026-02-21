@@ -35,8 +35,23 @@ function dateStr(n: {
   return "—";
 }
 
-const genderLabel: Record<string, string> = { male: "Hane", female: "Hona" };
+const genderLabel: Record<string, string> = { male: "Hane", female: "Hona", any: "Alla" };
 const sizeLabel: Record<string, string> = { small: "Liten", medium: "Mellan", large: "Stor" };
+
+function datesOverlap(
+  aStart: string | undefined,
+  aEnd: string | undefined,
+  bStart: string | undefined,
+  bEnd: string | undefined
+): boolean {
+  if (!aStart || !aEnd || !bStart || !bEnd) return false;
+  const aS = new Date(aStart).getTime();
+  const aE = new Date(aEnd).getTime();
+  const bS = new Date(bStart).getTime();
+  const bE = new Date(bEnd).getTime();
+  if (isNaN(aS) || isNaN(aE) || isNaN(bS) || isNaN(bE)) return false;
+  return aS <= bE && bS <= aE;
+}
 const temperamentLabel: Record<string, string> = { friendly: "Vänlig", cautious: "Försiktig", shy: "Blyg", reactive: "Reaktiv", neutral: "Neutral", unknown: "Okänd" };
 
 type Conn = { id?: string; from_user: string; to_user: string; message?: string };
@@ -95,25 +110,43 @@ function MatchCard(props: {
 }) {
   const { listing, baseUrl, getConnections, dateStr, sizesStr, onOpenDetail } = props;
   const conns = () => getConnections();
+  const me = () => pb.authStore.model?.id;
   const mutual = () => {
-    const me = pb.authStore.model?.id;
-    if (!me) return false;
+    const m = me();
+    if (!m) return false;
     const c = conns();
-    return c.some((x) => x.from_user === me && x.to_user === listing.user.id) && c.some((x) => x.from_user === listing.user.id && x.to_user === me);
+    return c.some((x) => x.from_user === m && x.to_user === listing.user.id) && c.some((x) => x.from_user === listing.user.id && x.to_user === m);
+  };
+  const requestedMe = () => {
+    const m = me();
+    if (!m) return false;
+    return conns().some((x) => x.from_user === listing.user.id && x.to_user === m);
+  };
+  const requestedOutgoing = () => {
+    const m = me();
+    if (!m) return false;
+    return conns().some((x) => x.from_user === m && x.to_user === listing.user.id);
   };
   const firstDog = () => getFirstDog(listing);
   const passOnly = () => isPassOnly(listing);
   const firstNeed = () => listing.needs[0];
   const firstCapacity = () => listing.capacities[0];
-  const timesStr = () => {
-    const need = firstNeed();
-    const cap = firstCapacity();
-    if (need) return dateStr(need);
-    if (cap) return dateStr(cap);
-    return null;
-  };
+  const needDatesStr = () => firstNeed() ? dateStr(firstNeed()!) : null;
+  const capacityDatesStr = () => firstCapacity() ? dateStr(firstCapacity()!) : null;
   const canPass = () =>
     firstCapacity() ? canPassStr(firstCapacity()!.dog_sizes) : null;
+
+  const locationStr = () => {
+    const loc = listing.user.neighborhood || listing.user.city || listing.user.area;
+    const dist = "distanceKm" in listing && typeof listing.distanceKm === "number" ? `~${Math.round(listing.distanceKm)} km` : null;
+    if (loc && dist) return `${loc} · ${dist}`;
+    if (loc) return loc;
+    if (dist) return dist;
+    return null;
+  };
+
+  const extraNeedsHint = () => listing.needs.length > 1 ? `+${listing.needs.length - 1}` : null;
+  const extraCapacitiesHint = () => listing.capacities.length > 1 ? `+${listing.capacities.length - 1}` : null;
 
   return (
     <div
@@ -125,6 +158,8 @@ function MatchCard(props: {
       onKeyDown={(e) => e.key === "Enter" && onOpenDetail(listing.user.id)}
     >
       {mutual() && <span class="match-card-badge">matchad</span>}
+      {!mutual() && requestedMe() && <span class="match-card-badge match-card-badge-request">Vill ha kontakt</span>}
+      {!mutual() && requestedOutgoing() && <span class="match-card-badge match-card-badge-outgoing">Intresse skickat</span>}
       <div class="match-card-body">
         <div class="match-card-info">
           <div class="match-card-header">
@@ -141,19 +176,42 @@ function MatchCard(props: {
             <span class="match-card-username">{listing.user.name || "Okänd"}</span>
           </div>
           <div class="match-card-info-text">
-            <Show
-              when={!passOnly()}
-              fallback={<p class="match-card-main">Vill endast passa</p>}
-            >
-              <p class="match-card-main">
-                Behöver passning av <span class="match-card-dog-name">{firstDog()?.name ?? "hund"}</span>
-              </p>
-            </Show>
-            {timesStr() && <p class="match-card-line">Tider: {timesStr()}</p>}
-            {canPass() && <p class="match-card-line">Kan passa: {canPass()}</p>}
+            <div class="match-card-need-section">
+              <Show
+                when={!passOnly()}
+                fallback={<p class="match-card-main">Vill endast passa</p>}
+              >
+                <p class="match-card-main">
+                  Behöver passning av <span class="match-card-dog-name">{firstDog()?.name ?? "hund"}</span>
+                  {extraNeedsHint() && <span class="match-card-hint"> {extraNeedsHint()}</span>}
+                </p>
+              </Show>
+              {!passOnly() && needDatesStr() && (
+                <p class="match-card-line match-card-line-primary">
+                  <span class="match-card-label">Behöver passning:</span> {needDatesStr()}
+                </p>
+              )}
+            </div>
+            {(canPass() || (passOnly() && capacityDatesStr())) && (
+              <div class="match-card-capacity-section">
+                <div class="match-card-divider" aria-hidden="true" />
+                {passOnly() && capacityDatesStr() && (
+                  <p class="match-card-line match-card-line-primary">
+                    <span class="match-card-label">Tillgänglig:</span> {capacityDatesStr()}
+                  </p>
+                )}
+                {canPass() && (
+                  <p class="match-card-line">
+                    <span class="match-card-label">Kan passa:</span>{" "}
+                    {capacityDatesStr() ? `${capacityDatesStr()} · ${canPass()}` : canPass()}
+                    {extraCapacitiesHint() && <span class="match-card-hint"> {extraCapacitiesHint()}</span>}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-          {"distanceKm" in listing && typeof listing.distanceKm === "number" && (
-            <div class="match-card-footer">Distans från dig: ~{Math.round(listing.distanceKm)} km</div>
+          {locationStr() && (
+            <div class="match-card-footer">Plats: {locationStr()}</div>
           )}
         </div>
         <div class="match-card-image">
@@ -200,6 +258,8 @@ function MatchDetailModal(props: {
   listing: ListingItem;
   baseUrl: string;
   getConnections: () => Conn[];
+  myNeeds?: { start_date?: string; end_date?: string; flexible_dates?: boolean }[];
+  myCapacities?: { start_date?: string; end_date?: string; flexible_dates?: boolean }[];
   refreshing: () => boolean;
   onInterestedClick: (userId: string, userName?: string) => void;
   onRespondClick?: (conn: Conn, fromUserName?: string) => void;
@@ -209,7 +269,7 @@ function MatchDetailModal(props: {
   dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
 }) {
-  const { listing, baseUrl, getConnections, refreshing, onInterestedClick, onRespondClick, onWithdraw, onUnmatch, onClose, dateStr, sizesStr } = props;
+  const { listing, baseUrl, getConnections, myNeeds = [], myCapacities = [], refreshing, onInterestedClick, onRespondClick, onWithdraw, onUnmatch, onClose, dateStr, sizesStr } = props;
   const conns = () => getConnections();
   const connFromThem = () => conns().find((c) => c.from_user === listing.user.id && c.to_user === pb.authStore.model?.id);
   const mutual = () => {
@@ -222,6 +282,33 @@ function MatchDetailModal(props: {
     const me = pb.authStore.model?.id;
     if (!me) return false;
     return conns().some((x) => x.from_user === me && x.to_user === listing.user.id);
+  };
+
+  const compatibilityCallout = () => {
+    let msg: string | null = null;
+    for (const theirNeed of listing.needs) {
+      const n = theirNeed as { start_date?: string; end_date?: string };
+      for (const myCap of myCapacities) {
+        if (datesOverlap(n.start_date, n.end_date, myCap.start_date, myCap.end_date)) {
+          msg = `Dina datum överlappar med ${listing.user.name || "deras"} behov (${dateStr(theirNeed)}).`;
+          break;
+        }
+      }
+      if (msg) break;
+    }
+    if (!msg) {
+      for (const theirCap of listing.capacities) {
+        const c = theirCap as { start_date?: string; end_date?: string };
+        for (const myNeed of myNeeds) {
+          if (datesOverlap(c.start_date, c.end_date, myNeed.start_date, myNeed.end_date)) {
+            msg = `Deras tillgänglighet överlappar med dina behov (${dateStr(theirCap)}).`;
+            break;
+          }
+        }
+        if (msg) break;
+      }
+    }
+    return msg;
   };
 
   const handleBackdropClick = (e: MouseEvent) => {
@@ -244,6 +331,22 @@ function MatchDetailModal(props: {
           <button type="button" class="match-detail-close" onClick={onClose} aria-label="Stäng">×</button>
         </div>
         <section class="modal-detail-scroll">
+        {connFromThem() && (
+          <div class="modal-detail-connection-banner">
+            <strong>{listing.user.name || "De"} vill ha kontakt med dig</strong>
+            {connFromThem()!.message && (
+              <p class="modal-detail-connection-message">"{connFromThem()!.message}"</p>
+            )}
+          </div>
+        )}
+
+        {compatibilityCallout() && (
+          <div class="modal-detail-compatibility">
+            <span class="modal-detail-compatibility-icon" aria-hidden="true">✓</span>
+            {compatibilityCallout()}
+          </div>
+        )}
+
         <div class="modal-detail-user-card">
           <Avatar
             name={listing.user.name}
@@ -263,23 +366,17 @@ function MatchDetailModal(props: {
               </p>
             )}
             {listing.user.area && <p class="modal-detail-user-line">{listing.user.area}</p>}
-            {listing.user.bio && <p class="modal-detail-user-line">{listing.user.bio}</p>}
-            {listing.user.breeds_owned_before && (
-              <p class="modal-detail-user-line">Tidigare raser: {listing.user.breeds_owned_before}</p>
-            )}
-            {connFromThem()?.message && (
-              <div class="modal-detail-message">
-                <p style="margin: 0; font-size: 0.9rem; color: var(--color-text); font-style: italic;">"{connFromThem()!.message}"</p>
-              </div>
-            )}
             {"distanceKm" in listing && typeof listing.distanceKm === "number" && (
               <p class="modal-detail-user-line">~{Math.round(listing.distanceKm)} km bort</p>
             )}
-            {listing.capacities.length > 0 && (
-              <p class="modal-detail-user-line" style="margin-top: 0.35rem;">
-                <strong>Hundpassarförmåga:</strong>{" "}
-                {listing.capacities.map((c) => `${dateStr(c)} • ${sizesStr(c.dog_sizes)} • max ${c.max_dogs}`).join(" · ")}
-              </p>
+            {listing.user.bio && (
+              <div class="modal-detail-bio">
+                <strong class="modal-detail-bio-label">Om {listing.user.name || "dem"}</strong>
+                <p class="modal-detail-bio-text">{listing.user.bio}</p>
+              </div>
+            )}
+            {listing.user.breeds_owned_before && (
+              <p class="modal-detail-user-line"><strong>Erfarenhet:</strong> {listing.user.breeds_owned_before}</p>
             )}
             {mutual() && listing.user.phone && (
               <p class="modal-detail-user-line"><strong>Telefon:</strong> <a href={`tel:${listing.user.phone}`}>{listing.user.phone}</a></p>
@@ -291,13 +388,14 @@ function MatchDetailModal(props: {
         </div>
 
         {listing.needs.length > 0 && (
-          <div style="margin-bottom: 0.5rem;">
-            <strong>Behöver hundpassning:</strong>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.35rem;">
+          <div class="modal-detail-section">
+            <strong>Behöver hundpassning</strong>
+            <div class="modal-detail-cards">
               <For each={listing.needs}>
                 {(n) => {
                   const dog = listing.dogs.find((d) => d.id === n.dog) as DogRecord | undefined;
                   const d = dog ?? {};
+                  const needWithNotes = n as { notes?: string };
                   return (
                     <div class="need-card">
                       <div class="need-card-image">
@@ -322,7 +420,42 @@ function MatchDetailModal(props: {
                           </div>
                         </div>
                         {d.notes && <p class="need-card-notes"><span class="need-card-label">Anteckningar:</span> {d.notes}</p>}
+                        {needWithNotes.notes && <p class="need-card-notes"><span class="need-card-label">Behov:</span> {needWithNotes.notes}</p>}
                         <div class="need-card-footer"><span class="need-card-label">Datum:</span> {dateStr(n)}</div>
+                      </div>
+                    </div>
+                  );
+                }}
+              </For>
+            </div>
+          </div>
+        )}
+
+        {listing.capacities.length > 0 && (
+          <div class="modal-detail-section">
+            <strong>Kan passa hundar</strong>
+            <div class="modal-detail-cards">
+              <For each={listing.capacities}>
+                {(c) => {
+                  const capWithNotes = c as { notes?: string };
+                  return (
+                    <div class="capacity-card">
+                      <div class="capacity-card-content">
+                        <div class="capacity-card-row">
+                          <span class="need-card-label">Datum:</span> {dateStr(c)}
+                        </div>
+                        <div class="capacity-card-row">
+                          <span class="need-card-label">Storlekar:</span> {sizesStr(c.dog_sizes)}
+                        </div>
+                        <div class="capacity-card-row">
+                          <span class="need-card-label">Kön:</span> {genderLabel[c.dog_genders ?? "any"] ?? c.dog_genders}
+                        </div>
+                        <div class="capacity-card-row">
+                          <span class="need-card-label">Max antal hundar:</span> {c.max_dogs}
+                        </div>
+                        {capWithNotes.notes && (
+                          <p class="need-card-notes"><span class="need-card-label">Anteckningar:</span> {capWithNotes.notes}</p>
+                        )}
                       </div>
                     </div>
                   );
@@ -540,7 +673,9 @@ export default function Matches() {
           to_user: connTo(c),
           message: (c as { message?: string }).message,
         }));
-        return { listings, connections: normalizedConnections };
+        const myNeeds = (needsArr as { user: string; start_date?: string; end_date?: string; flexible_dates?: boolean }[]).filter((n) => n.user === userId);
+        const myCapacities = (capacitiesArr as { user: string; start_date?: string; end_date?: string; flexible_dates?: boolean }[]).filter((c) => c.user === userId);
+        return { listings, connections: normalizedConnections, myNeeds, myCapacities };
       } catch (err) {
         const e = err as { status?: number; message?: string; url?: string };
         console.error("Matches fetch failed:", e?.status, e?.message, e?.url);
@@ -1041,6 +1176,8 @@ export default function Matches() {
                   listing={l()!}
                   baseUrl={baseUrl}
                   getConnections={() => (data()?.connections ?? []) as Conn[]}
+                  myNeeds={data()?.myNeeds}
+                  myCapacities={data()?.myCapacities}
                   refreshing={refreshing}
                   onInterestedClick={openInterestModal}
                   onRespondClick={openRespondModal}
