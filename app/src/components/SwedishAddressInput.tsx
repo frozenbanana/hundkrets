@@ -1,5 +1,4 @@
-import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import { searchAddress, searchCitiesSweden, type GeocodeResult } from "~/lib/geocode";
+import { createEffect, createSignal } from "solid-js";
 
 export interface AddressValue {
   address_private: string;
@@ -12,214 +11,114 @@ export interface AddressValue {
 
 interface Props {
   value: Partial<AddressValue>;
-  onSelect: (v: AddressValue) => void;
+  onSelect: (v: Partial<AddressValue>) => void;
 }
 
-const DEBOUNCE_MS = 350;
+const SWEDISH_POSTAL = /^\d{3}\s?\d{2}$/;
+
+function buildFullAddress(street: string, postalCode: string, city: string): string {
+  const parts = [street, postalCode, city].filter(Boolean);
+  return parts.join(", ");
+}
+
+function parseAddress(addressPrivate: string, cityFromDb?: string): { street: string; postalCode: string; city: string } {
+  const parts = addressPrivate.split(", ").map((p) => p.trim()).filter(Boolean);
+  let street = "";
+  let postalCode = "";
+  let city = cityFromDb ?? "";
+
+  if (parts.length >= 3) {
+    street = parts[0];
+    postalCode = parts[1].match(SWEDISH_POSTAL) ? parts[1] : "";
+    city = parts[2];
+  } else if (parts.length === 2) {
+    if (parts[1].match(SWEDISH_POSTAL)) {
+      street = parts[0];
+      postalCode = parts[1];
+      city = cityFromDb ?? "";
+    } else {
+      street = parts[0];
+      city = parts[1];
+    }
+  } else if (parts.length === 1) {
+    street = parts[0];
+    city = cityFromDb ?? "";
+  }
+  return { street, postalCode, city };
+}
 
 export function SwedishAddressInput(props: Props) {
-  const [cityQuery, setCityQuery] = createSignal("");
-  const [streetQuery, setStreetQuery] = createSignal("");
-  const [citySuggestions, setCitySuggestions] = createSignal<GeocodeResult[]>([]);
-  const [streetSuggestions, setStreetSuggestions] = createSignal<GeocodeResult[]>([]);
-  const [cityLoading, setCityLoading] = createSignal(false);
-  const [streetLoading, setStreetLoading] = createSignal(false);
-  const [cityOpen, setCityOpen] = createSignal(false);
-  const [streetOpen, setStreetOpen] = createSignal(false);
-  const [selectedCity, setSelectedCity] = createSignal<string>("");
-  let cityDebounce: ReturnType<typeof setTimeout> | null = null;
-  let streetDebounce: ReturnType<typeof setTimeout> | null = null;
+  const [street, setStreet] = createSignal("");
+  const [postalCode, setPostalCode] = createSignal("");
+  const [city, setCity] = createSignal("");
 
-  onMount(() => {
+  createEffect(() => {
     const v = props.value;
-    if (v?.city) setSelectedCity(v.city);
-    setCityQuery(v?.city ?? "");
-    setStreetQuery(v?.address_private ?? "");
+    if (v?.address_private) {
+      const parsed = parseAddress(v.address_private, v.city);
+      setStreet(parsed.street);
+      setPostalCode(parsed.postalCode);
+      setCity(parsed.city);
+    }
   });
 
-  function doCitySearch(q: string) {
-    if (!q || q.length < 3) {
-      setCitySuggestions([]);
-      return;
-    }
-    setCityLoading(true);
-    searchCitiesSweden(q)
-      .then((r) => {
-        setCitySuggestions(r);
-        setCityOpen(true);
-      })
-      .finally(() => setCityLoading(false));
-  }
-
-  function doStreetSearch(q: string) {
-    const city = selectedCity();
-    if (!q || q.length < 3) {
-      setStreetSuggestions([]);
-      return;
-    }
-    setStreetLoading(true);
-    searchAddress(q, city ? { city } : undefined)
-      .then((r) => {
-        setStreetSuggestions(r);
-        setStreetOpen(true);
-      })
-      .finally(() => setStreetLoading(false));
-  }
-
-  function onCityInput(e: Event) {
-    const v = (e.currentTarget as HTMLInputElement).value;
-    setCityQuery(v);
-    setSelectedCity("");
-    if (cityDebounce) clearTimeout(cityDebounce);
-    cityDebounce = setTimeout(() => doCitySearch(v), DEBOUNCE_MS);
-  }
-
-  function onStreetInput(e: Event) {
-    const v = (e.currentTarget as HTMLInputElement).value;
-    setStreetQuery(v);
-    if (streetDebounce) clearTimeout(streetDebounce);
-    streetDebounce = setTimeout(() => doStreetSearch(v), DEBOUNCE_MS);
-  }
-
-  function onCitySelect(r: GeocodeResult) {
-    const city = r.city ?? r.display_name;
-    setSelectedCity(city);
-    setCityQuery(city);
-    setCitySuggestions([]);
-    setCityOpen(false);
-    setStreetQuery("");
+  function notifyChange(streetVal: string, postalVal: string, cityVal: string) {
+    const full = buildFullAddress(streetVal, postalVal, cityVal);
     props.onSelect({
-      address_private: city,
-      latitude: r.lat,
-      longitude: r.lon,
-      city,
-      neighborhood: r.neighborhood ?? "",
-      area: city,
+      ...props.value,
+      address_private: full,
+      city: cityVal,
     });
-  }
-
-  function onStreetSelect(r: GeocodeResult) {
-    const area = [r.city, r.neighborhood].filter(Boolean).join(" - ") || r.display_name;
-    props.onSelect({
-      address_private: r.display_name,
-      latitude: r.lat,
-      longitude: r.lon,
-      city: r.city ?? selectedCity() ?? "",
-      neighborhood: r.neighborhood ?? "",
-      area,
-    });
-    setStreetQuery(r.display_name);
-    setStreetSuggestions([]);
-    setStreetOpen(false);
-  }
-
-  onCleanup(() => {
-    if (cityDebounce) clearTimeout(cityDebounce);
-    if (streetDebounce) clearTimeout(streetDebounce);
-  });
-
-  function AutocompleteList(
-    suggestions: GeocodeResult[],
-    open: boolean,
-    onSelect: (r: GeocodeResult) => void,
-    loading: boolean
-  ) {
-    return (
-      <Show when={open && suggestions.length > 0}>
-        <ul
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            margin: 0,
-            padding: 0,
-            listStyle: "none",
-            background: "#ffffff",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            maxHeight: "200px",
-            overflow: "auto",
-            zIndex: 100,
-          }}
-        >
-          <For each={suggestions}>
-            {(s) => (
-              <li>
-                <button
-                  type="button"
-                  style={{
-                    width: "100%",
-                    padding: "0.5rem 0.75rem",
-                    textAlign: "left",
-                    border: "none",
-                    background: "none",
-                    cursor: "pointer",
-                    fontSize: "0.9rem",
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    onSelect(s);
-                  }}
-                >
-                  {s.display_name}
-                </button>
-              </li>
-            )}
-          </For>
-        </ul>
-      </Show>
-    );
   }
 
   return (
     <>
-      <div class="form-group" style="position: relative;">
-        <label for="city">Stad *</label>
+      <div class="form-group">
+        <label for="address-line1">Gata och nummer *</label>
         <input
-          id="city"
+          id="address-line1"
           type="text"
-          value={cityQuery()}
-          onInput={onCityInput}
-          onFocus={() => setCityOpen(true)}
-          onBlur={() => setTimeout(() => setCityOpen(false), 150)}
-          placeholder="T.ex. Malmö, Stockholm..."
+          value={street()}
+          onInput={(e) => {
+            const v = e.currentTarget.value;
+            setStreet(v);
+            notifyChange(v, postalCode(), city());
+          }}
+          placeholder="T.ex. Storgatan 1"
           required
-          autocomplete="nope"
-          data-lpignore="true"
+          autocomplete="address-line1"
         />
-        <Show when={cityLoading()}>
-          <span style="position: absolute; right: 0.75rem; top: 2.25rem; font-size: 0.875rem; color: var(--color-text-muted);">
-            Söker...
-          </span>
-        </Show>
-        {AutocompleteList(citySuggestions(), cityOpen(), onCitySelect, cityLoading())}
       </div>
-      <div class="form-group" style="position: relative;">
-        <label for="street">Gata och adress *</label>
+      <div class="form-group">
+        <label for="postal-code">Postnummer</label>
         <input
-          id="street"
+          id="postal-code"
           type="text"
-          value={streetQuery()}
-          onInput={onStreetInput}
-          onFocus={() => setStreetOpen(true)}
-          onBlur={() => setTimeout(() => setStreetOpen(false), 150)}
-          placeholder={selectedCity() ? `T.ex. Storgatan 1 i ${selectedCity()}` : "Välj stad först"}
-          required
-          autocomplete="nope"
-          data-lpignore="true"
-          disabled={!selectedCity()}
+          value={postalCode()}
+          onInput={(e) => {
+            const v = e.currentTarget.value;
+            setPostalCode(v);
+            notifyChange(street(), v, city());
+          }}
+          placeholder="T.ex. 211 42"
+          autocomplete="postal-code"
         />
-        <Show when={!selectedCity()}>
-          <span style="font-size: 0.875rem; color: var(--color-text-muted);">Välj stad först för att söka adress</span>
-        </Show>
-        <Show when={streetLoading()}>
-          <span style="position: absolute; right: 0.75rem; top: 2.25rem; font-size: 0.875rem; color: var(--color-text-muted);">
-            Söker...
-          </span>
-        </Show>
-        {AutocompleteList(streetSuggestions(), streetOpen(), onStreetSelect, streetLoading())}
+      </div>
+      <div class="form-group">
+        <label for="address-level2">Stad *</label>
+        <input
+          id="address-level2"
+          type="text"
+          value={city()}
+          onInput={(e) => {
+            const v = e.currentTarget.value;
+            setCity(v);
+            notifyChange(street(), postalCode(), v);
+          }}
+          placeholder="T.ex. Malmö"
+          required
+          autocomplete="address-level2"
+        />
       </div>
     </>
   );

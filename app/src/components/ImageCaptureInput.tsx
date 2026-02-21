@@ -99,10 +99,15 @@ export function ImageCaptureInput(props: ImageCaptureInputProps) {
           }>
             <img src={previewUrl()!} alt="Preview" />
           </Show>
-          {isProfile() && previewUrl() && (
-            <span class="image-capture-overlay">
-              <span class="image-capture-overlay-text">Byt foto</span>
-            </span>
+          {previewUrl() && (
+            <>
+              {isProfile() && (
+                <span class="image-capture-overlay">
+                  <span class="image-capture-overlay-text">Byt foto</span>
+                </span>
+              )}
+              <span class="image-capture-replace-hint">{isProfile() ? "Tryck för att byta" : "Klicka eller släpp ny bild"}</span>
+            </>
           )}
         </label>
         <div class="image-capture-actions" classList={{ "image-capture-actions-profile": isProfile() }}>

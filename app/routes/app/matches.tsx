@@ -39,12 +39,15 @@ const genderLabel: Record<string, string> = { male: "Hane", female: "Hona" };
 const sizeLabel: Record<string, string> = { small: "Liten", medium: "Mellan", large: "Stor" };
 const temperamentLabel: Record<string, string> = { friendly: "Vänlig", cautious: "Försiktig", shy: "Blyg", reactive: "Reaktiv", neutral: "Neutral", unknown: "Okänd" };
 
+type Conn = { id?: string; from_user: string; to_user: string; message?: string };
+
 function MatchCard(props: {
   listing: ReturnType<typeof findListings>[number];
   baseUrl: string;
-  getConnections: () => { from_user: string; to_user: string }[];
+  getConnections: () => Conn[];
   refreshing: () => boolean;
-  onInterested: (id: string) => void;
+  onInterestedClick: (userId: string, userName?: string) => void;
+  onRespondClick?: (conn: Conn, fromUserName?: string) => void;
   onWithdraw?: (userId: string) => void;
   onUnmatch?: (userId: string) => void;
   onSelect?: (userId: string) => void;
@@ -52,8 +55,9 @@ function MatchCard(props: {
   dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
 }) {
-  const { listing, baseUrl, getConnections, refreshing, onInterested, onWithdraw, onUnmatch, onSelect, isSelected, dateStr, sizesStr } = props;
+  const { listing, baseUrl, getConnections, refreshing, onInterestedClick, onRespondClick, onWithdraw, onUnmatch, onSelect, isSelected, dateStr, sizesStr } = props;
   const conns = () => getConnections();
+  const connFromThem = () => conns().find((c) => c.from_user === listing.user.id && c.to_user === pb.authStore.model?.id);
   const mutual = () => {
     const me = pb.authStore.model?.id;
     if (!me) return false;
@@ -106,6 +110,11 @@ function MatchCard(props: {
           )}
           {listing.user.breeds_owned_before && (
             <p style="color: var(--color-text-muted); margin: 0.25rem 0; font-size: 0.85rem;">Tidigare raser: {listing.user.breeds_owned_before}</p>
+          )}
+          {connFromThem()?.message && (
+            <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--color-fur-light); border-radius: var(--radius-dog); border-left: 4px solid var(--color-paw);">
+              <p style="margin: 0; font-size: 0.9rem; color: var(--color-text); font-style: italic;">"{connFromThem()!.message}"</p>
+            </div>
           )}
           {"distanceKm" in listing && typeof listing.distanceKm === "number" && (
             <p style="color: var(--color-text-muted); margin: 0.25rem 0; font-size: 0.875rem;">
@@ -207,12 +216,21 @@ function MatchCard(props: {
                 Ångra
               </button>
             </>
+          ) : connFromThem() && onRespondClick ? (
+            <button
+              type="button"
+              class="btn"
+              disabled={refreshing()}
+              onClick={() => onRespondClick(connFromThem()!, listing.user.name)}
+            >
+              Svara
+            </button>
           ) : (
             <button
               type="button"
               class="btn"
               disabled={refreshing()}
-              onClick={() => onInterested(listing.user.id)}
+              onClick={() => onInterestedClick(listing.user.id, listing.user.name)}
             >
               Jag är intresserad
             </button>
@@ -236,9 +254,10 @@ function MatchCard(props: {
 function MatchCards(props: {
   listings: ReturnType<typeof findListings>;
   baseUrl: string;
-  getConnections: () => { from_user: string; to_user: string }[];
+  getConnections: () => Conn[];
   refreshing: () => boolean;
-  onInterested: (id: string) => void;
+  onInterestedClick: (userId: string, userName?: string) => void;
+  onRespondClick?: (conn: Conn, fromUserName?: string) => void;
   onWithdraw?: (userId: string) => void;
   onUnmatch?: (userId: string) => void;
   selectedUserId?: string;
@@ -255,7 +274,8 @@ function MatchCards(props: {
             baseUrl={props.baseUrl}
             getConnections={props.getConnections}
             refreshing={props.refreshing}
-            onInterested={props.onInterested}
+            onInterestedClick={props.onInterestedClick}
+            onRespondClick={props.onRespondClick}
             onWithdraw={props.onWithdraw}
             onUnmatch={props.onUnmatch}
             onSelect={props.onSelect}
@@ -425,6 +445,7 @@ export default function Matches() {
           id: connId(c),
           from_user: connFrom(c),
           to_user: connTo(c),
+          message: (c as { message?: string }).message,
         }));
         return { listings, connections: normalizedConnections };
       } catch (err) {
@@ -435,7 +456,7 @@ export default function Matches() {
     }
   );
 
-  async function handleInterested(toUserId: string) {
+  async function handleInterested(toUserId: string, message?: string) {
     const fromUserId = pb.authStore.model?.id;
     if (!fromUserId) return;
     setRefreshing(true);
@@ -443,6 +464,7 @@ export default function Matches() {
       const created = await pb.collection("connection_requests").create({
         from_user: fromUserId,
         to_user: toUserId,
+        ...(message?.trim() && { message: message.trim() }),
       });
       mutate((prev) => {
         if (!prev) {
@@ -525,6 +547,82 @@ export default function Matches() {
     return (conns as { from_user: string; to_user: string }[]).some(
       (c) => c.from_user === me && c.to_user === listingUserId
     );
+  }
+
+  const [interestModalTarget, setInterestModalTarget] = createSignal<{ userId: string; userName?: string } | undefined>();
+  const [interestModalMessage, setInterestModalMessage] = createSignal("");
+
+  function openInterestModal(userId: string, userName?: string) {
+    setInterestModalTarget({ userId, userName });
+    setInterestModalMessage("");
+  }
+
+  function closeInterestModal() {
+    setInterestModalTarget(undefined);
+    setInterestModalMessage("");
+  }
+
+  async function submitInterestModal() {
+    const target = interestModalTarget();
+    if (!target) return;
+    await handleInterested(target.userId, interestModalMessage().trim() || undefined);
+    closeInterestModal();
+  }
+
+  const [respondModalTarget, setRespondModalTarget] = createSignal<{ requestId: string; fromUserId: string; fromUserName?: string } | undefined>();
+  const [respondModalMessage, setRespondModalMessage] = createSignal("");
+
+  function openRespondModal(conn: Conn, fromUserName?: string) {
+    if (!conn.id) return;
+    setRespondModalTarget({ requestId: conn.id, fromUserId: conn.from_user, fromUserName });
+    setRespondModalMessage("");
+  }
+
+  function closeRespondModal() {
+    setRespondModalTarget(undefined);
+    setRespondModalMessage("");
+  }
+
+  async function handleAcceptWithReply() {
+    const target = respondModalTarget();
+    if (!target) return;
+    setRefreshing(true);
+    try {
+      const created = await pb.collection("connection_requests").create({
+        from_user: pb.authStore.model!.id,
+        to_user: target.fromUserId,
+        ...(respondModalMessage().trim() && { message: respondModalMessage().trim() }),
+      });
+      mutate((prev) => {
+        if (!prev) return prev;
+        return { ...prev, connections: [...prev.connections, created] };
+      });
+      closeRespondModal();
+    } catch (e) {
+      console.error("[matches] handleAcceptWithReply error", e);
+      refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function handleRejectRequest() {
+    const target = respondModalTarget();
+    if (!target) return;
+    setRefreshing(true);
+    try {
+      await pb.collection("connection_requests").delete(target.requestId);
+      mutate((prev) => {
+        if (!prev) return prev;
+        return { ...prev, connections: prev.connections.filter((c: { id?: string }) => c.id !== target.requestId) };
+      });
+      closeRespondModal();
+    } catch (e) {
+      console.error("[matches] handleRejectRequest error", e);
+      refetch();
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function handleSelect(userId: string) {
@@ -794,9 +892,10 @@ export default function Matches() {
               <MatchCards
                 listings={filteredListings()}
                 baseUrl={baseUrl}
-                getConnections={() => (data()?.connections ?? []) as { from_user: string; to_user: string }[]}
+                getConnections={() => (data()?.connections ?? []) as Conn[]}
                 refreshing={refreshing}
-                onInterested={handleInterested}
+                onInterestedClick={openInterestModal}
+                onRespondClick={openRespondModal}
                 onWithdraw={handleWithdraw}
                 onUnmatch={handleUnmatch}
                 selectedUserId={selectedUserId()}
@@ -814,6 +913,80 @@ export default function Matches() {
           </div>
         </Show>
       </div>
+      <Show when={interestModalTarget()}>
+        {(target) => (
+          <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="interest-modal-title" onClick={closeInterestModal}>
+            <div class="modal" onClick={(e) => e.stopPropagation()}>
+              <h2 id="interest-modal-title" style="margin: 0 0 1rem;">Skicka intresseförfrågan</h2>
+              <p style="color: var(--color-text-muted); margin: 0 0 1rem; font-size: 0.95rem;">
+                {target().userName ? `Skriv ett meddelande till ${target().userName} (valfritt):` : "Skriv ett meddelande (valfritt):"}
+              </p>
+              <div class="form-group">
+                <label for="interest-message">Meddelande</label>
+                <textarea
+                  id="interest-message"
+                  placeholder="T.ex. Hej! Jag är intresserad av att byta hundpassning..."
+                  value={interestModalMessage()}
+                  onInput={(e) => setInterestModalMessage(e.currentTarget.value)}
+                  rows={4}
+                  maxLength={500}
+                  style="resize: vertical;"
+                />
+              </div>
+              <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onClick={closeInterestModal}>
+                  Avbryt
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  disabled={refreshing()}
+                  onClick={() => submitInterestModal()}
+                >
+                  Skicka
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Show>
+      <Show when={respondModalTarget()}>
+        {(target) => (
+          <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="respond-modal-title" onClick={closeRespondModal}>
+            <div class="modal" onClick={(e) => e.stopPropagation()}>
+              <h2 id="respond-modal-title" style="margin: 0 0 1rem;">Svara på förfrågan</h2>
+              <p style="color: var(--color-text-muted); margin: 0 0 1rem; font-size: 0.95rem;">
+                {target().fromUserName ? `Skriv ett svar till ${target().fromUserName} (valfritt):` : "Skriv ett svar (valfritt):"}
+              </p>
+              <div class="form-group">
+                <label for="respond-message">Meddelande</label>
+                <textarea
+                  id="respond-message"
+                  placeholder="T.ex. Hej! Jag är också intresserad av att byta hundpassning..."
+                  value={respondModalMessage()}
+                  onInput={(e) => setRespondModalMessage(e.currentTarget.value)}
+                  rows={4}
+                  maxLength={500}
+                  style="resize: vertical;"
+                />
+              </div>
+              <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" disabled={refreshing()} onClick={handleRejectRequest}>
+                  Avvisa
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  disabled={refreshing()}
+                  onClick={() => handleAcceptWithReply()}
+                >
+                  Acceptera
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Show>
     </AppShell>
   );
 }

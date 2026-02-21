@@ -1,5 +1,5 @@
 import { A, useNavigate } from "@solidjs/router";
-import { createSignal, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { getOnboardingUserType, isSitterOnly } from "~/lib/onboarding";
 import { geocodeAddress } from "~/lib/geocode";
@@ -17,7 +17,19 @@ export default function OnboardingProfile() {
   const [bio, setBio] = createSignal("");
   const [breedsOwnedBefore, setBreedsOwnedBefore] = createSignal("");
   const [avatarFile, setAvatarFile] = createSignal<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = createSignal<string | undefined>();
   const [loading, setLoading] = createSignal(false);
+
+  createEffect(() => {
+    const file = avatarFile();
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setAvatarPreviewUrl(url);
+      onCleanup(() => URL.revokeObjectURL(url));
+    } else {
+      setAvatarPreviewUrl(undefined);
+    }
+  });
   const [error, setError] = createSignal("");
 
   onMount(() => {
@@ -62,11 +74,11 @@ export default function OnboardingProfile() {
 
       let addr = address();
       if (!addr.latitude || !addr.longitude) {
-        const streetInput = (e.target as HTMLFormElement).querySelector<HTMLInputElement>("#street");
-        const cityInput = (e.target as HTMLFormElement).querySelector<HTMLInputElement>("#city");
-        const street = streetInput?.value?.trim();
-        const city = cityInput?.value?.trim();
-        const raw = street && city ? `${street}, ${city}, Sverige` : street || city;
+        const form = e.target as HTMLFormElement;
+        const street = form.querySelector<HTMLInputElement>("#address-line1")?.value?.trim();
+        const postalCode = form.querySelector<HTMLInputElement>("#postal-code")?.value?.trim();
+        const city = form.querySelector<HTMLInputElement>("#address-level2")?.value?.trim();
+        const raw = [street, postalCode, city].filter(Boolean).join(", ");
         if (raw) {
           const geocoded = await geocodeAddress(raw, city || undefined);
           if (geocoded) {
@@ -83,7 +95,7 @@ export default function OnboardingProfile() {
         }
       }
       if (!addr.latitude || !addr.longitude) {
-        setError("Välj stad och adress från förslagen.");
+        setError("Ange en giltig adress.");
         setLoading(false);
         return;
       }
@@ -155,10 +167,11 @@ export default function OnboardingProfile() {
             neighborhood={address().neighborhood}
             id={pb.authStore.model?.id}
             avatar={avatarFile() ? undefined : pb.authStore.model?.avatar}
+            src={avatarPreviewUrl()}
             baseUrl={import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}
           />
         </div>
-        <form onSubmit={handleSubmit} autocomplete="off">
+        <form onSubmit={handleSubmit}>
           <ImageCaptureInput
             id="avatar"
             label="Profilbild (valfritt)"
@@ -178,7 +191,7 @@ export default function OnboardingProfile() {
           </p>
           <div class="form-group">
             <label for="name">Namn *</label>
-            <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required placeholder="Ditt namn" />
+            <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required placeholder="Ditt namn" autocomplete="name" />
           </div>
           <SwedishAddressInput value={address()} onSelect={setAddress} />
           <div class="form-group">
@@ -186,12 +199,12 @@ export default function OnboardingProfile() {
             <textarea id="bio" value={bio()} onInput={(e) => setBio(e.currentTarget.value)} placeholder="Berätta lite om dig och din erfarenhet med hundar" rows={3} />
           </div>
           <div class="form-group">
-            <label for="breeds_owned_before">Vilka hundraser har du tidigare ägt?</label>
+            <label for="breeds_owned_before">Vilka hundraser har du tidigare haft erfarenhet av?</label>
             <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />
           </div>
           <div class="form-group">
             <label for="phone">Telefon *</label>
-            <input id="phone" type="tel" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} required placeholder="070-123 45 67" />
+            <input id="phone" type="tel" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} required placeholder="070-123 45 67" autocomplete="tel" />
           </div>
           {error() && <p class="form-error" role="alert">{error()}</p>}
           <button type="submit" class="btn" disabled={loading()}>

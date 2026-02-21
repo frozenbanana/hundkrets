@@ -94,7 +94,9 @@ onRecordAfterCreateSuccess((e) => {
   } else {
     // Incoming request - notify the recipient (to_user)
     if (toEmail) {
-      var html = "<p><strong>" + fromName + "</strong> är intresserad av dig!</p><p>Logga in för att se dem i matchningar och svara.</p><p><a href=\"" + matchesUrl() + "\">Öppna matchningar</a></p>";
+      var msgText = conn.get("message");
+      var msgHtml = (msgText && String(msgText).trim()) ? "<p style=\"margin: 1rem 0; padding: 0.75rem; background: #f5f5f5; border-radius: 8px; font-style: italic;\">\"" + String(msgText).trim().replace(/</g, "&lt;").replace(/>/g, "&gt;") + "\"</p>" : "";
+      var html = "<p><strong>" + fromName + "</strong> är intresserad av dig!</p>" + msgHtml + "<p>Logga in för att se dem i matchningar och svara.</p><p><a href=\"" + matchesUrl() + "\">Öppna matchningar</a></p>";
       var msg = new MailerMessage({
         from: from,
         to: [{ address: toEmail }],

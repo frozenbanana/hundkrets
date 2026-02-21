@@ -13,9 +13,15 @@ interface UserLocation {
 /** Demo markers when no users—Swedish cities */
 const DEMO_MARKERS: UserLocation[] = [
   { id: "demo-1", latitude: 55.605, longitude: 13.0038, area: "Malmö" },
-  { id: "demo-2", latitude: 59.3293, longitude: 18.0686, area: "Stockholm" },
-  { id: "demo-3", latitude: 57.7089, longitude: 11.9746, area: "Göteborg" },
-  { id: "demo-4", latitude: 55.6761, longitude: 12.5683, area: "Köpenhamn" },
+  { id: "demo-2", latitude: 55.606, longitude: 13.0048, area: "Malmö" },
+  { id: "demo-3", latitude: 55.604, longitude: 13.0028, area: "Malmö" },
+  { id: "demo-4", latitude: 55.607, longitude: 13.006, area: "Malmö" },
+  { id: "demo-5", latitude: 55.603, longitude: 13.001, area: "Malmö" },
+  { id: "demo-6", latitude: 55.608, longitude: 13.008, area: "Malmö" },
+  { id: "demo-7", latitude: 55.609, longitude: 13.009, area: "Malmö" },
+  { id: "demo-8", latitude: 55.602, longitude: 13.000, area: "Malmö" },
+  { id: "demo-9", latitude: 55.610, longitude: 13.010, area: "Malmö" },
+  { id: "demo-10", latitude: 55.611, longitude: 13.011, area: "Malmö" },
 ];
 
 interface Props {
@@ -32,7 +38,10 @@ export function LandingMap(props: Props) {
     fetch("/api/user-locations")
       .then((r) => r.json())
       .then((data: UserLocation[]) => setUsers(data.length > 0 ? data : DEMO_MARKERS))
-      .catch(() => setUsers(DEMO_MARKERS));
+      .catch(() => {
+        setUsers(DEMO_MARKERS);
+        console.log("[landing-map] Failed to fetch user locations, using demo markers");
+      });
   });
 
   createEffect(() => {

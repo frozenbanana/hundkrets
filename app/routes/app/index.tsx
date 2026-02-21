@@ -8,6 +8,7 @@ interface ConnectionRequest {
   id: string;
   from_user: string;
   to_user: string;
+  message?: string;
   expand?: {
     from_user?: { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string };
     to_user?: { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string };
@@ -161,29 +162,64 @@ export default function AppHome() {
 
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
   const [actionLoading, setActionLoading] = createSignal(false);
+  const [respondModalTarget, setRespondModalTarget] = createSignal<{
+    requestId: string;
+    fromUserId: string;
+    fromUserName?: string;
+  } | undefined>();
+  const [respondModalMessage, setRespondModalMessage] = createSignal("");
 
-  async function handleRejectIncoming(connId: string) {
+  function openRespondModal(req: ConnectionRequest) {
+    setRespondModalTarget({
+      requestId: req.id,
+      fromUserId: req.from_user,
+      fromUserName: req.expand?.from_user?.name,
+    });
+    setRespondModalMessage("");
+  }
+
+  function closeRespondModal() {
+    setRespondModalTarget(undefined);
+    setRespondModalMessage("");
+  }
+
+  async function handleAcceptWithReply() {
+    const target = respondModalTarget();
+    if (!target) return;
     setActionLoading(true);
     try {
-      await pb.collection("connection_requests").delete(connId);
+      await pb.collection("connection_requests").create({
+        from_user: me()!,
+        to_user: target.fromUserId,
+        ...(respondModalMessage().trim() && { message: respondModalMessage().trim() }),
+      });
+      closeRespondModal();
+      refetchConnections();
+    } catch (err) {
+      console.error("Accept failed:", err);
       refetchConnections();
     } finally {
       setActionLoading(false);
     }
   }
 
-  async function handleAcceptIncoming(fromUserId: string) {
-    const myId = me();
-    if (!myId) return;
+  async function handleRejectRequest() {
+    const target = respondModalTarget();
+    if (!target) return;
     setActionLoading(true);
     try {
-      await pb.collection("connection_requests").create({
-        from_user: myId,
-        to_user: fromUserId,
-      });
+      await pb.collection("connection_requests").delete(target.requestId);
+      closeRespondModal();
       refetchConnections();
-    } catch (err) {
-      console.error("Accept failed:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleRejectIncoming(connId: string) {
+    setActionLoading(true);
+    try {
+      await pb.collection("connection_requests").delete(connId);
       refetchConnections();
     } finally {
       setActionLoading(false);
@@ -325,6 +361,11 @@ export default function AppHome() {
                             {from?.bio && <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">{from.bio}</p>}
                             {from?.breeds_owned_before && <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-text-muted);">Tidigare raser: {from.breeds_owned_before}</p>}
                             {dogs.length > 0 && <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">Hundar: {dogs.map((d) => d.name || "Hund").join(", ")}</p>}
+                            {req.message && (
+                              <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--color-fur-light); border-radius: var(--radius-dog); border-left: 4px solid var(--color-paw);">
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--color-text); font-style: italic;">"{req.message}"</p>
+                              </div>
+                            )}
                             <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-paw);">Vill koppla ihop — klicka för att se på kartan →</p>
                           </div>
                         </A>
@@ -334,18 +375,9 @@ export default function AppHome() {
                             class="btn"
                             style="font-size: 0.85rem;"
                             disabled={actionLoading()}
-                            onClick={() => handleAcceptIncoming(req.from_user)}
+                            onClick={() => openRespondModal(req)}
                           >
-                            Acceptera
-                          </button>
-                          <button
-                            type="button"
-                            class="btn btn-secondary"
-                            style="font-size: 0.85rem;"
-                            disabled={actionLoading()}
-                            onClick={() => handleRejectIncoming(req.id)}
-                          >
-                            Avvisa
+                            Svara
                           </button>
                         </div>
                       </li>
@@ -413,6 +445,43 @@ export default function AppHome() {
           </div>
         </Show>
       </div>
+      <Show when={respondModalTarget()}>
+        {(target) => (
+          <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="respond-modal-title" onClick={closeRespondModal}>
+            <div class="modal" onClick={(e) => e.stopPropagation()}>
+              <h2 id="respond-modal-title" style="margin: 0 0 1rem;">Svara på förfrågan</h2>
+              <p style="color: var(--color-text-muted); margin: 0 0 1rem; font-size: 0.95rem;">
+                {target().fromUserName ? `Skriv ett svar till ${target().fromUserName} (valfritt):` : "Skriv ett svar (valfritt):"}
+              </p>
+              <div class="form-group">
+                <label for="respond-message">Meddelande</label>
+                <textarea
+                  id="respond-message"
+                  placeholder="T.ex. Hej! Jag är också intresserad av att byta hundpassning..."
+                  value={respondModalMessage()}
+                  onInput={(e) => setRespondModalMessage(e.currentTarget.value)}
+                  rows={4}
+                  maxLength={500}
+                  style="resize: vertical;"
+                />
+              </div>
+              <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" disabled={actionLoading()} onClick={handleRejectRequest}>
+                  Avvisa
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  disabled={actionLoading()}
+                  onClick={() => handleAcceptWithReply()}
+                >
+                  Acceptera
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Show>
     </AppShell>
   );
 }

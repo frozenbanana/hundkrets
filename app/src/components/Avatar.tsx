@@ -7,6 +7,8 @@ interface AvatarProps {
   id?: string;
   /** Avatar filename from PocketBase */
   avatar?: string;
+  /** Override src (e.g. blob URL for new file preview) – takes precedence over avatar */
+  src?: string;
   baseUrl?: string;
   size?: "sm" | "md";
   class?: string;
@@ -19,9 +21,10 @@ export function Avatar(props: AvatarProps) {
   const placeholderUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForInitials)}&size=${size}&background=d4a574&color=ffffff`;
 
   const src =
-    props.avatar && props.id && props.baseUrl
+    props.src ??
+    (props.avatar && props.id && props.baseUrl
       ? `${props.baseUrl}/api/files/users/${props.id}/${props.avatar}`
-      : placeholderUrl;
+      : placeholderUrl);
 
   return (
     <img
