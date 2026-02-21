@@ -1,6 +1,6 @@
 import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { getRequestsSeenAt, markRequestsSeen, requestsSeenVersion } from "~/lib/requestsSeen";
-import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { findListings } from "~/lib/matching";
 import { approximateCoords, pointInBounds, type MapBounds } from "~/lib/geocode";
@@ -41,8 +41,163 @@ const temperamentLabel: Record<string, string> = { friendly: "Vänlig", cautious
 
 type Conn = { id?: string; from_user: string; to_user: string; message?: string };
 
+type ListingItem = ReturnType<typeof findListings>[number];
+type DogRecord = {
+  id?: string;
+  name?: string;
+  breed?: string;
+  size?: string;
+  gender?: string;
+  age?: number;
+  image?: string;
+  notes?: string;
+  temperament_new_people?: string;
+  temperament_new_dogs_female?: string;
+  temperament_new_dogs_male?: string;
+};
+
+function getFirstDog(listing: ListingItem): DogRecord | undefined {
+  const firstNeed = listing.needs[0];
+  if (firstNeed) {
+    const dog = listing.dogs.find((d) => d.id === firstNeed.dog);
+    return dog as DogRecord | undefined;
+  }
+  return listing.dogs[0] as DogRecord | undefined;
+}
+
+function isPassOnly(listing: ListingItem): boolean {
+  return listing.dogs.length === 0 && listing.needs.length === 0 && listing.capacities.length > 0;
+}
+
+function canPassStr(s: string | string[] | undefined): string {
+  if (!s) return "—";
+  const arr = Array.isArray(s) ? s : [s];
+  const hasSmall = arr.includes("small");
+  const hasMedium = arr.includes("medium");
+  const hasLarge = arr.includes("large");
+  if (arr.includes("any") || (hasSmall && hasMedium && hasLarge)) return "alla storlekar";
+  if (hasSmall && !hasMedium && !hasLarge) return "små hundar";
+  if (hasSmall && hasMedium && !hasLarge) return "upp till mellanstora hundar";
+  if (hasSmall && hasMedium && hasLarge) return "upp till stora hundar";
+  if (hasMedium && !hasSmall && !hasLarge) return "bara mellanstora hundar";
+  if (hasMedium && hasLarge && !hasSmall) return "upp till stora hundar";
+  if (hasLarge && !hasSmall && !hasMedium) return "bara stora hundar";
+  return arr.map((x) => sizeLabel[x] ?? x).join(", ");
+}
+
 function MatchCard(props: {
-  listing: ReturnType<typeof findListings>[number];
+  listing: ListingItem;
+  baseUrl: string;
+  getConnections: () => Conn[];
+  dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
+  sizesStr: (s: string | string[] | undefined) => string;
+  onOpenDetail: (userId: string) => void;
+}) {
+  const { listing, baseUrl, getConnections, dateStr, sizesStr, onOpenDetail } = props;
+  const conns = () => getConnections();
+  const mutual = () => {
+    const me = pb.authStore.model?.id;
+    if (!me) return false;
+    const c = conns();
+    return c.some((x) => x.from_user === me && x.to_user === listing.user.id) && c.some((x) => x.from_user === listing.user.id && x.to_user === me);
+  };
+  const firstDog = () => getFirstDog(listing);
+  const passOnly = () => isPassOnly(listing);
+  const firstNeed = () => listing.needs[0];
+  const firstCapacity = () => listing.capacities[0];
+  const timesStr = () => {
+    const need = firstNeed();
+    const cap = firstCapacity();
+    if (need) return dateStr(need);
+    if (cap) return dateStr(cap);
+    return null;
+  };
+  const canPass = () =>
+    firstCapacity() ? canPassStr(firstCapacity()!.dog_sizes) : null;
+
+  return (
+    <div
+      class="card match-card match-card-compact"
+      data-listing-id={listing.user.id}
+      onClick={() => onOpenDetail(listing.user.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && onOpenDetail(listing.user.id)}
+    >
+      {mutual() && <span class="match-card-badge">matchad</span>}
+      <div class="match-card-body">
+        <div class="match-card-info">
+          <div class="match-card-header">
+            <Avatar
+              name={listing.user.name}
+              city={listing.user.city}
+              neighborhood={listing.user.neighborhood}
+              area={listing.user.area}
+              id={listing.user.id}
+              avatar={listing.user.avatar}
+              baseUrl={baseUrl}
+              class="match-card-avatar"
+            />
+            <span class="match-card-username">{listing.user.name || "Okänd"}</span>
+          </div>
+          <div class="match-card-info-text">
+            <Show
+              when={!passOnly()}
+              fallback={<p class="match-card-main">Vill endast passa</p>}
+            >
+              <p class="match-card-main">
+                Behöver passning av <span class="match-card-dog-name">{firstDog()?.name ?? "hund"}</span>
+              </p>
+            </Show>
+            {timesStr() && <p class="match-card-line">Tider: {timesStr()}</p>}
+            {canPass() && <p class="match-card-line">Kan passa: {canPass()}</p>}
+          </div>
+          {"distanceKm" in listing && typeof listing.distanceKm === "number" && (
+            <div class="match-card-footer">Distans från dig: ~{Math.round(listing.distanceKm)} km</div>
+          )}
+        </div>
+        <div class="match-card-image">
+        <Show
+          when={!passOnly()}
+          fallback={
+            <div class="match-card-pass-only">
+              <span class="match-card-pass-only-icon" aria-hidden="true">🐾</span>
+              <span>Vill endast passa</span>
+            </div>
+          }
+        >
+          <Show
+            when={firstDog()}
+            fallback={
+              <Avatar
+                name={listing.user.name}
+                city={listing.user.city}
+                neighborhood={listing.user.neighborhood}
+                area={listing.user.area}
+                id={listing.user.id}
+                avatar={listing.user.avatar}
+                baseUrl={baseUrl}
+                class="match-card-img"
+              />
+            }
+          >
+            {(dog) => (
+              <DogImage
+                dog={dog()}
+                baseUrl={baseUrl}
+                class="match-card-img"
+              />
+            )}
+          </Show>
+        </Show>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MatchDetailModal(props: {
+  listing: ListingItem;
   baseUrl: string;
   getConnections: () => Conn[];
   refreshing: () => boolean;
@@ -50,202 +205,150 @@ function MatchCard(props: {
   onRespondClick?: (conn: Conn, fromUserName?: string) => void;
   onWithdraw?: (userId: string) => void;
   onUnmatch?: (userId: string) => void;
-  onSelect?: (userId: string) => void;
-  isSelected?: boolean;
+  onClose: () => void;
   dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
 }) {
-  const { listing, baseUrl, getConnections, refreshing, onInterestedClick, onRespondClick, onWithdraw, onUnmatch, onSelect, isSelected, dateStr, sizesStr } = props;
+  const { listing, baseUrl, getConnections, refreshing, onInterestedClick, onRespondClick, onWithdraw, onUnmatch, onClose, dateStr, sizesStr } = props;
   const conns = () => getConnections();
   const connFromThem = () => conns().find((c) => c.from_user === listing.user.id && c.to_user === pb.authStore.model?.id);
   const mutual = () => {
     const me = pb.authStore.model?.id;
     if (!me) return false;
     const c = conns();
-    const iReq = c.some((x) => x.from_user === me && x.to_user === listing.user.id);
-    const theyReq = c.some((x) => x.from_user === listing.user.id && x.to_user === me);
-    return iReq && theyReq;
+    return c.some((x) => x.from_user === me && x.to_user === listing.user.id) && c.some((x) => x.from_user === listing.user.id && x.to_user === me);
   };
   const requested = () => {
     const me = pb.authStore.model?.id;
     if (!me) return false;
     return conns().some((x) => x.from_user === me && x.to_user === listing.user.id);
   };
-  return (
-    <div
-      class="card match-card"
-      classList={{ "match-card-selected": isSelected }}
-      data-listing-id={listing.user.id}
-      onClick={() => onSelect?.(listing.user.id)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && onSelect?.(listing.user.id)}
-    >
-      {mutual() && (
-        <span class="match-card-badge">matchad</span>
-      )}
-      <div class="dog-card" style="margin-bottom: 1rem;">
-        <Avatar
-          name={listing.user.name}
-          city={listing.user.city}
-          neighborhood={listing.user.neighborhood}
-          area={listing.user.area}
-          id={listing.user.id}
-          avatar={listing.user.avatar}
-          baseUrl={baseUrl}
-          class="dog-card-img"
-        />
-        <div style="flex: 1;">
-          <h3 style="margin: 0;">{listing.user.name || "Okänd"}</h3>
-          {listing.dogs.length === 0 && listing.needs.length === 0 && listing.capacities.length > 0 && (
-            <p style="color: var(--color-paw); font-size: 0.9rem; font-weight: 600; margin: 0.25rem 0;">
-              Vill bara passa hundar – har inte egen hund
-            </p>
-          )}
-          {listing.user.area && (
-            <p style="color: var(--color-text-muted); margin: 0.25rem 0;">{listing.user.area}</p>
-          )}
-          {listing.user.bio && (
-            <p style="color: var(--color-text-muted); margin: 0.25rem 0; font-size: 0.9rem;">{listing.user.bio}</p>
-          )}
-          {listing.user.breeds_owned_before && (
-            <p style="color: var(--color-text-muted); margin: 0.25rem 0; font-size: 0.85rem;">Tidigare raser: {listing.user.breeds_owned_before}</p>
-          )}
-          {connFromThem()?.message && (
-            <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--color-fur-light); border-radius: var(--radius-dog); border-left: 4px solid var(--color-paw);">
-              <p style="margin: 0; font-size: 0.9rem; color: var(--color-text); font-style: italic;">"{connFromThem()!.message}"</p>
-            </div>
-          )}
-          {"distanceKm" in listing && typeof listing.distanceKm === "number" && (
-            <p style="color: var(--color-text-muted); margin: 0.25rem 0; font-size: 0.875rem;">
-              ~{Math.round(listing.distanceKm)} km bort
-            </p>
-          )}
-          {listing.capacities.length > 0 && (
-            <p style="font-size: 0.9rem; margin: 0.5rem 0 0; color: var(--color-text);">
-              <strong>Hundpassarförmåga:</strong>{" "}
-              {listing.capacities.map((c) => `${dateStr(c)} • ${sizesStr(c.dog_sizes)} • max ${c.max_dogs}`).join(" · ")}
-            </p>
-          )}
-          {mutual() && listing.user.phone && (
-            <p style="margin-top: 0.5rem;">
-              <strong>Telefon:</strong> <a href={`tel:${listing.user.phone}`}>{listing.user.phone}</a>
-            </p>
-          )}
-          {mutual() && listing.user.address_private && (
-            <p style="margin-top: 0.5rem;">
-              <strong>Adress:</strong> {listing.user.address_private}
-            </p>
-          )}
-        </div>
-      </div>
 
-      {listing.needs.length > 0 && (
-        <div style="margin-bottom: 0.75rem;">
-          <strong>Behöver hundpassning:</strong>
-          <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
-            <For each={listing.needs}>
-              {(n) => {
-                const dog = listing.dogs.find((d) => d.id === n.dog) as {
-                  id?: string;
-                  name?: string;
-                  breed?: string;
-                  size?: string;
-                  gender?: string;
-                  age?: number;
-                  image?: string;
-                  notes?: string;
-                  temperament_new_people?: string;
-                  temperament_new_dogs_female?: string;
-                  temperament_new_dogs_male?: string;
-                } | undefined;
-                const d = dog ?? {};
-                return (
-                  <div class="need-card">
-                    <div class="need-card-image">
-                      <DogImage
-                        dog={d}
-                        baseUrl={baseUrl}
-                        class="dog-card-img"
-                      />
-                    </div>
-                    <div class="need-card-content">
-                      <strong>{d.name ?? "Hund"}</strong>
-                      {d.size && (
-                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Storlek:</span> {sizeLabel[d.size] ?? d.size}</p>
-                      )}
-                      {d.breed && (
-                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Ras:</span> {d.breed}</p>
-                      )}
-                      {d.gender && (
-                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Kön:</span> {genderLabel[d.gender] ?? d.gender}</p>
-                      )}
-                      {d.age != null && (
-                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Ålder:</span> {d.age} år</p>
-                      )}
-                      {(d.temperament_new_people || d.temperament_new_dogs_female || d.temperament_new_dogs_male) && (
-                        <p style="margin: 0.25rem 0; font-size: 0.875rem; color: var(--color-text-muted);">
-                          <span style="font-weight: 600;">Temperament:</span><br /> Nya människor - {temperamentLabel[d.temperament_new_people ?? ""] || d.temperament_new_people || "—"} <br /> Nya hundar (Hona) - {temperamentLabel[d.temperament_new_dogs_female ?? ""] || d.temperament_new_dogs_female || "—"} <br /> Nya hundar (Hane) - {temperamentLabel[d.temperament_new_dogs_male ?? ""] || d.temperament_new_dogs_male || "—"}
-                        </p>
-                      )}
-                      {d.notes && (
-                        <p style="margin: 0.25rem 0; font-size: 0.875rem;"><span style="font-weight: 600;">Anteckningar:</span> <br /> {d.notes}</p>
-                      )}
-                      <p style="margin: 0.5rem 0 0; font-size: 0.875rem;"><span style="font-weight: 600;">Datum:</span> <br /> {dateStr(n)}</p>
-                    </div>
-                  </div>
-                );
-              }}
-            </For>
+  const handleBackdropClick = (e: MouseEvent) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") onClose();
+  };
+
+  onMount(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  });
+
+  return (
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title" onClick={handleBackdropClick}>
+      <div class="modal modal-detail" onClick={(e) => e.stopPropagation()}>
+        <div class="modal-detail-header">
+          <button type="button" class="match-detail-close" onClick={onClose} aria-label="Stäng">×</button>
+        </div>
+        <section class="modal-detail-scroll">
+        <div class="modal-detail-user-card">
+          <Avatar
+            name={listing.user.name}
+            city={listing.user.city}
+            neighborhood={listing.user.neighborhood}
+            area={listing.user.area}
+            id={listing.user.id}
+            avatar={listing.user.avatar}
+            baseUrl={baseUrl}
+            class="modal-detail-avatar"
+          />
+          <div class="modal-detail-user-info">
+            <h2 id="detail-modal-title" class="modal-detail-user-name">{listing.user.name || "Okänd"}</h2>
+            {listing.dogs.length === 0 && listing.needs.length === 0 && listing.capacities.length > 0 && (
+              <p class="modal-detail-user-line" style="color: var(--color-paw); font-weight: 600;">
+                Vill bara passa hundar – har inte egen hund
+              </p>
+            )}
+            {listing.user.area && <p class="modal-detail-user-line">{listing.user.area}</p>}
+            {listing.user.bio && <p class="modal-detail-user-line">{listing.user.bio}</p>}
+            {listing.user.breeds_owned_before && (
+              <p class="modal-detail-user-line">Tidigare raser: {listing.user.breeds_owned_before}</p>
+            )}
+            {connFromThem()?.message && (
+              <div class="modal-detail-message">
+                <p style="margin: 0; font-size: 0.9rem; color: var(--color-text); font-style: italic;">"{connFromThem()!.message}"</p>
+              </div>
+            )}
+            {"distanceKm" in listing && typeof listing.distanceKm === "number" && (
+              <p class="modal-detail-user-line">~{Math.round(listing.distanceKm)} km bort</p>
+            )}
+            {listing.capacities.length > 0 && (
+              <p class="modal-detail-user-line" style="margin-top: 0.35rem;">
+                <strong>Hundpassarförmåga:</strong>{" "}
+                {listing.capacities.map((c) => `${dateStr(c)} • ${sizesStr(c.dog_sizes)} • max ${c.max_dogs}`).join(" · ")}
+              </p>
+            )}
+            {mutual() && listing.user.phone && (
+              <p class="modal-detail-user-line"><strong>Telefon:</strong> <a href={`tel:${listing.user.phone}`}>{listing.user.phone}</a></p>
+            )}
+            {mutual() && listing.user.address_private && (
+              <p class="modal-detail-user-line"><strong>Adress:</strong> {listing.user.address_private}</p>
+            )}
           </div>
         </div>
-      )}
-      <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;" onClick={(e) => e.stopPropagation()}>
-        <Show when={!mutual()}>
-          {requested() ? (
-            <>
-              <span class="btn btn-secondary" style="cursor: default;">
-                Intresse skickat
-              </span>
-              <button
-                type="button"
-                class="btn btn-secondary"
-                disabled={refreshing()}
-                onClick={() => onWithdraw?.(listing.user.id)}
-              >
-                Ångra
-              </button>
-            </>
-          ) : connFromThem() && onRespondClick ? (
-            <button
-              type="button"
-              class="btn"
-              disabled={refreshing()}
-              onClick={() => onRespondClick(connFromThem()!, listing.user.name)}
-            >
-              Svara
-            </button>
-          ) : (
-            <button
-              type="button"
-              class="btn"
-              disabled={refreshing()}
-              onClick={() => onInterestedClick(listing.user.id, listing.user.name)}
-            >
-              Jag är intresserad
-            </button>
-          )}
-        </Show>
-        <Show when={mutual() && onUnmatch}>
-          <button
-            type="button"
-            class="btn btn-secondary"
-            disabled={refreshing()}
-            onClick={() => onUnmatch?.(listing.user.id)}
-          >
-            Avmatcha
-          </button>
-        </Show>
+
+        {listing.needs.length > 0 && (
+          <div style="margin-bottom: 0.5rem;">
+            <strong>Behöver hundpassning:</strong>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.35rem;">
+              <For each={listing.needs}>
+                {(n) => {
+                  const dog = listing.dogs.find((d) => d.id === n.dog) as DogRecord | undefined;
+                  const d = dog ?? {};
+                  return (
+                    <div class="need-card">
+                      <div class="need-card-image">
+                        <DogImage dog={d} baseUrl={baseUrl} class="dog-card-img" />
+                      </div>
+                      <div class="need-card-content">
+                        <strong class="need-card-title">{d.name ?? "Hund"}</strong>
+                        <div class="need-card-columns">
+                          <div class="need-card-col">
+                            {d.size && <p class="need-card-line"><span class="need-card-label">Storlek:</span> {sizeLabel[d.size] ?? d.size}</p>}
+                            {d.breed && <p class="need-card-line"><span class="need-card-label">Ras:</span> {d.breed}</p>}
+                            {d.gender && <p class="need-card-line"><span class="need-card-label">Kön:</span> {genderLabel[d.gender] ?? d.gender}</p>}
+                            {d.age != null && <p class="need-card-line"><span class="need-card-label">Ålder:</span> {d.age} år</p>}
+                          </div>
+                          <div class="need-card-col">
+                            {(d.temperament_new_people || d.temperament_new_dogs_female || d.temperament_new_dogs_male) && (
+                              <p class="need-card-line">
+                                <span class="need-card-label">Temperament:</span><br />
+                                Nya människor: {temperamentLabel[d.temperament_new_people ?? ""] || d.temperament_new_people || "—"} · Nya hundar (Hona): {temperamentLabel[d.temperament_new_dogs_female ?? ""] || d.temperament_new_dogs_female || "—"} · Nya hundar (Hane): {temperamentLabel[d.temperament_new_dogs_male ?? ""] || d.temperament_new_dogs_male || "—"}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {d.notes && <p class="need-card-notes"><span class="need-card-label">Anteckningar:</span> {d.notes}</p>}
+                        <div class="need-card-footer"><span class="need-card-label">Datum:</span> {dateStr(n)}</div>
+                      </div>
+                    </div>
+                  );
+                }}
+              </For>
+            </div>
+          </div>
+        )}
+        </section>
+        <div class="modal-detail-footer">
+          <Show when={!mutual()}>
+            {requested() ? (
+              <>
+                <span class="btn btn-secondary" style="cursor: default;">Intresse skickat</span>
+                <button type="button" class="btn btn-secondary" disabled={refreshing()} onClick={() => onWithdraw?.(listing.user.id)}>Ångra</button>
+              </>
+            ) : connFromThem() && onRespondClick ? (
+              <button type="button" class="btn" disabled={refreshing()} onClick={() => onRespondClick(connFromThem()!, listing.user.name)}>Svara</button>
+            ) : (
+              <button type="button" class="btn" disabled={refreshing()} onClick={() => onInterestedClick(listing.user.id, listing.user.name)}>Jag är intresserad</button>
+            )}
+          </Show>
+          <Show when={mutual() && onUnmatch}>
+            <button type="button" class="btn btn-secondary" disabled={refreshing()} onClick={() => onUnmatch?.(listing.user.id)}>Avmatcha</button>
+          </Show>
+        </div>
       </div>
     </div>
   );
@@ -255,15 +358,9 @@ function MatchCards(props: {
   listings: ReturnType<typeof findListings>;
   baseUrl: string;
   getConnections: () => Conn[];
-  refreshing: () => boolean;
-  onInterestedClick: (userId: string, userName?: string) => void;
-  onRespondClick?: (conn: Conn, fromUserName?: string) => void;
-  onWithdraw?: (userId: string) => void;
-  onUnmatch?: (userId: string) => void;
-  selectedUserId?: string;
-  onSelect: (userId: string) => void;
   dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
+  onOpenDetail: (userId: string) => void;
 }) {
   return (
     <div class="match-cards-list">
@@ -273,15 +370,9 @@ function MatchCards(props: {
             listing={listing}
             baseUrl={props.baseUrl}
             getConnections={props.getConnections}
-            refreshing={props.refreshing}
-            onInterestedClick={props.onInterestedClick}
-            onRespondClick={props.onRespondClick}
-            onWithdraw={props.onWithdraw}
-            onUnmatch={props.onUnmatch}
-            onSelect={props.onSelect}
-            isSelected={props.selectedUserId === listing.user.id}
             dateStr={props.dateStr}
             sizesStr={props.sizesStr}
+            onOpenDetail={props.onOpenDetail}
           />
         )}
       </For>
@@ -361,6 +452,8 @@ export default function Matches() {
     if ((searchParams as { request?: string }).request === "true") markRequestsSeen();
   });
   const [mapBounds, setMapBounds] = createSignal<MapBounds | null>(null);
+  const [detailModalListingId, setDetailModalListingId] = createSignal<string | undefined>();
+  const [mobileViewMode, setMobileViewMode] = createSignal<"list" | "map">("list");
   let listContainerRef: HTMLDivElement | undefined;
 
   const [data, { refetch, mutate }] = createResource(
@@ -625,8 +718,13 @@ export default function Matches() {
     }
   }
 
-  function handleSelect(userId: string) {
-    setSelectedUserId((prev) => (prev === userId ? undefined : userId));
+  function handleOpenDetail(userId: string) {
+    setSelectedUserId(userId);
+    setDetailModalListingId(userId);
+  }
+
+  function handleCloseDetail() {
+    setDetailModalListingId(undefined);
   }
 
   function handleFilterChange(filter: MatchFilter) {
@@ -640,8 +738,9 @@ export default function Matches() {
 
   function handleMarkerClick(userId: string) {
     setSelectedUserId(userId);
+    setDetailModalListingId(userId);
     const idx = data()?.listings.findIndex((l) => l.user.id === userId);
-    if (idx !== undefined && idx >= 0 && listContainerRef) {
+    if (idx !== undefined && idx >= 0 && listContainerRef && mobileViewMode() === "list") {
       const card = listContainerRef.querySelector(`[data-listing-id="${userId}"]`);
       card?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
@@ -736,9 +835,11 @@ export default function Matches() {
 
   createEffect(() => {
     const selected = selectedUserId();
+    const detailId = detailModalListingId();
     const filtered = filteredListings();
     if (selected && !filtered.some((l) => l.user.id === selected)) {
       setSelectedUserId(undefined);
+      if (detailId === selected) setDetailModalListingId(undefined);
     }
   });
 
@@ -856,7 +957,31 @@ export default function Matches() {
         </Show>
         </div>
         <Show when={data()?.listings && data()!.listings.length > 0}>
-          <div class="matches-split">
+          <div class="matches-mobile-toggle" aria-hidden="true">
+            <button
+              type="button"
+              class="matches-view-toggle-btn"
+              classList={{ "matches-view-toggle-active": mobileViewMode() === "list" }}
+              onClick={() => setMobileViewMode("list")}
+            >
+              Lista
+            </button>
+            <button
+              type="button"
+              class="matches-view-toggle-btn"
+              classList={{ "matches-view-toggle-active": mobileViewMode() === "map" }}
+              onClick={() => setMobileViewMode("map")}
+            >
+              Karta
+            </button>
+          </div>
+          <div
+            class="matches-split"
+            classList={{
+              "matches-split-list-only": mobileViewMode() === "list",
+              "matches-split-map-only": mobileViewMode() === "map",
+            }}
+          >
             <div class="matches-map-panel">
               <MatchesMap
                 listings={matchFilteredListings()}
@@ -893,25 +1018,43 @@ export default function Matches() {
                 listings={filteredListings()}
                 baseUrl={baseUrl}
                 getConnections={() => (data()?.connections ?? []) as Conn[]}
-                refreshing={refreshing}
-                onInterestedClick={openInterestModal}
-                onRespondClick={openRespondModal}
-                onWithdraw={handleWithdraw}
-                onUnmatch={handleUnmatch}
-                selectedUserId={selectedUserId()}
-                onSelect={handleSelect}
                 dateStr={dateStr}
                 sizesStr={sizesStr}
+                onOpenDetail={handleOpenDetail}
               />
               </Show>
             </div>
           </div>
           <div class="container">
             <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 0.5rem;">
-              Zooma in för att filtrera. Klicka på ett kort eller en markör för att välja.
+              Zooma in för att filtrera. Klicka på ett kort eller en markör för att se detaljer.
             </p>
           </div>
         </Show>
+      <Show when={detailModalListingId()}>
+        {(userId) => {
+          const listing = () => filteredListings().find((l) => l.user.id === userId());
+          return (
+            <Show when={listing()}>
+              {(l) => (
+                <MatchDetailModal
+                  listing={l()!}
+                  baseUrl={baseUrl}
+                  getConnections={() => (data()?.connections ?? []) as Conn[]}
+                  refreshing={refreshing}
+                  onInterestedClick={openInterestModal}
+                  onRespondClick={openRespondModal}
+                  onWithdraw={handleWithdraw}
+                  onUnmatch={handleUnmatch}
+                  onClose={handleCloseDetail}
+                  dateStr={dateStr}
+                  sizesStr={sizesStr}
+                />
+              )}
+            </Show>
+          );
+        }}
+      </Show>
       </div>
       <Show when={interestModalTarget()}>
         {(target) => (
