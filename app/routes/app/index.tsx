@@ -1,4 +1,5 @@
 import { A } from "@solidjs/router";
+import { showToast } from "~/lib/toast";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { AppShell } from "~/components/AppShell";
@@ -195,6 +196,7 @@ export default function AppHome() {
       });
       closeRespondModal();
       refetchConnections();
+      showToast("Matchad! Ni kan nu kontakta varandra.");
     } catch (err) {
       console.error("Accept failed:", err);
       refetchConnections();
@@ -449,7 +451,10 @@ export default function AppHome() {
         {(target) => (
           <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="respond-modal-title" onClick={closeRespondModal}>
             <div class="modal" onClick={(e) => e.stopPropagation()}>
-              <h2 id="respond-modal-title" style="margin: 0 0 1rem;">Svara på förfrågan</h2>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <h2 id="respond-modal-title" style="margin: 0;">Svara på förfrågan</h2>
+                <button type="button" class="match-detail-close" onClick={closeRespondModal} aria-label="Stäng">×</button>
+              </div>
               <p style="color: var(--color-text-muted); margin: 0 0 1rem; font-size: 0.95rem;">
                 {target().fromUserName ? `Skriv ett svar till ${target().fromUserName} (valfritt):` : "Skriv ett svar (valfritt):"}
               </p>

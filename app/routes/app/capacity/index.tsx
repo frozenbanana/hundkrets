@@ -88,7 +88,10 @@ export default function CapacityList() {
           </div>
         </Show>
         <Show when={capacities() && capacities()!.length > 0}>
-          <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+          <div style="margin-bottom: 1rem;">
+            <A href="/app/capacity/new" class="btn">Lägg till kapacitet</A>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
             <For each={capacities()}>
               {(cap) => (
                 <div class="card">

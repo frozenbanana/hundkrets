@@ -1,6 +1,7 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createResource, createSignal, For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 
@@ -60,6 +61,7 @@ export default function NewWatchNeed() {
         data.end_date = endDate();
       }
       await pb.collection("watch_needs").create(data);
+      showToast("Behov tillagt");
       nav("/app/needs");
     } catch (err: unknown) {
       setError(parseApiError(err));

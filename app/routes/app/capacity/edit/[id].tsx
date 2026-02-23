@@ -1,6 +1,7 @@
 import { A, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 
@@ -79,6 +80,7 @@ export default function EditWatchCapacity() {
         data.end_date = endDate();
       }
       await pb.collection("watch_capacity").update(id()!, data);
+      showToast("Kapacitet sparad");
       nav("/app/capacity");
     } catch (err: unknown) {
       setError(parseApiError(err));

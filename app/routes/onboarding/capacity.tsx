@@ -1,4 +1,5 @@
 import { useNavigate } from "@solidjs/router";
+import { showToast } from "~/lib/toast";
 import { createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { isSitterOnly, clearOnboardingUserType } from "~/lib/onboarding";
@@ -71,6 +72,7 @@ export default function OnboardingCapacity() {
       }
       await pb.collection("watch_capacity").create(data);
       await setOnboardingComplete();
+      showToast("Klart! Du kan nu se dina matchningar.");
       nav("/app/matches");
     } catch (err: unknown) {
       setError(parseApiError(err));
@@ -183,10 +185,10 @@ export default function OnboardingCapacity() {
           {error() && <p class="form-error" role="alert">{error()}</p>}
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
             <button type="submit" class="btn" disabled={loading()}>
-              {loading() ? "Sparar..." : "Se mina matchningar"}
+              {loading() ? "Sparar..." : "Spara och fortsätt"}
             </button>
             <button type="button" class="btn btn-secondary" onClick={handleSkip}>
-              Hoppa över
+              Skippa
             </button>
           </div>
         </form>

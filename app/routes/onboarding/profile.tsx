@@ -1,4 +1,5 @@
 import { A, useNavigate } from "@solidjs/router";
+import { showToast } from "~/lib/toast";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { getOnboardingUserType, isSitterOnly } from "~/lib/onboarding";
@@ -149,6 +150,7 @@ export default function OnboardingProfile() {
         breeds_owned_before: breedsOwnedBefore(),
         });
       }
+      showToast("Profil sparad");
       nav(isSitterOnly() ? "/onboarding/capacity" : "/onboarding/dogs");
     } catch (err: unknown) {
       setError(parseApiError(err));
@@ -207,7 +209,7 @@ export default function OnboardingProfile() {
           </div>
           {error() && <p class="form-error" role="alert">{error()}</p>}
           <button type="submit" class="btn" disabled={loading()}>
-            {loading() ? "Sparar..." : "Fortsätt"}
+            {loading() ? "Sparar..." : "Spara och fortsätt"}
           </button>
         </form>
       </div>

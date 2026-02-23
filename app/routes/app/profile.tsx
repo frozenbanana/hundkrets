@@ -1,5 +1,6 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { showToast } from "~/lib/toast";
 import { geocodeAddress } from "~/lib/geocode";
 import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
@@ -137,6 +138,7 @@ export default function Profile() {
         });
       }
       setSaved(true);
+      showToast("Profil sparad");
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -212,7 +214,6 @@ export default function Profile() {
           />
         </div>
         {error() && <p class="form-error" role="alert">{error()}</p>}
-        {saved() && <p style="color: #16a34a;">Profil sparad.</p>}
         <button type="submit" class="btn" disabled={loading()}>
           {loading() ? "Sparar..." : "Spara profil"}
         </button>

@@ -1,5 +1,6 @@
 import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { getRequestsSeenAt, markRequestsSeen, requestsSeenVersion } from "~/lib/requestsSeen";
+import { showToast } from "~/lib/toast";
 import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { findListings } from "~/lib/matching";
@@ -701,6 +702,7 @@ export default function Matches() {
         const next = { ...prev, connections: [...prev.connections, created] };
         return next;
       });
+      showToast("Intresse skickat");
     } catch (e) {
       console.error("[matches] handleInterested error", e);
       if ((e as { status?: number })?.status !== 400) console.error(e);
@@ -826,6 +828,7 @@ export default function Matches() {
         return { ...prev, connections: [...prev.connections, created] };
       });
       closeRespondModal();
+      showToast("Matchad! Ni kan nu kontakta varandra.");
     } catch (e) {
       console.error("[matches] handleAcceptWithReply error", e);
       refetch();
@@ -1197,7 +1200,10 @@ export default function Matches() {
         {(target) => (
           <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="interest-modal-title" onClick={closeInterestModal}>
             <div class="modal" onClick={(e) => e.stopPropagation()}>
-              <h2 id="interest-modal-title" style="margin: 0 0 1rem;">Skicka intresseförfrågan</h2>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <h2 id="interest-modal-title" style="margin: 0;">Skicka intresseförfrågan</h2>
+                <button type="button" class="match-detail-close" onClick={closeInterestModal} aria-label="Stäng">×</button>
+              </div>
               <p style="color: var(--color-text-muted); margin: 0 0 1rem; font-size: 0.95rem;">
                 {target().userName ? `Skriv ett meddelande till ${target().userName} (valfritt):` : "Skriv ett meddelande (valfritt):"}
               </p>
@@ -1234,7 +1240,10 @@ export default function Matches() {
         {(target) => (
           <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="respond-modal-title" onClick={closeRespondModal}>
             <div class="modal" onClick={(e) => e.stopPropagation()}>
-              <h2 id="respond-modal-title" style="margin: 0 0 1rem;">Svara på förfrågan</h2>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <h2 id="respond-modal-title" style="margin: 0;">Svara på förfrågan</h2>
+                <button type="button" class="match-detail-close" onClick={closeRespondModal} aria-label="Stäng">×</button>
+              </div>
               <p style="color: var(--color-text-muted); margin: 0 0 1rem; font-size: 0.95rem;">
                 {target().fromUserName ? `Skriv ett svar till ${target().fromUserName} (valfritt):` : "Skriv ett svar (valfritt):"}
               </p>

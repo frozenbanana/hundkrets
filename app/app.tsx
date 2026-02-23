@@ -1,6 +1,7 @@
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { ErrorBoundary, Suspense } from "solid-js";
+import { ToastContainer } from "~/components/Toast";
 import "./app.css";
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
         root={(props) => (
           <Suspense fallback={<div class="loading">Laddar Hundkrets…</div>}>
             {props.children}
+            <ToastContainer />
           </Suspense>
         )}
       >

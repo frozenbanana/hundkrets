@@ -2,6 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { createSignal, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
+import { showToast } from "~/lib/toast";
 import { AppShell } from "~/components/AppShell";
 
 export default function NewWatchCapacity() {
@@ -56,6 +57,7 @@ export default function NewWatchCapacity() {
         data.end_date = endDate();
       }
       await pb.collection("watch_capacity").create(data);
+      showToast("Kapacitet tillagd");
       nav("/app/capacity");
     } catch (err: unknown) {
       setError(parseApiError(err));

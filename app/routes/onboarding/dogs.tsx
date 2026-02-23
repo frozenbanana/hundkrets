@@ -1,4 +1,5 @@
 import { useNavigate } from "@solidjs/router";
+import { showToast } from "~/lib/toast";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { isSitterOnly } from "~/lib/onboarding";
@@ -55,6 +56,55 @@ export default function OnboardingDogs() {
     }
   );
 
+  async function handleSaveAndContinue() {
+    if (!name().trim()) {
+      nav("/onboarding/needs");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const userId = pb.authStore.model?.id;
+      if (!userId) throw new Error("Not authenticated");
+      const data: Record<string, unknown> = {
+        owner: userId,
+        name: name(),
+        breed: breed() || undefined,
+        size: size(),
+        gender: gender(),
+        age: age() !== "" ? age() : undefined,
+        temperament_new_people: temperamentNewPeople() || undefined,
+        temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
+        temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
+        notes: notes() || undefined,
+      };
+      const file = imageFile();
+      if (file) {
+        const fd = new FormData();
+        fd.append("owner", userId);
+        fd.append("name", name());
+        fd.append("breed", breed());
+        fd.append("size", size());
+        fd.append("gender", gender());
+        if (age() !== "") fd.append("age", String(age()));
+        fd.append("temperament_new_people", temperamentNewPeople());
+        fd.append("temperament_new_dogs_female", temperamentNewDogsFemale());
+        fd.append("temperament_new_dogs_male", temperamentNewDogsMale());
+        fd.append("notes", notes());
+        fd.append("image", file);
+        await pb.collection("dogs").create(fd);
+      } else {
+        await pb.collection("dogs").create(data);
+      }
+      showToast("Hund tillagd");
+      nav("/onboarding/needs");
+    } catch (err: unknown) {
+      setError(parseApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleAddDog(e: Event) {
     e.preventDefault();
     if (!name().trim()) return;
@@ -104,6 +154,7 @@ export default function OnboardingDogs() {
       setNotes("");
       setImageFile(null);
       refetch();
+      showToast("Hund tillagd");
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -207,9 +258,12 @@ export default function OnboardingDogs() {
             </For>
           </div>
         </Show>
-        <div style="margin-top: 1.5rem;">
-          <button type="button" class="btn" onClick={() => nav("/onboarding/needs")}>
-            Fortsätt
+        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn" disabled={loading()} onClick={() => handleSaveAndContinue()}>
+            {loading() ? "Sparar..." : "Spara och fortsätt"}
+          </button>
+          <button type="button" class="btn btn-secondary" onClick={() => nav("/onboarding/needs")}>
+            Skippa
           </button>
         </div>
       </div>

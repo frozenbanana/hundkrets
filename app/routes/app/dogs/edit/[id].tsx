@@ -1,6 +1,7 @@
 import { A, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
@@ -82,6 +83,7 @@ export default function EditDog() {
           notes: notes() || undefined,
         });
       }
+      showToast("Hund sparad");
       nav("/app/dogs");
     } catch (err: unknown) {
       setError(parseApiError(err));

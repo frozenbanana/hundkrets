@@ -1,4 +1,5 @@
 import { useNavigate } from "@solidjs/router";
+import { showToast } from "~/lib/toast";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { isSitterOnly } from "~/lib/onboarding";
@@ -78,6 +79,7 @@ export default function OnboardingNeeds() {
         data.end_date = endDate();
       }
       await pb.collection("watch_needs").create(data);
+      showToast("Behov tillagt");
       nav("/onboarding/capacity");
     } catch (err: unknown) {
       setError(parseApiError(err));
@@ -100,7 +102,7 @@ export default function OnboardingNeeds() {
         </p>
         <Show when={!hasDogs()}>
           <p style="margin-bottom: 1rem;">Du har inte lagt till några hundar än. Lägg till hundar i föregående steg, eller hoppa över för att fortsätta.</p>
-          <button type="button" class="btn" onClick={handleSkip}>Fortsätt</button>
+          <button type="button" class="btn btn-secondary" onClick={handleSkip}>Skippa</button>
         </Show>
         <Show when={hasDogs()}>
         <form onSubmit={handleSubmit}>
@@ -163,10 +165,10 @@ export default function OnboardingNeeds() {
           {error() && <p class="form-error" role="alert">{error()}</p>}
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
             <button type="submit" class="btn" disabled={loading()}>
-              {loading() ? "Sparar..." : "Fortsätt"}
+              {loading() ? "Sparar..." : "Spara och fortsätt"}
             </button>
             <button type="button" class="btn btn-secondary" onClick={handleSkip}>
-              Hoppa över
+              Skippa
             </button>
           </div>
         </form>
