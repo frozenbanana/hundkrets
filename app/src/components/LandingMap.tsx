@@ -34,8 +34,10 @@ export function LandingMap(props: Props) {
   let map: L.Map | null = null;
   let markerLayer: L.LayerGroup | null = null;
 
+  const pbUrl = import.meta.env.VITE_POCKETBASE_URL || "http://localhost:8090";
+
   createEffect(() => {
-    fetch("/api/user-locations")
+    fetch(`${pbUrl}/api/hundkrets/user-locations`)
       .then((r) => r.json())
       .then((data: UserLocation[]) => setUsers(data.length > 0 ? data : DEMO_MARKERS))
       .catch(() => {

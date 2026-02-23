@@ -65,29 +65,21 @@ On the server, create `app/.env` (and optionally `.env` in project root for buil
 # URL the browser uses to reach PocketBase (must match your Cloudflare hostname)
 VITE_POCKETBASE_URL=https://api.hundkrets.se
 
-# For landing page map (users list requires auth). Put in app/.env:
-VITE_POCKETBASE_SERVICE_TOKEN=eyJ...
 ```
 
-Get a token (you’ll create the admin in Step 4).
 
 ---
 
 ## Step 3: Build and run with Docker Compose
 
-### 3.1 Build with the correct PocketBase URL and service token
+### 3.1 Build with the correct PocketBase URL
 
-`VITE_POCKETBASE_URL` and `VITE_POCKETBASE_SERVICE_TOKEN` are baked in at build time. Create a root `.env` (or export before build):
+`VITE_POCKETBASE_URL` is baked in at build time. Set it before building:
 
 ```bash
 cd /home/henry/Services/hundkrets
 
-# Root .env (Docker Compose loads this for build-arg substitution)
-# VITE_POCKETBASE_URL=https://api.hundkrets.se
-# VITE_POCKETBASE_SERVICE_TOKEN=eyJ...
-
 export VITE_POCKETBASE_URL=https://api.hundkrets.se
-export VITE_POCKETBASE_SERVICE_TOKEN=eyJ...   # from PocketBase admin / API
 docker compose build --no-cache app
 ```
 
@@ -111,7 +103,6 @@ You should see `pocketbase` and `app` running.
 
 1. Open **https://api.hundkrets.se/_/**
 2. Create an admin account (email + password)
-3. Add `VITE_POCKETBASE_SERVICE_TOKEN` to `app/.env` (get token via API, see Step 2)
 
 ### 4.1 Update `.env` and restart
 
@@ -183,7 +174,7 @@ Data in `pb_data` persists across restarts.
 | Issue | Check |
 |-------|--------|
 | App loads but login fails | `VITE_POCKETBASE_URL` must be `https://api.hundkrets.se` and match the Cloudflare hostname for PocketBase |
-| Map shows no users | Set `VITE_POCKETBASE_SERVICE_TOKEN` in root `.env` (for build) and `app/.env` (for runtime). Rebuild with `docker compose build --no-cache app`. Ensure PocketBase users collection allows list for authenticated users. |
+| Map shows no users | Landningskartan hämtar från publik PocketBase-route `/api/hundkrets/user-locations`. Kontrollera att användare har latitude/longitude ifyllda (profil-steget i onboarding). |
 | Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se`. For verification emails, set **Verification** template **Action URL** to `https://hundkrets.se/verify-email?token={TOKEN}` |
 | CORS errors | Ensure both hostnames use the same parent domain (`hundkrets.se` and `api.hundkrets.se`) |
 | Google OAuth fails | Redirect URI in Google Console must be `{VITE_POCKETBASE_URL}/api/oauth2-redirect` exactly |

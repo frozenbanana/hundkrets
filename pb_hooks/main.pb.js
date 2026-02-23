@@ -1,6 +1,31 @@
 // Hundkrets - Email hooks for connection requests and onboarding
 // Requires SMTP configured in PocketBase Admin > Settings > Mail settings
 
+// Public route: user locations for landing map (id, latitude, longitude, area only – no auth needed)
+routerAdd("GET", "/api/hundkrets/user-locations", (e) => {
+  var records = [];
+  try {
+    records = $app.findRecordsByFilter("users", "latitude != null && longitude != null", "-created", 200, 0);
+  } catch (err) {
+    return e.json(500, []);
+  }
+  var items = [];
+  for (var i = 0; i < records.length; i++) {
+    var r = records[i];
+    var lat = r.getFloat("latitude");
+    var lon = r.getFloat("longitude");
+    if (!isNaN(lat) && !isNaN(lon)) {
+      items.push({
+        id: r.id,
+        latitude: lat,
+        longitude: lon,
+        area: r.getString("area") || ""
+      });
+    }
+  }
+  return e.json(200, items);
+});
+
 // Frontend URL for email links. Set Settings > Meta > App URL to your frontend (e.g. http://localhost:3000).
 function appUrl() {
   var meta = $app.settings() && $app.settings().meta;

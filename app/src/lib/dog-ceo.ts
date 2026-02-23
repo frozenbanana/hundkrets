@@ -38,8 +38,7 @@ const BREED_MAP: Record<string, string> = {
   pomeranian: "pomeranian",
   "boston terrier": "bulldog/boston",
   havanese: "havanese",
-  "great dane": "dane/great",
-  "cocker spaniel": "spaniel/cocker",
+  "great dane": "dane/great"
 };
 
 function toApiPath(breed: string): string | null {

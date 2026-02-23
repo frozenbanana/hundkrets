@@ -22,7 +22,7 @@ API: http://127.0.0.1:8090/api/
 
 Create an admin account on first run. The schema (users, dogs, watch_needs, watch_capacity) is created via migrations in `pb_migrations/`. New users must complete onboarding (profile → dogs → needs → capacity) before seeing matches; the `onboarding_complete` field tracks this.
 
-**Landing page map:** The homepage shows a map of users' approximate locations. Add `VITE_POCKETBASE_SERVICE_TOKEN` to `app/.env`. Get a token via `curl -X POST http://localhost:8090/api/collections/users/auth-with-password -H "Content-Type: application/json" -d '{"identity":"user@example.com","password":"..."}'` and copy the `token` from the response. Expires in ~2 weeks.
+**Landing page map:** The homepage shows a map of users' approximate locations. PocketBase exposes a public route `/api/hundkrets/user-locations` (id, latitude, longitude, area only) – no auth needed.
 
 ### 2. Frontend
 
