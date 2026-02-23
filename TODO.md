@@ -17,6 +17,9 @@ Prioriterad lista från perspektivet av en användare som söker hundpassning oc
 - **Mobilnavigation** – Hamburger-meny för små skärmar
 - **Tomt tillstånd vid ofullständig profil** – Tydlig checklista och länk till profil
 
+### P2 – Medium impact
+- **Match-kort lättare att skanna** – Tydligare typografihierarki, pill-etiketter, separerade datum/storlekar
+
 ### P3
 - **Adressinmatning** – Förbättrad placeholder, loading states
 
@@ -64,19 +67,19 @@ Prioriterad lista från perspektivet av en användare som söker hundpassning oc
 
 **Åtgärd:** Överväg att behålla nuvarande namn eller omdöpa till "Behov" / "Kapacitet" med tydlig "Lägg till"-action på sidorna.
 
-#### 7. Gör match-kort lättare att skanna
+#### 7. ~~Gör match-kort lättare att skanna~~ DONE
 **Problem:** Match-kort visar mycket text; plats, datum och hundinfo kan vara svåra att skanna snabbt.
 
 **Åtgärd:** Tydligare typografihierarki, små etiketter, eventuellt expand/collapse för långt innehåll.
 
 ### P3 – Nice to have
 
-#### 8. Bekräftelse före avmatchning
+#### 8. ~~Bekräftelse före avmatchning~~ DONE
 **Problem:** "Avmatcha" har ingen bekräftelse – lätt att avmatcha av misstag.
 
 **Åtgärd:** Lägg till bekräftelsedialog: "Är du säker? Ni kommer inte längre se varandras kontaktuppgifter."
 
-#### 9. Landing page – värdet för "vill bara passa"
+#### 9. ~~Landing page – värdet för "vill bara passa"~~ DONE
 **Problem:** Landningssidan är tydlig för hundägare, men värdet för personer som bara vill passa hundar kan stärkas.
 
 **Åtgärd:** Lägg till en rad: "Även om du inte har hund – passa andras hundar och bygg upp kredibilitet för framtida utbyten."
@@ -134,12 +137,11 @@ Prioriterad lista från perspektivet av en användare som söker hundpassning oc
 | P2 | Sortering efter bästa match | Liten |
 | P2 | Justera max avstånd | Liten |
 | P2 | Nav-labels Behov/Kapacitet | Liten |
-| P2 | Match-kort lättare att skanna | Medium |
 | P2 | In-app meddelanden | Stor |
 | P2 | Bokningskalender | Stor |
 | P2 | Påminnelser | Medium |
-| P3 | Bekräftelse före avmatchning | Liten |
-| P3 | Landing page sitter-only value | Liten |
+| P3 | ~~Bekräftelse före avmatchning~~ DONE | Liten |
+| P3 | ~~Landing page sitter-only value~~ DONE | Liten |
 | P3 | Reputation/feedback | Stor |
 | P3 | Profilverifiering | Medium |
 

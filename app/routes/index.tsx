@@ -22,6 +22,7 @@ export default function Home() {
           <h1><img src="/logo-icon.png" alt="Hundkrets" class="hero-logo" /></h1>
           <p class="landing-tagline">Hitta din partner. Helt gratis!</p>
           <p class="landing-sub">Byt hundpassning med grannar—du passar deras hund, de passar din. Inga pengar, bara ömsesidig hjälp.</p>
+          <p class="landing-sub" style="margin-top: 0.5rem;">Även om du inte har hund – passa andras hundar och bygg upp kredibilitet för framtida utbyten.</p>
         </div>
         <DogGallery />
         <LandingMap style={{ height: "280px" }} />

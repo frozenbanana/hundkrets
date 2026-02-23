@@ -319,7 +319,10 @@ export default function AppHome() {
                             class="btn btn-secondary"
                             style="font-size: 0.85rem;"
                             disabled={actionLoading()}
-                            onClick={() => handleUnmatch(m.id)}
+                            onClick={() => {
+                              if (!confirm("Är du säker? Ni kommer inte längre se varandras kontaktuppgifter.")) return;
+                              handleUnmatch(m.id);
+                            }}
                           >
                             Avmatcha
                           </button>

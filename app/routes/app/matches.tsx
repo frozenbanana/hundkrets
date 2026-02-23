@@ -484,7 +484,17 @@ function MatchDetailModal(props: {
             )}
           </Show>
           <Show when={mutual() && onUnmatch}>
-            <button type="button" class="btn btn-secondary" disabled={refreshing()} onClick={() => onUnmatch?.(listing.user.id)}>Avmatcha</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              disabled={refreshing()}
+              onClick={() => {
+                if (!confirm("Är du säker? Ni kommer inte längre se varandras kontaktuppgifter.")) return;
+                onUnmatch?.(listing.user.id);
+              }}
+            >
+              Avmatcha
+            </button>
           </Show>
         </div>
       </div>
