@@ -2,6 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
+import { handleOAuthRedirect } from "~/lib/oauth";
 
 export default function Login() {
   const nav = useNavigate();
@@ -9,6 +10,7 @@ export default function Login() {
   const [password, setPassword] = createSignal("");
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
+  const [oauthLoading, setOauthLoading] = createSignal(false);
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -60,6 +62,28 @@ export default function Login() {
           {loading() ? "Loggar in..." : "Logga in"}
         </button>
       </form>
+      <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+        <span style="flex: 1; height: 1px; background: var(--color-border);" />
+        <span style="color: var(--color-text-muted); font-size: 0.85rem;">eller</span>
+        <span style="flex: 1; height: 1px; background: var(--color-border);" />
+      </div>
+      <button
+        type="button"
+        class="btn btn-outline"
+        style="margin-top: 1rem; width: 100%;"
+        disabled={oauthLoading()}
+        onClick={() => {
+          setOauthLoading(true);
+          setError("");
+          pb.collection("users")
+            .authWithOAuth2({ provider: "google" })
+            .then(() => handleOAuthRedirect(nav))
+            .catch((err: unknown) => setError(parseApiError(err)))
+            .finally(() => setOauthLoading(false));
+        }}
+      >
+        {oauthLoading() ? "Loggar in..." : "Fortsätt med Google"}
+      </button>
       <p style="margin-top: 1rem;">
         <A href="/register">Skapa konto</A>
       </p>

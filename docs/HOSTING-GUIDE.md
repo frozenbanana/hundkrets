@@ -134,6 +134,17 @@ To send connection requests and match confirmations:
 2. Configure SMTP (e.g. Gmail, SendGrid, Resend)
 3. Save
 
+### 5.3 Google OAuth (optional)
+
+To allow sign-in with Google:
+
+1. Create an OAuth 2.0 client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Add **Authorized redirect URI**: `https://api.hundkrets.se/api/oauth2-redirect` (use your PocketBase URL)
+3. Copy **Client ID** and **Client Secret**
+4. In PocketBase Admin: **Collections** → **users** → Edit (cog) → **Options** → **OAuth2**
+5. Enable Google and paste Client ID and Client Secret
+6. Save
+
 ---
 
 ## Step 6: Verify the app
@@ -169,6 +180,7 @@ Data in `pb_data` persists across restarts.
 | Map shows no users | Set `VITE_POCKETBASE_SERVICE_TOKEN` in `app/.env` and restart |
 | Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se` |
 | CORS errors | Ensure both hostnames use the same parent domain (`hundkrets.se` and `api.hundkrets.se`) |
+| Google OAuth fails | Redirect URI in Google Console must be `{VITE_POCKETBASE_URL}/api/oauth2-redirect` exactly |
 
 ---
 
