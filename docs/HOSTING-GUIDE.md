@@ -126,13 +126,14 @@ docker compose up -d
 2. Set **App URL** to: `https://hundkrets.se`
 3. Save
 
-### 5.2 Email (optional)
+### 5.2 Email (required for signup without Google)
 
-To send connection requests and match confirmations:
+To send connection requests, match confirmations, and **verification emails** for new signups:
 
 1. **Settings** → **Mail settings**
 2. Configure SMTP (e.g. Gmail, SendGrid, Resend)
-3. Save
+3. Under **Verification** template, set **Action URL** to: `https://hundkrets.se/verify-email?token={TOKEN}` (use your App URL)
+4. Save
 
 ### 5.3 Google OAuth (optional)
 
@@ -178,7 +179,7 @@ Data in `pb_data` persists across restarts.
 |-------|--------|
 | App loads but login fails | `VITE_POCKETBASE_URL` must be `https://api.hundkrets.se` and match the Cloudflare hostname for PocketBase |
 | Map shows no users | Set `VITE_POCKETBASE_SERVICE_TOKEN` in `app/.env` and restart |
-| Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se` |
+| Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se`. For verification emails, set **Verification** template **Action URL** to `https://hundkrets.se/verify-email?token={TOKEN}` |
 | CORS errors | Ensure both hostnames use the same parent domain (`hundkrets.se` and `api.hundkrets.se`) |
 | Google OAuth fails | Redirect URI in Google Console must be `{VITE_POCKETBASE_URL}/api/oauth2-redirect` exactly |
 

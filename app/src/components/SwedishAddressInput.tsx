@@ -1,4 +1,4 @@
-import { createEffect, createSignal } from "solid-js";
+import { batch, createEffect, createSignal } from "solid-js";
 
 export interface AddressValue {
   address_private: string;
@@ -54,12 +54,13 @@ export function SwedishAddressInput(props: Props) {
 
   createEffect(() => {
     const v = props.value;
-    if (v?.address_private) {
-      const parsed = parseAddress(v.address_private, v.city);
-      setStreet(parsed.street);
-      setPostalCode(parsed.postalCode);
-      setCity(parsed.city);
-    }
+    if (!v?.address_private) return;
+    const parsed = parseAddress(v.address_private, v.city);
+    batch(() => {
+      if (parsed.street !== street()) setStreet(parsed.street);
+      if (parsed.postalCode !== postalCode()) setPostalCode(parsed.postalCode);
+      if (parsed.city !== city()) setCity(parsed.city);
+    });
   });
 
   function notifyChange(streetVal: string, postalVal: string, cityVal: string) {
@@ -86,7 +87,7 @@ export function SwedishAddressInput(props: Props) {
           }}
           placeholder="T.ex. Storgatan 1"
           required
-          autocomplete="address-line1"
+          autocomplete="off"
         />
       </div>
       <div class="form-group">

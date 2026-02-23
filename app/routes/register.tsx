@@ -27,14 +27,8 @@ export default function Register() {
         password: password(),
         passwordConfirm: passwordConfirm(),
       });
-      const auth = await pb.collection("users").authWithPassword(email(), password());
-      try {
-        await pb.collection("users").update(auth.record!.id, { onboarding_complete: false });
-        pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, onboarding_complete: false });
-      } catch {
-        /* onboarding_complete field may not exist yet—add it in PocketBase admin */
-      }
-      nav("/onboarding/choice", { replace: true });
+      await pb.collection("users").requestVerification(email());
+      nav("/register/verify-email", { replace: true });
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -83,7 +77,7 @@ export default function Register() {
           />
         </div>
         {error() && <p class="form-error" role="alert">{error()}</p>}
-        <button type="submit" class="btn" disabled={loading()}>
+        <button type="submit" class="btn" style="width: 100%;" disabled={loading()}>
           {loading() ? "Skapar..." : "Skapa konto"}
         </button>
       </form>

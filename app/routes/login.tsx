@@ -1,16 +1,24 @@
-import { A, useNavigate } from "@solidjs/router";
-import { createSignal } from "solid-js";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
+import { createSignal, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
 import { handleOAuthRedirect } from "~/lib/oauth";
 
 export default function Login() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [error, setError] = createSignal("");
+  const [success, setSuccess] = createSignal("");
   const [loading, setLoading] = createSignal(false);
   const [oauthLoading, setOauthLoading] = createSignal(false);
+
+  onMount(() => {
+    if (searchParams.verified === "1") {
+      setSuccess("Din e-post är verifierad. Du kan nu logga in.");
+    }
+  });
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -57,8 +65,9 @@ export default function Login() {
             required
           />
         </div>
+        {success() && <p style="color: #16a34a; margin-bottom: 0.5rem;" role="status">{success()}</p>}
         {error() && <p class="form-error" role="alert">{error()}</p>}
-        <button type="submit" class="btn" disabled={loading()}>
+        <button type="submit" class="btn" style="width: 100%;" disabled={loading()}>
           {loading() ? "Loggar in..." : "Logga in"}
         </button>
       </form>
