@@ -1,6 +1,11 @@
 import type { APIEvent } from "@solidjs/start/server";
 
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || "http://localhost:8090";
+// Server-side fetch: use POCKETBASE_SERVER_URL when in Docker (e.g. http://pocketbase:8090)
+// to avoid hairpin NAT when fetching api.hundkrets.se from inside the same host
+const PB_URL =
+  process.env.POCKETBASE_SERVER_URL ||
+  import.meta.env.VITE_POCKETBASE_URL ||
+  "http://localhost:8090";
 
 export interface UserLocation {
   id: string;

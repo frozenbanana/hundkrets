@@ -75,14 +75,19 @@ Get a token (you’ll create the admin in Step 4).
 
 ## Step 3: Build and run with Docker Compose
 
-### 3.1 Build with the correct PocketBase URL
+### 3.1 Build with the correct PocketBase URL and service token
 
-`VITE_POCKETBASE_URL` is baked into the frontend at build time. Set it before building:
+`VITE_POCKETBASE_URL` and `VITE_POCKETBASE_SERVICE_TOKEN` are baked in at build time. Create a root `.env` (or export before build):
 
 ```bash
 cd /home/henry/Services/hundkrets
 
+# Root .env (Docker Compose loads this for build-arg substitution)
+# VITE_POCKETBASE_URL=https://api.hundkrets.se
+# VITE_POCKETBASE_SERVICE_TOKEN=eyJ...
+
 export VITE_POCKETBASE_URL=https://api.hundkrets.se
+export VITE_POCKETBASE_SERVICE_TOKEN=eyJ...   # from PocketBase admin / API
 docker compose build --no-cache app
 ```
 
@@ -178,7 +183,7 @@ Data in `pb_data` persists across restarts.
 | Issue | Check |
 |-------|--------|
 | App loads but login fails | `VITE_POCKETBASE_URL` must be `https://api.hundkrets.se` and match the Cloudflare hostname for PocketBase |
-| Map shows no users | Set `VITE_POCKETBASE_SERVICE_TOKEN` in `app/.env` and restart |
+| Map shows no users | Set `VITE_POCKETBASE_SERVICE_TOKEN` in root `.env` (for build) and `app/.env` (for runtime). Rebuild with `docker compose build --no-cache app`. Ensure PocketBase users collection allows list for authenticated users. |
 | Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se`. For verification emails, set **Verification** template **Action URL** to `https://hundkrets.se/verify-email?token={TOKEN}` |
 | CORS errors | Ensure both hostnames use the same parent domain (`hundkrets.se` and `api.hundkrets.se`) |
 | Google OAuth fails | Redirect URI in Google Console must be `{VITE_POCKETBASE_URL}/api/oauth2-redirect` exactly |

@@ -28,10 +28,14 @@ services:
       args:
         # URL the browser uses to reach PocketBase (same host:port as app, or separate)
         VITE_POCKETBASE_URL: ${VITE_POCKETBASE_URL:-http://localhost:8090}
+        # Token for server-side user-locations API (landing map). Set in .env or export before build.
+        VITE_POCKETBASE_SERVICE_TOKEN: ${VITE_POCKETBASE_SERVICE_TOKEN:-}
     env_file:
       - app/.env
     environment:
       PORT: 3123
+      # Server-side fetch to PocketBase: use internal Docker network (avoids hairpin NAT)
+      POCKETBASE_SERVER_URL: http://pocketbase:8090
     restart: unless-stopped
     ports:
       - "3123:3123"
