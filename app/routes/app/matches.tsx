@@ -188,31 +188,35 @@ function MatchCard(props: {
                 </p>
               </Show>
               {!passOnly() && needDatesStr() && (
-                <p class="match-card-line match-card-line-primary">
-                  <span class="match-card-label">Behöver passning:</span> {needDatesStr()}
-                </p>
+                <div class="match-card-row">
+                  <span class="match-card-pill">Behöver</span>
+                  <span class="match-card-value">{needDatesStr()}</span>
+                </div>
               )}
             </div>
             {(canPass() || (passOnly() && capacityDatesStr())) && (
               <div class="match-card-capacity-section">
-                <div class="match-card-divider" aria-hidden="true" />
-                {passOnly() && capacityDatesStr() && (
-                  <p class="match-card-line match-card-line-primary">
-                    <span class="match-card-label">Tillgänglig:</span> {capacityDatesStr()}
-                  </p>
+                {(passOnly() || canPass()) && capacityDatesStr() && (
+                  <div class="match-card-row">
+                    <span class="match-card-pill">Tillgänglig</span>
+                    <span class="match-card-value">{capacityDatesStr()}</span>
+                  </div>
                 )}
                 {canPass() && (
-                  <p class="match-card-line">
-                    <span class="match-card-label">Kan passa:</span>{" "}
-                    {capacityDatesStr() ? `${capacityDatesStr()} · ${canPass()}` : canPass()}
-                    {extraCapacitiesHint() && <span class="match-card-hint"> {extraCapacitiesHint()}</span>}
-                  </p>
+                  <div class="match-card-row">
+                    <span class="match-card-pill">Storlekar</span>
+                    <span class="match-card-value">{canPass()}</span>
+                    {extraCapacitiesHint() && <span class="match-card-hint">{extraCapacitiesHint()}</span>}
+                  </div>
                 )}
               </div>
             )}
           </div>
           {locationStr() && (
-            <div class="match-card-footer">Plats: {locationStr()}</div>
+            <div class="match-card-footer">
+              <span class="match-card-pill">Plats</span>
+              <span class="match-card-value">{locationStr()}</span>
+            </div>
           )}
         </div>
         <div class="match-card-image">
