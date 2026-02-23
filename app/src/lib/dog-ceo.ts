@@ -79,13 +79,13 @@ export async function fetchBreedImageUrl(breed: string | undefined): Promise<str
   return null;
 }
 
-/** Fetch multiple random dog image URLs for gallery display. */
+/** Fetch multiple random dog image URLs for gallery display. Uses our API proxy to avoid CORS. */
 export async function fetchMultipleRandomDogs(count: number = 12): Promise<string[]> {
   try {
-    const res = await fetch(`${DOG_CEO_BASE}/breeds/image/random/${Math.min(count, 50)}`);
-    const data = (await res.json()) as { message?: string | string[]; status?: string };
-    if (data?.status === "success" && Array.isArray(data.message)) {
-      return data.message.filter((url): url is string => typeof url === "string");
+    const res = await fetch(`/api/dog-gallery?count=${Math.min(count, 50)}`);
+    const data = (await res.json()) as { urls?: string[] };
+    if (Array.isArray(data?.urls)) {
+      return data.urls.filter((u): u is string => typeof u === "string");
     }
   } catch {
     /* ignore */

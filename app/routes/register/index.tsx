@@ -1,34 +1,34 @@
-import { A, useNavigate, useSearchParams } from "@solidjs/router";
-import { createSignal, onMount } from "solid-js";
+import { A, useNavigate } from "@solidjs/router";
+import { createSignal } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
 import { handleOAuthRedirect } from "~/lib/oauth";
 
-export default function Login() {
+export default function Register() {
   const nav = useNavigate();
-  const [searchParams] = useSearchParams();
   const [email, setEmail] = createSignal("");
   const [password, setPassword] = createSignal("");
+  const [passwordConfirm, setPasswordConfirm] = createSignal("");
   const [error, setError] = createSignal("");
-  const [success, setSuccess] = createSignal("");
   const [loading, setLoading] = createSignal(false);
   const [oauthLoading, setOauthLoading] = createSignal(false);
-
-  onMount(() => {
-    if (searchParams.verified === "1") {
-      setSuccess("Din e-post är verifierad. Du kan nu logga in.");
-    }
-  });
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
     setError("");
+    if (password() !== passwordConfirm()) {
+      setError("Lösenorden matchar inte");
+      return;
+    }
     setLoading(true);
     try {
-      const auth = await pb.collection("users").authWithPassword(email(), password());
-      const m = auth.record as { onboarding_complete?: boolean; area?: string } | null;
-      const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-      nav(done ? "/app/matches" : "/onboarding/choice", { replace: true });
+      await pb.collection("users").create({
+        email: email(),
+        password: password(),
+        passwordConfirm: passwordConfirm(),
+      });
+      await pb.collection("users").requestVerification(email());
+      nav("/register/verify-email", { replace: true });
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -41,7 +41,7 @@ export default function Login() {
       <div class="page-hero">
         <img src="/logo-icon.png" alt="Hundkrets" width="48" height="48" style="border-radius: 10px;" />
         <h1>Hundkrets</h1>
-        <p style="color: var(--color-text-muted); font-size: 0.95rem;">Logga in på ditt konto</p>
+        <p style="color: var(--color-text-muted); font-size: 0.95rem;">Skapa konto</p>
       </div>
       <div class="card">
       <form onSubmit={handleSubmit}>
@@ -61,16 +61,27 @@ export default function Login() {
           <input
             id="password"
             type="password"
-            autocomplete="current-password"
+            autocomplete="new-password"
             value={password()}
             onInput={(e) => setPassword(e.currentTarget.value)}
             required
+            minLength={8}
           />
         </div>
-        {success() && <p style="color: #16a34a; margin-bottom: 0.5rem;" role="status">{success()}</p>}
+        <div class="form-group">
+          <label for="passwordConfirm">Bekräfta lösenord</label>
+          <input
+            id="passwordConfirm"
+            type="password"
+            autocomplete="new-password"
+            value={passwordConfirm()}
+            onInput={(e) => setPasswordConfirm(e.currentTarget.value)}
+            required
+          />
+        </div>
         {error() && <p class="form-error" role="alert">{error()}</p>}
         <button type="submit" class="btn" style="width: 100%;" disabled={loading()}>
-          {loading() ? "Loggar in..." : "Logga in"}
+          {loading() ? "Skapar..." : "Skapa konto"}
         </button>
       </form>
       <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem;">
@@ -93,10 +104,10 @@ export default function Login() {
             .finally(() => setOauthLoading(false));
         }}
       >
-        {oauthLoading() ? "Loggar in..." : "Fortsätt med Google"}
+        {oauthLoading() ? "Skapar konto..." : "Fortsätt med Google"}
       </button>
       <p style="margin-top: 1rem;">
-        <A href="/register">Skapa konto</A>
+        <A href="/login">Har du redan konto? Logga in</A>
       </p>
       </div>
     </div>
