@@ -1,6 +1,61 @@
 // Hundkrets - Email hooks for connection requests and onboarding
 // Requires SMTP configured in PocketBase Admin > Settings > Mail settings
 
+// Delete user: manually remove all related records before user delete
+// Fixes "Failed to delete record. Make sure that the record is not part of a required relation reference"
+// Order matters: watch_needs (refs user+dog) -> connection_requests -> watch_capacity -> dogs
+onRecordDelete((e) => {
+  if (!e || !e.record || !e.record.id) {
+    e.next();
+    return;
+  }
+  var uid = e.record.id;
+
+  var toDelete = [];
+
+  // 1. watch_needs (user + dog) - must delete before dogs
+  try {
+    toDelete = $app.findRecordsByFilter("watch_needs", "user = {:uid}", "", 0, 0, { uid: uid });
+    for (var i = 0; i < toDelete.length; i++) {
+      $app.delete(toDelete[i]);
+    }
+  } catch (err) {
+    $app.logger().warn("User delete: watch_needs cleanup", "error", err);
+  }
+
+  // 2. connection_requests (from_user or to_user)
+  try {
+    toDelete = $app.findRecordsByFilter("connection_requests", "from_user = {:uid} || to_user = {:uid}", "", 0, 0, { uid: uid });
+    for (var j = 0; j < toDelete.length; j++) {
+      $app.delete(toDelete[j]);
+    }
+  } catch (err) {
+    $app.logger().warn("User delete: connection_requests cleanup", "error", err);
+  }
+
+  // 3. watch_capacity
+  try {
+    toDelete = $app.findRecordsByFilter("watch_capacity", "user = {:uid}", "", 0, 0, { uid: uid });
+    for (var k = 0; k < toDelete.length; k++) {
+      $app.delete(toDelete[k]);
+    }
+  } catch (err) {
+    $app.logger().warn("User delete: watch_capacity cleanup", "error", err);
+  }
+
+  // 4. dogs (owner)
+  try {
+    toDelete = $app.findRecordsByFilter("dogs", "owner = {:uid}", "", 0, 0, { uid: uid });
+    for (var m = 0; m < toDelete.length; m++) {
+      $app.delete(toDelete[m]);
+    }
+  } catch (err) {
+    $app.logger().warn("User delete: dogs cleanup", "error", err);
+  }
+
+  e.next();
+}, "users");
+
 // Public route: user locations for landing map (id, latitude, longitude, area only – no auth needed)
 routerAdd("GET", "/api/hundkrets/user-locations", (e) => {
   var records = [];
