@@ -98,13 +98,22 @@ function matchesMatchedUrl() {
 }
 
 // Safe mail sender - returns { address, name } or null if not configured
+// Requires Settings > Meta > Sender address (and optionally Sender name)
 function mailFrom() {
   var meta = $app.settings() && $app.settings().meta;
-  if (!meta || !meta.senderAddress) return null;
+  if (!meta || !meta.senderAddress || !String(meta.senderAddress).trim()) return null;
   return {
-    address: meta.senderAddress,
-    name: (meta.senderName && meta.senderName.trim()) ? meta.senderName.trim() : "Hundkrets"
+    address: String(meta.senderAddress).trim(),
+    name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets"
   };
+}
+
+function sendMailSafe(msg) {
+  try {
+    $app.newMailClient().send(msg);
+  } catch (err) {
+    $app.logger().warn("Email send failed", "error", err);
+  }
 }
 
 // 1. Incoming connection request + Match confirmation
@@ -154,22 +163,20 @@ onRecordAfterCreateSuccess((e) => {
     var subject = "Ni har matchat på Hundkrets!";
 
     if (toEmail) {
-      var msgTo = new MailerMessage({
+      sendMailSafe(new MailerMessage({
         from: from,
         to: [{ address: toEmail }],
         subject: subject,
         html: htmlBoth
-      });
-      $app.newMailClient().send(msgTo);
+      }));
     }
     if (fromEmail) {
-      var msgFrom = new MailerMessage({
+      sendMailSafe(new MailerMessage({
         from: from,
         to: [{ address: fromEmail }],
         subject: subject,
         html: htmlBoth
-      });
-      $app.newMailClient().send(msgFrom);
+      }));
     }
   } else {
     // Incoming request - notify the recipient (to_user)
@@ -177,13 +184,12 @@ onRecordAfterCreateSuccess((e) => {
       var msgText = conn.get("message");
       var msgHtml = (msgText && String(msgText).trim()) ? "<p style=\"margin: 1rem 0; padding: 0.75rem; background: #f5f5f5; border-radius: 8px; font-style: italic;\">\"" + String(msgText).trim().replace(/</g, "&lt;").replace(/>/g, "&gt;") + "\"</p>" : "";
       var html = "<p><strong>" + fromName + "</strong> är intresserad av dig!</p>" + msgHtml + "<p>Logga in för att se dem i matchningar och svara.</p><p><a href=\"" + matchesUrl() + "\">Öppna matchningar</a></p>";
-      var msg = new MailerMessage({
+      sendMailSafe(new MailerMessage({
         from: from,
         to: [{ address: toEmail }],
         subject: fromName + " är intresserad av dig på Hundkrets",
         html: html
-      });
-      $app.newMailClient().send(msg);
+      }));
     }
   }
 
@@ -217,13 +223,12 @@ onRecordAfterUpdateSuccess((e) => {
 
   var name = record.get("name") || "där";
   var html = "<p>Välkommen till Hundkrets, " + name + "!</p><p>Du har slutfört din profil. Nu kan du hitta hundägare i ditt område som vill byta hundpassning.</p><p><a href=\"" + matchesUrl() + "\">Se matchningar</a></p>";
-  var msg = new MailerMessage({
+  sendMailSafe(new MailerMessage({
     from: from,
     to: [{ address: email }],
     subject: "Välkommen till Hundkrets!",
     html: html
-  });
-  $app.newMailClient().send(msg);
+  }));
 
   try {
     record.set("welcome_email_sent", true);

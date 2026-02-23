@@ -90,10 +90,10 @@ Prioriterad lista från perspektivet av en användare som söker hundpassning oc
 
 ### P1 – Hög impact
 
-#### 10. Notifieringar (email/push)
+#### 10. ~~Notifieringar (email)~~ DONE
 **Problem:** Användaren får ingen notis när någon skickar förfrågan eller matchar. Man måste aktivt kolla appen.
 
-**Åtgärd:** Email-notifieringar vid ny förfrågan och matchning. Eventuellt push för mobil.
+**Åtgärd:** Email-notifieringar vid ny förfrågan och matchning. (Implementerat i pb_hooks. Kräver SMTP + Meta sender address. Push för mobil återstår.)
 
 ### P2 – Medium impact
 
@@ -132,7 +132,7 @@ Prioriterad lista från perspektivet av en användare som söker hundpassning oc
 |-----------|---------|--------|
 | P1 | Lägg till "Lägg till kapacitet"-knapp | Liten |
 | P1 | Success feedback (toasts) | Liten |
-| P1 | Notifieringar (email/push) | Stor |
+| P1 | ~~Notifieringar (email)~~ DONE | Stor |
 | P2 | Förklara matchningsmodellen | Liten |
 | P2 | Sortering efter bästa match | Liten |
 | P2 | Justera max avstånd | Liten |

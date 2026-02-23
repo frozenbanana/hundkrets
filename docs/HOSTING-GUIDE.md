@@ -122,14 +122,17 @@ docker compose up -d
 2. Set **App URL** to: `https://hundkrets.se`
 3. Save
 
-### 5.2 Email (required for signup without Google)
+### 5.2 Email (required for signup and notifications)
 
-To send connection requests, match confirmations, and **verification emails** for new signups:
+To send **verification emails**, **connection request notifications**, and **match confirmations**:
 
 1. **Settings** → **Mail settings**
-2. Configure SMTP (e.g. Gmail, SendGrid, Resend)
-3. Under **Verification** template, set **Action URL** to: `https://hundkrets.se/verify-email?token={TOKEN}` (use your App URL)
-4. Save
+   - Configure SMTP (e.g. Gmail, SendGrid, Resend)
+   - Under **Verification** template, set **Action URL** to: `https://hundkrets.se/verify-email?token={TOKEN}` (use your App URL)
+2. **Settings** → **Meta**
+   - Set **Sender address** (e.g. `noreply@hundkrets.se`) – required for connection/match emails
+   - Set **Sender name** (e.g. `Hundkrets`) – optional, defaults to "Hundkrets"
+3. Save
 
 ### 5.3 Google OAuth (optional)
 
@@ -173,6 +176,7 @@ Data in `pb_data` persists across restarts.
 
 | Issue | Check |
 |-------|--------|
+| Emails not sent (connection/match) | Set **Sender address** in Settings → Meta. SMTP must be configured in Mail settings. |
 | App loads but login fails | `VITE_POCKETBASE_URL` must be `https://api.hundkrets.se` and match the Cloudflare hostname for PocketBase |
 | Map shows no users | Landningskartan hämtar från publik PocketBase-route `/api/hundkrets/user-locations`. Kontrollera att användare har latitude/longitude ifyllda (profil-steget i onboarding). |
 | Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se`. For verification emails, set **Verification** template **Action URL** to `https://hundkrets.se/verify-email?token={TOKEN}` |

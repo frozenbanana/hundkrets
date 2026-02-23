@@ -22,6 +22,8 @@ API: http://127.0.0.1:8090/api/
 
 Create an admin account on first run. The schema (users, dogs, watch_needs, watch_capacity) is created via migrations in `pb_migrations/`. New users must complete onboarding (profile → dogs → needs → capacity) before seeing matches; the `onboarding_complete` field tracks this.
 
+**Email notifications:** When SMTP and Meta sender address are configured (Settings → Mail + Meta), users receive emails for incoming connection requests, mutual matches, and welcome after onboarding. See `docs/HOSTING-GUIDE.md` for setup.
+
 **Landing page map:** The homepage shows a map of users' approximate locations. PocketBase exposes a public route `/api/hundkrets/user-locations` (id, latitude, longitude, area only) – no auth needed.
 
 ### 2. Frontend
