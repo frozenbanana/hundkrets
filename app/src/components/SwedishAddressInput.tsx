@@ -1,4 +1,4 @@
-import { batch, createEffect, createSignal } from "solid-js";
+import { batch, createEffect, createSignal, untrack } from "solid-js";
 
 export interface AddressValue {
   address_private: string;
@@ -22,7 +22,17 @@ function buildFullAddress(street: string, postalCode: string, city: string): str
 }
 
 function parseAddress(addressPrivate: string, cityFromDb?: string): { street: string; postalCode: string; city: string } {
-  const parts = addressPrivate.split(", ").map((p) => p.trim()).filter(Boolean);
+  const rawParts = addressPrivate.split(", ");
+  const parts =
+    rawParts.length > 1
+      ? rawParts
+          .map((p, i) => {
+            if (i === 1 && /^[\d\s]+$/.test(p)) return p;
+            if (i === rawParts.length - 1) return p;
+            return p.trim();
+          })
+          .filter((p) => p.length > 0)
+      : rawParts.filter((p) => p.length > 0);
   let street = "";
   let postalCode = "";
   let city = cityFromDb ?? "";
@@ -33,6 +43,10 @@ function parseAddress(addressPrivate: string, cityFromDb?: string): { street: st
     city = parts[2];
   } else if (parts.length === 2) {
     if (parts[1].match(SWEDISH_POSTAL)) {
+      street = parts[0];
+      postalCode = parts[1];
+      city = cityFromDb ?? "";
+    } else if (/^[\d\s]+$/.test(parts[1])) {
       street = parts[0];
       postalCode = parts[1];
       city = cityFromDb ?? "";
@@ -56,10 +70,13 @@ export function SwedishAddressInput(props: Props) {
     const v = props.value;
     if (!v?.address_private) return;
     const parsed = parseAddress(v.address_private, v.city);
+    const currentStreet = untrack(() => street());
+    const currentPostal = untrack(() => postalCode());
+    const currentCity = untrack(() => city());
     batch(() => {
-      if (parsed.street !== street()) setStreet(parsed.street);
-      if (parsed.postalCode !== postalCode()) setPostalCode(parsed.postalCode);
-      if (parsed.city !== city()) setCity(parsed.city);
+      if (parsed.street !== currentStreet) setStreet(parsed.street);
+      if (parsed.postalCode !== currentPostal) setPostalCode(parsed.postalCode);
+      if (parsed.city !== currentCity) setCity(parsed.city);
     });
   });
 
