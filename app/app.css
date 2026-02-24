@@ -319,6 +319,22 @@ a:hover {
   color: white;
 }
 
+.btn-danger {
+  background: #dc2626;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.danger-zone {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 2px solid #dc2626;
+  border-radius: var(--radius-dog);
+  background: rgba(220, 38, 38, 0.04);
+}
+
 .card {
   background: white;
   border-radius: var(--radius-dog);

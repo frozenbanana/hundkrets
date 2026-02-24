@@ -129,6 +129,7 @@ To send **verification emails**, **connection request notifications**, and **mat
 1. **Settings** → **Mail settings**
    - Configure SMTP (e.g. Gmail, SendGrid, Resend)
    - Under **Verification** template, set **Action URL** to: `https://hundkrets.se/verify-email?token={TOKEN}` (use your App URL)
+   - Under **Change email** template, set **Action URL** to: `https://hundkrets.se/verify-email-change?token={TOKEN}` (use your App URL)
 2. **Settings** → **Meta**
    - Set **Sender address** (e.g. `noreply@hundkrets.se`) – required for connection/match emails
    - Set **Sender name** (e.g. `Hundkrets`) – optional, defaults to "Hundkrets"
@@ -179,7 +180,7 @@ Data in `pb_data` persists across restarts.
 | Emails not sent (connection/match) | Set **Sender address** in Settings → Meta. SMTP must be configured in Mail settings. |
 | App loads but login fails | `VITE_POCKETBASE_URL` must be `https://api.hundkrets.se` and match the Cloudflare hostname for PocketBase |
 | Map shows no users | Landningskartan hämtar från publik PocketBase-route `/api/hundkrets/user-locations`. Kontrollera att användare har latitude/longitude ifyllda (profil-steget i onboarding). |
-| Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se`. For verification emails, set **Verification** template **Action URL** to `https://hundkrets.se/verify-email?token={TOKEN}` |
+| Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se`. For verification emails, set **Verification** template **Action URL** to `https://hundkrets.se/verify-email?token={TOKEN}`. For email change, set **Change email** template **Action URL** to `https://hundkrets.se/verify-email-change?token={TOKEN}` |
 | CORS errors | Ensure both hostnames use the same parent domain (`hundkrets.se` and `api.hundkrets.se`) |
 | Google OAuth fails | Redirect URI in Google Console must be `{VITE_POCKETBASE_URL}/api/oauth2-redirect` exactly |
 
