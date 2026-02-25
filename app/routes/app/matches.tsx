@@ -152,6 +152,7 @@ function MatchCard(props: {
   return (
     <div
       class="card match-card match-card-compact"
+      classList={{ "match-card-pass-only-layout": passOnly() }}
       data-listing-id={listing.user.id}
       onClick={() => onOpenDetail(listing.user.id)}
       role="button"
@@ -602,6 +603,15 @@ export default function Matches() {
   const [mapBounds, setMapBounds] = createSignal<MapBounds | null>(null);
   const [detailModalListingId, setDetailModalListingId] = createSignal<string | undefined>();
   const [mobileViewMode, setMobileViewMode] = createSignal<"list" | "map">("list");
+  const [isMobileViewport, setIsMobileViewport] = createSignal(
+    typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches
+  );
+  onMount(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const handler = () => setIsMobileViewport(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  });
   let listContainerRef: HTMLDivElement | undefined;
 
   const [data, { refetch, mutate }] = createResource(
@@ -975,6 +985,9 @@ export default function Matches() {
 
   const filteredListings = createMemo(() => {
     const listings = matchFilteredListings();
+    // På mobil i listvy är kartan dold – använd inte bounds-filter då, annars blir listan tom
+    // eftersom tab-räknare använder alla listings men listan filtrerades på osynlig kartvy.
+    if (isMobileViewport() && mobileViewMode() === "list") return listings;
     const bounds = mapBounds();
     if (!bounds) return listings;
     return listings.filter((listing) => {
