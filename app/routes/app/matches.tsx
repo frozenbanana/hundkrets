@@ -181,7 +181,12 @@ function MatchCard(props: {
             <div class="match-card-need-section">
               <Show
                 when={!passOnly()}
-                fallback={<p class="match-card-main">Vill endast passa</p>}
+                fallback={
+                  <div class="match-card-pass-only-badge">
+                    <span class="match-card-pass-only-icon" aria-hidden="true">🐾</span>
+                    <span>Vill endast passa</span>
+                  </div>
+                }
               >
                 <p class="match-card-main">
                   Behöver passning av <span class="match-card-dog-name">{firstDog()?.name ?? "hund"}</span>
@@ -220,41 +225,33 @@ function MatchCard(props: {
             </div>
           )}
         </div>
-        <div class="match-card-image">
-        <Show
-          when={!passOnly()}
-          fallback={
-            <div class="match-card-pass-only">
-              <span class="match-card-pass-only-icon" aria-hidden="true">🐾</span>
-              <span>Vill endast passa</span>
-            </div>
-          }
-        >
-          <Show
-            when={firstDog()}
-            fallback={
-              <Avatar
-                name={listing.user.name}
-                city={listing.user.city}
-                neighborhood={listing.user.neighborhood}
-                area={listing.user.area}
-                id={listing.user.id}
-                avatar={listing.user.avatar}
-                baseUrl={baseUrl}
-                class="match-card-img"
-              />
-            }
-          >
-            {(dog) => (
-              <DogImage
-                dog={dog()}
-                baseUrl={baseUrl}
-                class="match-card-img"
-              />
-            )}
-          </Show>
+        <Show when={!passOnly()}>
+          <div class="match-card-image">
+            <Show
+              when={firstDog()}
+              fallback={
+                <Avatar
+                  name={listing.user.name}
+                  city={listing.user.city}
+                  neighborhood={listing.user.neighborhood}
+                  area={listing.user.area}
+                  id={listing.user.id}
+                  avatar={listing.user.avatar}
+                  baseUrl={baseUrl}
+                  class="match-card-img"
+                />
+              }
+            >
+              {(dog) => (
+                <DogImage
+                  dog={dog()}
+                  baseUrl={baseUrl}
+                  class="match-card-img"
+                />
+              )}
+            </Show>
+          </div>
         </Show>
-        </div>
       </div>
     </div>
   );
