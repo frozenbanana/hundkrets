@@ -111,6 +111,8 @@ function mailFrom() {
 function sendMailSafe(msg) {
   try {
     $app.newMailClient().send(msg);
+    var toAddrs = (msg.to || []).map(function (r) { return r.address || r; }).join(", ");
+    $app.logger().info("Email sent", "to", toAddrs, "subject", msg.subject || "(no subject)");
   } catch (err) {
     $app.logger().warn("Email send failed", "error", err);
   }
