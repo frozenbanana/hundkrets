@@ -18,6 +18,9 @@ export default function Login() {
     if (searchParams.verified === "1") {
       setSuccess("Din e-post är verifierad. Du kan nu logga in.");
     }
+    if (searchParams.passwordReset === "1") {
+      setSuccess("Lösenordet har återställts. Du kan nu logga in.");
+    }
   });
 
   async function handleSubmit(e: Event) {
@@ -66,6 +69,9 @@ export default function Login() {
             onInput={(e) => setPassword(e.currentTarget.value)}
             required
           />
+          <p style="margin-top: 0.25rem; font-size: 0.9rem;">
+            <A href="/forgot-password" style="color: var(--color-text-muted);">Glömt lösenord?</A>
+          </p>
         </div>
         {success() && <p style="color: #16a34a; margin-bottom: 0.5rem;" role="status">{success()}</p>}
         {error() && <p class="form-error" role="alert">{error()}</p>}

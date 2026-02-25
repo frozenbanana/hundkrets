@@ -28,7 +28,7 @@ export default function Register() {
         passwordConfirm: passwordConfirm(),
       });
       await pb.collection("users").requestVerification(email());
-      nav("/register/verify-email", { replace: true });
+      nav("/register/verify-email?email=" + encodeURIComponent(email()), { replace: true });
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
