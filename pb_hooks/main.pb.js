@@ -1,6 +1,8 @@
 // Hundkrets - Email hooks for connection requests and onboarding
 // Requires SMTP configured in PocketBase Admin > Settings > Mail settings
 
+$app.logger().info("Hundkrets pb_hooks loaded");
+
 // Delete user: manually remove all related records before user delete
 // Fixes "Failed to delete record. Make sure that the record is not part of a required relation reference"
 // Order matters: watch_needs (refs user+dog) -> connection_requests -> watch_capacity -> dogs
