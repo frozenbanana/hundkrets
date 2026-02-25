@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "prepare": "cd .. && [ -f scripts/install-git-hooks.sh ] && ./scripts/install-git-hooks.sh || true",
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",

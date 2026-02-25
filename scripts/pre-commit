@@ -1,0 +1,5 @@
+#!/bin/sh
+# Runs tests before allowing a commit. Install with: ./scripts/install-git-hooks.sh
+
+cd "$(git rev-parse --show-toplevel)/app" && npm run test:run
+exit $?

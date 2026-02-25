@@ -34,6 +34,8 @@ npm install
 npm run dev
 ```
 
+**Git hooks:** `npm install` in `app/` installs a pre-commit hook that runs tests before each commit. To install manually: `./scripts/install-git-hooks.sh`
+
 **Favicon:** If `public/favicon.png` has a light background, make it transparent:
 
 ```bash
