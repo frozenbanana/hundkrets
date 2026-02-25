@@ -125,10 +125,13 @@ onRecordAfterCreateSuccess((e) => {
     return;
   }
 
+  $app.logger().info("Connection request created, preparing email");
+
   var conn = e.record;
   var fromId = conn.get("from_user");
   var toId = conn.get("to_user");
   if (!fromId || !toId) {
+    $app.logger().warn("Connection request missing from_user or to_user", "fromId", fromId, "toId", toId);
     e.next();
     return;
   }
@@ -139,12 +142,17 @@ onRecordAfterCreateSuccess((e) => {
     fromUser = $app.findRecordById("users", fromId);
     toUser = $app.findRecordById("users", toId);
   } catch (err) {
+    $app.logger().warn("Connection request: could not load users", "error", err);
     e.next();
     return;
   }
   var fromName = (fromUser && fromUser.get("name")) ? fromUser.get("name") : "Någon";
   var toEmail = toUser ? toUser.get("email") : null;
   var fromEmail = fromUser ? fromUser.get("email") : null;
+
+  if (!toEmail) {
+    $app.logger().warn("Connection request: recipient has no email", "toUserId", toId);
+  }
 
   // Check if reverse request exists (mutual match)
   var reverse = null;
@@ -155,6 +163,7 @@ onRecordAfterCreateSuccess((e) => {
 
   var from = mailFrom();
   if (!from) {
+    $app.logger().warn("Connection request email skipped: Sender address not configured. Set Settings > Meta > Sender address.");
     e.next();
     return;
   }
