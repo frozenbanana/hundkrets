@@ -83,44 +83,8 @@ routerAdd("GET", "/api/hundkrets/user-locations", (e) => {
   return e.json(200, items);
 });
 
-// Frontend URL for email links. Set Settings > Meta > App URL to your frontend (e.g. http://localhost:3000).
-function appUrl() {
-  var meta = $app.settings() && $app.settings().meta;
-  var url = (meta && meta.appUrl) ? meta.appUrl : "";
-  if (url) return String(url).replace(/\/$/, "");
-  return "http://localhost:3000";
-}
-
-function matchesUrl() {
-  return appUrl() + "/app/matches";
-}
-
-function matchesMatchedUrl() {
-  return appUrl() + "/app/matches?match=true";
-}
-
-// Safe mail sender - returns { address, name } or null if not configured
-// Requires Settings > Meta > Sender address (and optionally Sender name)
-function mailFrom() {
-  var meta = $app.settings() && $app.settings().meta;
-  if (!meta || !meta.senderAddress || !String(meta.senderAddress).trim()) return null;
-  return {
-    address: String(meta.senderAddress).trim(),
-    name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets"
-  };
-}
-
-function sendMailSafe(msg) {
-  try {
-    $app.newMailClient().send(msg);
-    var toAddrs = (msg.to || []).map(function (r) { return r.address || r; }).join(", ");
-    $app.logger().info("Email sent", "to", toAddrs, "subject", msg.subject || "(no subject)");
-  } catch (err) {
-    $app.logger().warn("Email send failed", "error", err);
-  }
-}
-
 // 1. Incoming connection request + Match confirmation
+// Note: mailFrom/sendMailSafe inlined - PocketBase JSVM may not share function scope with hooks
 // Note: RecordEvent has record, app, context, type - NOT e.collection. We filter by collection name in the 2nd param.
 onRecordAfterCreateSuccess((e) => {
   if (!e || !e.record) {
@@ -164,46 +128,50 @@ onRecordAfterCreateSuccess((e) => {
   } catch (err) {}
   var isMatch = !!reverse;
 
-  var from = mailFrom();
+  var meta = $app.settings() && $app.settings().meta;
+  var from = null;
+  if (meta && meta.senderAddress && String(meta.senderAddress).trim()) {
+    from = {
+      address: String(meta.senderAddress).trim(),
+      name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets"
+    };
+  }
   if (!from) {
     $app.logger().warn("Connection request email skipped: Sender address not configured. Set Settings > Meta > Sender address.");
     e.next();
     return;
   }
 
-  if (isMatch) {
-    // Match confirmation - send to both users
-    var htmlBoth = "<p>Ni har kopplat ihop! Du kan nu se varandras telefon och adress i matchningar.</p><p><a href=\"" + matchesMatchedUrl() + "\">Öppna matchningar</a></p>";
-    var subject = "Ni har matchat på Hundkrets!";
+  function doSend(msg) {
+    try {
+      $app.newMailClient().send(msg);
+      var toAddrs = (msg.to || []).map(function (r) { return r.address || r; }).join(", ");
+      $app.logger().info("Email sent", "to", toAddrs, "subject", msg.subject || "(no subject)");
+    } catch (err) {
+      $app.logger().warn("Email send failed", "error", err);
+    }
+  }
 
+  var urlMeta = $app.settings() && $app.settings().meta;
+  var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "http://localhost:3000";
+  var matchesLink = baseUrl + "/app/matches";
+  var matchesMatchedLink = baseUrl + "/app/matches?match=true";
+
+  if (isMatch) {
+    var htmlBoth = "<p>Ni har kopplat ihop! Du kan nu se varandras telefon och adress i matchningar.</p><p><a href=\"" + matchesMatchedLink + "\">Öppna matchningar</a></p>";
+    var subject = "Ni har matchat på Hundkrets!";
     if (toEmail) {
-      sendMailSafe(new MailerMessage({
-        from: from,
-        to: [{ address: toEmail }],
-        subject: subject,
-        html: htmlBoth
-      }));
+      doSend(new MailerMessage({ from: from, to: [{ address: toEmail }], subject: subject, html: htmlBoth }));
     }
     if (fromEmail) {
-      sendMailSafe(new MailerMessage({
-        from: from,
-        to: [{ address: fromEmail }],
-        subject: subject,
-        html: htmlBoth
-      }));
+      doSend(new MailerMessage({ from: from, to: [{ address: fromEmail }], subject: subject, html: htmlBoth }));
     }
   } else {
-    // Incoming request - notify the recipient (to_user)
     if (toEmail) {
       var msgText = conn.get("message");
       var msgHtml = (msgText && String(msgText).trim()) ? "<p style=\"margin: 1rem 0; padding: 0.75rem; background: #f5f5f5; border-radius: 8px; font-style: italic;\">\"" + String(msgText).trim().replace(/</g, "&lt;").replace(/>/g, "&gt;") + "\"</p>" : "";
-      var html = "<p><strong>" + fromName + "</strong> är intresserad av dig!</p>" + msgHtml + "<p>Logga in för att se dem i matchningar och svara.</p><p><a href=\"" + matchesUrl() + "\">Öppna matchningar</a></p>";
-      sendMailSafe(new MailerMessage({
-        from: from,
-        to: [{ address: toEmail }],
-        subject: fromName + " är intresserad av dig på Hundkrets",
-        html: html
-      }));
+      var html = "<p><strong>" + fromName + "</strong> är intresserad av dig!</p>" + msgHtml + "<p>Logga in för att se dem i matchningar och svara.</p><p><a href=\"" + matchesLink + "\">Öppna matchningar</a></p>";
+      doSend(new MailerMessage({ from: from, to: [{ address: toEmail }], subject: fromName + " är intresserad av dig på Hundkrets", html: html }));
     }
   }
 
@@ -229,20 +197,30 @@ onRecordAfterUpdateSuccess((e) => {
     return;
   }
 
-  var from = mailFrom();
+  var meta = $app.settings() && $app.settings().meta;
+  var from = null;
+  if (meta && meta.senderAddress && String(meta.senderAddress).trim()) {
+    from = {
+      address: String(meta.senderAddress).trim(),
+      name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets"
+    };
+  }
   if (!from) {
     e.next();
     return;
   }
 
   var name = record.get("name") || "där";
-  var html = "<p>Välkommen till Hundkrets, " + name + "!</p><p>Du har slutfört din profil. Nu kan du hitta hundägare i ditt område som vill byta hundpassning.</p><p><a href=\"" + matchesUrl() + "\">Se matchningar</a></p>";
-  sendMailSafe(new MailerMessage({
-    from: from,
-    to: [{ address: email }],
-    subject: "Välkommen till Hundkrets!",
-    html: html
-  }));
+  var urlMeta = $app.settings() && $app.settings().meta;
+  var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "http://localhost:3000";
+  var html = "<p>Välkommen till Hundkrets, " + name + "!</p><p>Du har slutfört din profil. Nu kan du hitta hundägare i ditt område som vill byta hundpassning.</p><p><a href=\"" + baseUrl + "/app/matches\">Se matchningar</a></p>";
+  try {
+    var msg = new MailerMessage({ from: from, to: [{ address: email }], subject: "Välkommen till Hundkrets!", html: html });
+    $app.newMailClient().send(msg);
+    $app.logger().info("Email sent", "to", email, "subject", "Välkommen till Hundkrets!");
+  } catch (err) {
+    $app.logger().warn("Email send failed", "error", err);
+  }
 
   try {
     record.set("welcome_email_sent", true);
