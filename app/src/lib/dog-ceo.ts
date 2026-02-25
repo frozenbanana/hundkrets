@@ -41,7 +41,8 @@ const BREED_MAP: Record<string, string> = {
   "great dane": "dane/great"
 };
 
-function toApiPath(breed: string): string | null {
+/** Exported for testing. Maps breed names to Dog CEO API path. */
+export function toApiPath(breed: string): string | null {
   const normalized = breed.trim().toLowerCase();
   if (!normalized) return null;
   const mapped = BREED_MAP[normalized];
