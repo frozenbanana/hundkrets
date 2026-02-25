@@ -121,8 +121,9 @@ function sendMailSafe(msg) {
 }
 
 // 1. Incoming connection request + Match confirmation
+// Note: RecordEvent has record, app, context, type - NOT e.collection. We filter by collection name in the 2nd param.
 onRecordAfterCreateSuccess((e) => {
-  if (!e || !e.collection || e.collection.name !== "connection_requests") {
+  if (!e || !e.record) {
     e.next();
     return;
   }
@@ -211,7 +212,7 @@ onRecordAfterCreateSuccess((e) => {
 
 // 2. Welcome email when onboarding is complete (only once per user)
 onRecordAfterUpdateSuccess((e) => {
-  if (!e || !e.collection || e.collection.name !== "users") {
+  if (!e || !e.record) {
     e.next();
     return;
   }
