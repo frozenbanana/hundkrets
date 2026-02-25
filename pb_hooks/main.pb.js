@@ -153,7 +153,7 @@ onRecordAfterCreateSuccess((e) => {
   }
 
   var urlMeta = $app.settings() && $app.settings().meta;
-  var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "http://localhost:3000";
+  var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
   var matchesLink = baseUrl + "/app/matches";
   var matchesMatchedLink = baseUrl + "/app/matches?match=true";
 
@@ -212,7 +212,7 @@ onRecordAfterUpdateSuccess((e) => {
 
   var name = record.get("name") || "där";
   var urlMeta = $app.settings() && $app.settings().meta;
-  var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "http://localhost:3000";
+  var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
   var html = "<p>Välkommen till Hundkrets, " + name + "!</p><p>Du har slutfört din profil. Nu kan du hitta hundägare i ditt område som vill byta hundpassning.</p><p><a href=\"" + baseUrl + "/app/matches\">Se matchningar</a></p>";
   try {
     var msg = new MailerMessage({ from: from, to: [{ address: email }], subject: "Välkommen till Hundkrets!", html: html });
