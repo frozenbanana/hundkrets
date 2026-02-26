@@ -268,11 +268,12 @@ function MatchDetailModal(props: {
   onRespondClick?: (conn: Conn, fromUserName?: string) => void;
   onWithdraw?: (userId: string) => void;
   onUnmatch?: (userId: string) => void;
+  onOpenChat?: (userId: string) => void;
   onClose: () => void;
   dateStr: (n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
 }) {
-  const { listing, baseUrl, getConnections, myNeeds = [], myCapacities = [], refreshing, onInterestedClick, onRespondClick, onWithdraw, onUnmatch, onClose, dateStr, sizesStr } = props;
+  const { listing, baseUrl, getConnections, myNeeds = [], myCapacities = [], refreshing, onInterestedClick, onRespondClick, onWithdraw, onUnmatch, onOpenChat, onClose, dateStr, sizesStr } = props;
   const conns = () => getConnections();
   const connFromThem = () => conns().find((c) => c.from_user === listing.user.id && c.to_user === pb.authStore.model?.id);
   const mutual = () => {
@@ -482,6 +483,16 @@ function MatchDetailModal(props: {
             )}
           </Show>
           <Show when={mutual() && onUnmatch}>
+            <Show when={onOpenChat}>
+              <button
+                type="button"
+                class="btn"
+                disabled={refreshing()}
+                onClick={() => onOpenChat?.(listing.user.id)}
+              >
+                Öppna chatt
+              </button>
+            </Show>
             <button
               type="button"
               class="btn btn-secondary"
@@ -776,6 +787,43 @@ export default function Matches() {
       refetch();
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  async function ensureConversation(otherUserId: string): Promise<string> {
+    const myId = pb.authStore.model?.id;
+    if (!myId) throw new Error("Inte inloggad");
+    const userA = myId < otherUserId ? myId : otherUserId;
+    const userB = myId < otherUserId ? otherUserId : myId;
+    const key = `${userA}:${userB}`;
+
+    try {
+      const existing = await pb.collection("conversations").getFirstListItem(`pair_key = "${key}"`);
+      return existing.id;
+    } catch {}
+
+    try {
+      const existingByUsers = await pb.collection("conversations").getFirstListItem(
+        `(user_a = "${myId}" && user_b = "${otherUserId}") || (user_a = "${otherUserId}" && user_b = "${myId}")`
+      );
+      return existingByUsers.id;
+    } catch {}
+
+    const created = await pb.collection("conversations").create({
+      user_a: userA,
+      user_b: userB,
+      pair_key: key,
+    });
+    return created.id;
+  }
+
+  async function handleOpenChat(otherUserId: string) {
+    try {
+      const conversationId = await ensureConversation(otherUserId);
+      navigate(`/app/chats/${conversationId}?with=${otherUserId}`);
+    } catch (err) {
+      console.error("[matches] handleOpenChat error", err);
+      showToast("Kunde inte öppna chatt just nu.");
     }
   }
 
@@ -1210,6 +1258,7 @@ export default function Matches() {
                   onRespondClick={openRespondModal}
                   onWithdraw={handleWithdraw}
                   onUnmatch={handleUnmatch}
+                  onOpenChat={handleOpenChat}
                   onClose={handleCloseDetail}
                   dateStr={dateStr}
                   sizesStr={sizesStr}

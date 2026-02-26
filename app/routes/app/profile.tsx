@@ -32,6 +32,7 @@ export default function Profile() {
   });
   const [error, setError] = createSignal("");
   const [saved, setSaved] = createSignal(false);
+  const [chatEmailFrequency, setChatEmailFrequency] = createSignal<"instant" | "daily" | "off">("daily");
 
   // Inställningar: byt e-post
   const [newEmail, setNewEmail] = createSignal("");
@@ -66,6 +67,8 @@ export default function Profile() {
       });
       setBio(user.bio ?? "");
       setBreedsOwnedBefore(user.breeds_owned_before ?? "");
+      const pref = (user.chat_email_frequency as "instant" | "daily" | "off" | undefined) ?? "daily";
+      setChatEmailFrequency(pref === "daily" || pref === "off" ? pref : "instant");
     }
   });
 
@@ -125,6 +128,7 @@ export default function Profile() {
         fd.append("longitude", String(addr.longitude ?? ""));
         fd.append("bio", bio() || "");
         fd.append("breeds_owned_before", breedsOwnedBefore() || "");
+        fd.append("chat_email_frequency", chatEmailFrequency());
         fd.append("avatar", file);
         const updated = await pb.collection("users").update(userId, fd);
         pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, ...updated });
@@ -140,6 +144,7 @@ export default function Profile() {
           longitude: addr.longitude,
           bio: bio() || undefined,
           breeds_owned_before: breedsOwnedBefore() || undefined,
+          chat_email_frequency: chatEmailFrequency(),
         });
         pb.authStore.save(pb.authStore.token!, {
           ...pb.authStore.model,
@@ -153,6 +158,7 @@ export default function Profile() {
           longitude: addr.longitude,
           bio: bio(),
           breeds_owned_before: breedsOwnedBefore(),
+          chat_email_frequency: chatEmailFrequency(),
         });
       }
       setSaved(true);
@@ -303,6 +309,22 @@ export default function Profile() {
 
       <div class="card">
         <h2 style="margin: 0 0 1rem; font-size: 1.25rem;">Inställningar</h2>
+
+        <div class="form-group">
+          <label for="chat-email-frequency">E-post för chattmeddelanden</label>
+          <p style="color: var(--color-text-muted); font-size: 0.9rem; margin: 0.25rem 0 0.5rem;">
+            Välj hur ofta du vill få e-post när någon skriver till dig.
+          </p>
+          <select
+            id="chat-email-frequency"
+            value={chatEmailFrequency()}
+            onChange={(e) => setChatEmailFrequency(e.currentTarget.value as "instant" | "daily" | "off")}
+          >
+            <option value="instant">Direkt</option>
+            <option value="daily">Daglig sammanfattning</option>
+            <option value="off">Av</option>
+          </select>
+        </div>
 
         <div class="form-group">
           <label for="new-email">Byt e-postadress</label>
