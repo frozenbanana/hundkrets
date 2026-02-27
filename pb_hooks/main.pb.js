@@ -35,7 +35,27 @@ onRecordDelete((e) => {
     $app.logger().warn("User delete: connection_requests cleanup", "error", err);
   }
 
-  // 3. watch_capacity
+  // 3. conversations (user_a or user_b)
+  try {
+    toDelete = $app.findRecordsByFilter("conversations", "user_a = {:uid} || user_b = {:uid}", "", 0, 0, { uid: uid });
+    for (var c = 0; c < toDelete.length; c++) {
+      $app.delete(toDelete[c]);
+    }
+  } catch (err) {
+    $app.logger().warn("User delete: conversations cleanup", "error", err);
+  }
+
+  // 4. messages (sender)
+  try {
+    toDelete = $app.findRecordsByFilter("messages", "sender = {:uid}", "", 0, 0, { uid: uid });
+    for (var mm = 0; mm < toDelete.length; mm++) {
+      $app.delete(toDelete[mm]);
+    }
+  } catch (err) {
+    $app.logger().warn("User delete: messages cleanup", "error", err);
+  }
+
+  // 5. watch_capacity
   try {
     toDelete = $app.findRecordsByFilter("watch_capacity", "user = {:uid}", "", 0, 0, { uid: uid });
     for (var k = 0; k < toDelete.length; k++) {
@@ -45,7 +65,7 @@ onRecordDelete((e) => {
     $app.logger().warn("User delete: watch_capacity cleanup", "error", err);
   }
 
-  // 4. dogs (owner)
+  // 6. dogs (owner)
   try {
     toDelete = $app.findRecordsByFilter("dogs", "owner = {:uid}", "", 0, 0, { uid: uid });
     for (var m = 0; m < toDelete.length; m++) {
@@ -57,6 +77,202 @@ onRecordDelete((e) => {
 
   e.next();
 }, "users");
+
+function asId(v) {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (v && typeof v === "object" && v.id) return String(v.id);
+  if (Array.isArray(v) && v.length > 0) return asId(v[0]);
+  return "";
+}
+
+function pairKey(userA, userB) {
+  var a = String(userA || "");
+  var b = String(userB || "");
+  if (!a || !b) return "";
+  return a < b ? (a + ":" + b) : (b + ":" + a);
+}
+
+function getMailFrom() {
+  var meta = $app.settings() && $app.settings().meta;
+  if (meta && meta.senderAddress && String(meta.senderAddress).trim()) {
+    return {
+      address: String(meta.senderAddress).trim(),
+      name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets"
+    };
+  }
+  return null;
+}
+
+function htmlEscape(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Chat guard: only allow conversations for mutually matched users.
+onRecordAfterCreateSuccess((e) => {
+  if (!e || !e.record) {
+    e.next();
+    return;
+  }
+  var conv = e.record;
+  var userA = asId(conv.get("user_a"));
+  var userB = asId(conv.get("user_b"));
+  if (!userA || !userB || userA === userB) {
+    try { $app.delete(conv); } catch (_) {}
+    e.next();
+    return;
+  }
+
+  var key = pairKey(userA, userB);
+  try {
+    conv.set("pair_key", key);
+    $app.save(conv);
+  } catch (_) {}
+
+  // De-duplicate conversations (keep oldest)
+  try {
+    var duplicates = $app.findRecordsByFilter("conversations", "pair_key = {:k} && id != {:id}", "created", 1, 0, { k: key, id: conv.id });
+    if (duplicates && duplicates.length > 0) {
+      $app.delete(conv);
+      e.next();
+      return;
+    }
+  } catch (_) {}
+
+  var forward = null;
+  var reverse = null;
+  try {
+    forward = $app.findFirstRecordByFilter("connection_requests", "from_user = {:from} && to_user = {:to}", { from: userA, to: userB });
+  } catch (_) {}
+  try {
+    reverse = $app.findFirstRecordByFilter("connection_requests", "from_user = {:from} && to_user = {:to}", { from: userB, to: userA });
+  } catch (_) {}
+
+  if (!forward || !reverse) {
+    $app.logger().warn("Conversation removed: users are not mutually matched", "conversationId", conv.id);
+    try { $app.delete(conv); } catch (_) {}
+  }
+  e.next();
+}, "conversations");
+
+// Chat guard + notification: sender must be participant and recipient gets email by preference.
+onRecordAfterCreateSuccess((e) => {
+  if (!e || !e.record) {
+    e.next();
+    return;
+  }
+  var msgRec = e.record;
+  var convId = asId(msgRec.get("conversation"));
+  var senderId = asId(msgRec.get("sender"));
+  if (!convId || !senderId) {
+    try { $app.delete(msgRec); } catch (_) {}
+    e.next();
+    return;
+  }
+
+  var conv = null;
+  try {
+    conv = $app.findRecordById("conversations", convId);
+  } catch (_) {
+    try { $app.delete(msgRec); } catch (_) {}
+    e.next();
+    return;
+  }
+
+  var userA = asId(conv.get("user_a"));
+  var userB = asId(conv.get("user_b"));
+  if (senderId !== userA && senderId !== userB) {
+    $app.logger().warn("Message removed: sender is not conversation participant", "messageId", msgRec.id, "senderId", senderId);
+    try { $app.delete(msgRec); } catch (_) {}
+    e.next();
+    return;
+  }
+
+  var recipientId = senderId === userA ? userB : userA;
+  if (!recipientId) {
+    e.next();
+    return;
+  }
+
+  try {
+    conv.set("last_message_at", new Date().toISOString());
+    $app.save(conv);
+  } catch (_) {}
+
+  var recipient = null;
+  var sender = null;
+  try {
+    recipient = $app.findRecordById("users", recipientId);
+    sender = $app.findRecordById("users", senderId);
+  } catch (_) {
+    e.next();
+    return;
+  }
+  var recipientEmail = recipient ? recipient.get("email") : "";
+  if (!recipientEmail) {
+    e.next();
+    return;
+  }
+
+  var pref = (recipient.get("chat_email_frequency") || "daily");
+  if (pref === "off") {
+    e.next();
+    return;
+  }
+
+  var shouldSend = true;
+  var isDaily = pref === "daily";
+  if (isDaily) {
+    var prev = recipient.get("chat_digest_last_sent_at");
+    if (prev) {
+      var prevMs = new Date(String(prev)).getTime();
+      var nowMs = Date.now();
+      if (!isNaN(prevMs) && (nowMs - prevMs) < (24 * 60 * 60 * 1000)) {
+        shouldSend = false;
+      }
+    }
+  }
+  if (!shouldSend) {
+    e.next();
+    return;
+  }
+
+  var from = getMailFrom();
+  if (!from) {
+    e.next();
+    return;
+  }
+
+  var senderName = (sender && sender.get("name")) ? sender.get("name") : "Någon";
+  var body = String(msgRec.get("body") || "").trim();
+  var snippet = body.length > 200 ? (body.slice(0, 200) + "...") : body;
+  var safeSnippet = htmlEscape(snippet);
+  var urlMeta = $app.settings() && $app.settings().meta;
+  var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
+  var chatLink = baseUrl + "/app/chats/" + conv.id;
+
+  var subject = isDaily ? "Daglig chattsammanfattning på Hundkrets" : (senderName + " skickade ett meddelande på Hundkrets");
+  var html = isDaily
+    ? "<p>Du har nya meddelanden på Hundkrets.</p><p><a href=\"" + chatLink + "\">Öppna chatten</a></p>"
+    : "<p><strong>" + htmlEscape(senderName) + "</strong> skickade ett nytt meddelande:</p><p style=\"margin: 1rem 0; padding: 0.75rem; background: #f5f5f5; border-radius: 8px;\">" + safeSnippet + "</p><p><a href=\"" + chatLink + "\">Öppna chatten</a></p>";
+
+  try {
+    $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: recipientEmail }], subject: subject, html: html }));
+    if (isDaily) {
+      recipient.set("chat_digest_last_sent_at", new Date().toISOString());
+      $app.save(recipient);
+    }
+  } catch (err) {
+    $app.logger().warn("Chat notification email failed", "error", err);
+  }
+
+  e.next();
+}, "messages");
 
 // Public route: user locations for landing map (id, latitude, longitude, area only – no auth needed)
 routerAdd("GET", "/api/hundkrets/user-locations", (e) => {
@@ -229,5 +445,23 @@ onRecordAfterUpdateSuccess((e) => {
     $app.logger().warn("Could not set welcome_email_sent", "error", err);
   }
 
+  e.next();
+}, "users");
+
+// 3. Ensure users have daily chat notification default when unset
+onRecordAfterCreateSuccess((e) => {
+  if (!e || !e.record) {
+    e.next();
+    return;
+  }
+  var user = e.record;
+  if (!user.get("chat_email_frequency")) {
+    try {
+      user.set("chat_email_frequency", "daily");
+      $app.save(user);
+    } catch (err) {
+      $app.logger().warn("Could not set default chat_email_frequency", "error", err);
+    }
+  }
   e.next();
 }, "users");

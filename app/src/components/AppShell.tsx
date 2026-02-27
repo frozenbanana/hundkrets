@@ -3,11 +3,12 @@ import { createMemo, createResource, createSignal, onMount, Show } from "solid-j
 import { pb } from "~/lib/pocketbase";
 import { Avatar } from "~/components/Avatar";
 import { getRequestsSeenAt, requestsSeenVersion } from "~/lib/requestsSeen";
+import { countUnreadIncomingMessages } from "~/lib/chat";
 
 export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   const nav = useNavigate();
   const user = () => pb.authStore.model;
-  const me = () => pb.authStore.model?.id;
+  const me = () => (pb.authStore.isValid ? pb.authStore.model?.id : undefined);
   const [menuOpen, setMenuOpen] = createSignal(false);
 
   const [connections] = createResource(
@@ -21,6 +22,24 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
         });
       } catch {
         return [];
+      }
+    }
+  );
+
+  const [unreadChatCount] = createResource(
+    () => me(),
+    async (userId) => {
+      if (!userId) return 0;
+      try {
+        const messages = await pb.collection("messages").getFullList<{
+          sender: string;
+          read_at?: string;
+        }>({
+          requestKey: "appshell-unread-chat",
+        });
+        return countUnreadIncomingMessages(messages, userId);
+      } catch {
+        return 0;
       }
     }
   );
@@ -90,6 +109,14 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
           <A href="/app/dogs" onClick={() => setMenuOpen(false)}>Mina hundar</A>
           <A href="/app/needs" onClick={() => setMenuOpen(false)}>Mina behov</A>
           <A href="/app/capacity" onClick={() => setMenuOpen(false)}>Min kapacitet</A>
+          <A href="/app/chats" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
+            Chattar
+            <Show when={(unreadChatCount() ?? 0) > 0}>
+              <span class="nav-badge" aria-label={`${unreadChatCount()} olästa`}>
+                {unreadChatCount()}
+              </span>
+            </Show>
+          </A>
           <A href="/app/matches" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
             Matchningar
             <Show when={badgeCount() > 0}>
