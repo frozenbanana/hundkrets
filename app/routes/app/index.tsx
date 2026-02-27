@@ -1,9 +1,10 @@
-import { A } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
-import { createMemo, createResource, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
+import { conversationPairKey } from "~/lib/chat";
 
 interface ConnectionRequest {
   id: string;
@@ -23,7 +24,20 @@ interface DashboardData {
   capacity: unknown[];
 }
 
+type Conversation = {
+  id: string;
+  user_a: string;
+  user_b: string;
+};
+
+type Message = {
+  conversation: string;
+  sender: string;
+  read_at?: string;
+};
+
 export default function AppHome() {
+  const navigate = useNavigate();
   const [connections, { refetch: refetchConnections }] = createResource(
     () => pb.authStore.model?.id,
     async (userId) => {
@@ -102,6 +116,53 @@ export default function AppHome() {
     return Array.from(mutual).map((id) => expanded.get(id) ?? { id });
   });
 
+  const [chatMeta, { refetch: refetchChatMeta }] = createResource(
+    () => [me(), matches().map((m) => m.id).sort().join(",")] as const,
+    async ([meId]) => {
+      const empty = { conversationIdByOther: new Map<string, string>(), unreadByOther: new Map<string, number>() };
+      if (!meId) return empty;
+
+      const matchedIds = matches().map((m) => m.id);
+      if (matchedIds.length === 0) return empty;
+
+      try {
+        const conversations = await pb.collection("conversations").getFullList<Conversation>({
+          requestKey: "overview-conversations",
+        });
+        const matchSet = new Set(matchedIds);
+        const conversationIdByOther = new Map<string, string>();
+        const otherByConversation = new Map<string, string>();
+        const relevantConversations = new Set<string>();
+
+        for (const c of conversations) {
+          const other = c.user_a === meId ? c.user_b : c.user_b === meId ? c.user_a : "";
+          if (!other || !matchSet.has(other)) continue;
+          conversationIdByOther.set(other, c.id);
+          otherByConversation.set(c.id, other);
+          relevantConversations.add(c.id);
+        }
+
+        const unreadByOther = new Map<string, number>();
+        if (relevantConversations.size === 0) return { conversationIdByOther, unreadByOther };
+
+        const messages = await pb.collection("messages").getFullList<Message>({
+          requestKey: "overview-messages",
+        });
+        for (const msg of messages) {
+          if (!relevantConversations.has(msg.conversation)) continue;
+          if (msg.sender === meId || msg.read_at) continue;
+          const other = otherByConversation.get(msg.conversation);
+          if (!other) continue;
+          unreadByOther.set(other, (unreadByOther.get(other) ?? 0) + 1);
+        }
+
+        return { conversationIdByOther, unreadByOther };
+      } catch {
+        return empty;
+      }
+    }
+  );
+
   const [dogsByOwner] = createResource(
     () => {
       const conns = connections() ?? [];
@@ -114,11 +175,11 @@ export default function AppHome() {
     },
     async (userIds) => {
       if (userIds.length === 0) return new Map<string, { name?: string; breed?: string }[]>();
-      const allDogs = await pb.collection("dogs").getFullList();
+      const allDogs = await pb.collection("dogs").getFullList<{ owner: string; name?: string; breed?: string }>();
       const map = new Map<string, { name?: string; breed?: string }[]>();
       for (const uid of userIds) {
-        const userDogs = allDogs.filter((d: { owner: string }) => d.owner === uid);
-        map.set(uid, userDogs.map((d: { name?: string; breed?: string }) => ({ name: d.name, breed: d.breed })));
+        const userDogs = allDogs.filter((d) => d.owner === uid);
+        map.set(uid, userDogs.map((d) => ({ name: d.name, breed: d.breed })));
       }
       return map;
     }
@@ -255,6 +316,78 @@ export default function AppHome() {
     }
   }
 
+  async function ensureConversation(otherUserId: string): Promise<string> {
+    const myId = me();
+    if (!myId) throw new Error("Inte inloggad");
+
+    const existing = chatMeta()?.conversationIdByOther.get(otherUserId);
+    if (existing) return existing;
+
+    const key = conversationPairKey(myId, otherUserId);
+    try {
+      const byKey = await pb.collection("conversations").getFirstListItem<Conversation>(`pair_key = "${key}"`);
+      return byKey.id;
+    } catch {}
+
+    try {
+      const byUsers = await pb.collection("conversations").getFirstListItem<Conversation>(
+        `(user_a = "${myId}" && user_b = "${otherUserId}") || (user_a = "${otherUserId}" && user_b = "${myId}")`
+      );
+      return byUsers.id;
+    } catch {}
+
+    const userA = myId < otherUserId ? myId : otherUserId;
+    const userB = myId < otherUserId ? otherUserId : myId;
+    const created = await pb.collection("conversations").create({
+      user_a: userA,
+      user_b: userB,
+      pair_key: key,
+    });
+    return created.id;
+  }
+
+  async function handleOpenChat(otherUserId: string) {
+    try {
+      const conversationId = await ensureConversation(otherUserId);
+      navigate(`/app/chats/${conversationId}?with=${otherUserId}`);
+    } catch (err) {
+      console.error("[overview] handleOpenChat error", err);
+      showToast("Kunde inte öppna chatt just nu.");
+    }
+  }
+
+  createEffect(() => {
+    const meId = me();
+    if (!meId) return;
+    let closed = false;
+    let unsubscribeConversations: undefined | (() => void);
+    let unsubscribeMessages: undefined | (() => void);
+
+    void (async () => {
+      try {
+        const [unsubConv, unsubMsg] = await Promise.all([
+          pb.collection("conversations").subscribe("*", () => void refetchChatMeta()),
+          pb.collection("messages").subscribe("*", () => void refetchChatMeta()),
+        ]);
+        if (closed) {
+          unsubConv();
+          unsubMsg();
+          return;
+        }
+        unsubscribeConversations = unsubConv;
+        unsubscribeMessages = unsubMsg;
+      } catch (err) {
+        console.warn("[overview] realtime chat subscribe failed", err);
+      }
+    })();
+
+    onCleanup(() => {
+      closed = true;
+      unsubscribeConversations?.();
+      unsubscribeMessages?.();
+    });
+  });
+
   return (
     <AppShell>
       <div class="container">
@@ -293,9 +426,10 @@ export default function AppHome() {
                 <For each={matches()}>
                   {(m) => {
                     const dogs = dogsByOwner()?.get(m.id) ?? [];
+                    const unread = chatMeta()?.unreadByOther.get(m.id) ?? 0;
                     return (
                       <li class="connection-item">
-                        <A href={`/app/matches?match=true&user=${m.id}`} class="connection-item-link">
+                        <div class="connection-item-link">
                           <Avatar
                             name={m.name}
                             area={m.area}
@@ -306,14 +440,43 @@ export default function AppHome() {
                           />
                           <div style="flex: 1; min-width: 0;">
                             <strong>{m.name || "Okänd"}</strong>
+                            <Show when={unread > 0}>
+                              <span class="nav-badge" style="margin-left: 0.5rem;" aria-label={`${unread} olästa meddelanden`}>
+                                {unread}
+                              </span>
+                            </Show>
                             {m.area && <span style="color: var(--color-text-muted);"> — {m.area}</span>}
                             {m.bio && <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">{m.bio}</p>}
                             {m.breeds_owned_before && <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-text-muted);">Tidigare raser: {m.breeds_owned_before}</p>}
-                            {dogs.length > 0 && <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">Hundar: {dogs.map((d) => d.name || "Hund").join(", ")}</p>}
-                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-paw);">Klicka för att se på kartan →</p>
+                            <Show when={dogs.length > 0}>
+                              <details style="margin-top: 0.35rem;">
+                                <summary style="cursor: pointer; color: var(--color-text-muted); font-size: 0.9rem;">
+                                  Visa hundar ({dogs.length})
+                                </summary>
+                                <ul style="margin: 0.4rem 0 0 1.1rem; padding: 0;">
+                                  <For each={dogs}>
+                                    {(d) => <li style="font-size: 0.9rem;">{d.name || "Hund"}{d.breed ? ` (${d.breed})` : ""}</li>}
+                                  </For>
+                                </ul>
+                              </details>
+                            </Show>
+                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem;">
+                              <A href={`/app/matches?match=true&user=${m.id}`} style="color: var(--color-paw); text-decoration: underline;">
+                                Klicka för att se på kartan →
+                              </A>
+                            </p>
                           </div>
-                        </A>
+                        </div>
                         <div class="connection-item-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            class="btn"
+                            style="font-size: 0.85rem;"
+                            disabled={actionLoading()}
+                            onClick={() => handleOpenChat(m.id)}
+                          >
+                            {unread > 0 ? `Öppna chatt (${unread})` : "Öppna chatt"}
+                          </button>
                           <button
                             type="button"
                             class="btn btn-secondary"
