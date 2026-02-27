@@ -2,6 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { createMemo, createResource, createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { Avatar } from "~/components/Avatar";
+import { AdminMessageBanner } from "~/components/AdminMessageBanner";
 import { getRequestsSeenAt, requestsSeenVersion } from "~/lib/requestsSeen";
 import { countUnreadIncomingMessages } from "~/lib/chat";
 
@@ -128,6 +129,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
           </button>
         </div>
       </nav>
+      <AdminMessageBanner />
       {props.children}
     </div>
   );

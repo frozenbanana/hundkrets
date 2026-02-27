@@ -370,6 +370,87 @@ nav a {
   position: relative;
 }
 
+.admin-message-banner {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-paw);
+}
+
+.admin-message-banner-news {
+  background: #eef6ff;
+  color: #0f3f73;
+}
+
+.admin-message-banner-warning {
+  background: #fff4e5;
+  color: #8a3b00;
+}
+
+.admin-message-banner-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+}
+
+.admin-message-banner-text {
+  margin: 0;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.admin-message-banner-marquee {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.admin-message-banner-text-moving {
+  display: inline-block;
+  min-width: 100%;
+  padding-left: 100%;
+  animation: admin-message-marquee 16s linear infinite;
+}
+
+.admin-message-banner-close {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: currentColor;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  line-height: 1;
+}
+
+.admin-message-banner-close:hover,
+.admin-message-banner-close:focus-visible {
+  background: rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+@keyframes admin-message-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-message-banner-text-moving {
+    animation: none;
+    padding-left: 0;
+    min-width: auto;
+    white-space: normal;
+  }
+}
+
 .app-nav-brand {
   display: flex;
   align-items: center;
