@@ -988,6 +988,10 @@ nav a {
   min-height: 100vh;
 }
 
+.matches-header-container {
+  padding-bottom: 0.5rem;
+}
+
 .matches-toolbar {
   margin-top: 1rem;
   display: flex;
@@ -1052,7 +1056,7 @@ nav a {
   grid-template-columns: 60% 1fr;
   gap: 1rem;
   min-height: calc(100vh - 200px);
-  margin: 1rem auto 0;
+  margin: 0 auto;
   max-width: 1800px;
 }
 
@@ -1456,8 +1460,13 @@ nav a {
 .matches-mobile-toggle {
   display: none;
   gap: 0;
-  margin: 0.75rem 0 0;
+  margin: 0;
   padding: 0 1rem;
+}
+
+.matches-footer-note-container {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 @media (max-width: 768px) {
@@ -1502,7 +1511,7 @@ nav a {
   .matches-split-list-only .matches-list-panel,
   .matches-split-map-only .matches-map-panel {
     max-height: none;
-    height: calc(100vh - 280px);
+    height: calc(100dvh - 220px);
     min-height: 300px;
   }
 }

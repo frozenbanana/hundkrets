@@ -1056,12 +1056,12 @@ export default function Matches() {
   return (
     <AppShell>
       <div class="matches-page">
-        <div class="container">
+        <div class="container matches-header-container">
           <div class="page-hero">
           <span class="paw-emoji">🐾</span>
           <h1>Matchningar</h1>
           <p style="color: var(--color-text-muted);">
-            Hundägare i ditt område som vill byta hundpassning. Klicka "Jag är intresserad" för att koppla ihop—när de gör det samma byter ni telefonnummer och adresser.
+            Hundägare i ditt område som vill byta hundpassning. Klicka "Jag är intresserad" för att koppla ihop—när de gör det kan ni dela uppgifer och chatta.
           </p>
         </div>
         <Show when={!pb.authStore.model?.area && !pb.authStore.model?.city}>
@@ -1235,8 +1235,8 @@ export default function Matches() {
               </Show>
             </div>
           </div>
-          <div class="container">
-            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 0.5rem;">
+          <div class="container matches-footer-note-container">
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 0;">
               Zooma in för att filtrera. Klicka på ett kort eller en markör för att se detaljer.
             </p>
           </div>
