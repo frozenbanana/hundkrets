@@ -378,6 +378,7 @@ export default function AppHome() {
         unsubscribeMessages = unsubMsg;
       } catch (err) {
         console.warn("[overview] realtime chat subscribe failed", err);
+        showToast("Realtime-uppdateringar kunde inte startas.");
       }
     })();
 

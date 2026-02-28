@@ -1,6 +1,6 @@
 # Hundkrets – Home Server Hosting Guide
 
-Step-by-step guide to host Hundkrets on your home server with Cloudflare Tunnel.
+Steg-för-steg-guide för att hosta Hundkrets på en hemmaserver med Cloudflare Tunnel. Se [ARCHITECTURE.md](ARCHITECTURE.md) för arkitekturöversikt.
 
 ---
 
@@ -52,7 +52,7 @@ Repeat so you have both hostnames configured.
 
 ```bash
 # If deploying from your dev machine, copy to server:
-scp -r /home/henry/Code/personal/dogwatchmatch henry@YOUR_SERVER_IP:/home/henry/Services/hundkrets
+scp -r /path/to/hundkrets henry@YOUR_SERVER_IP:/home/henry/Services/hundkrets
 ```
 
 Or clone from git if the repo is remote.

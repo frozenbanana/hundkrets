@@ -10,6 +10,7 @@ app/.vinxi/
 
 # PocketBase
 pb_data/
+mailpit-certs/
 pb_migrations/*.pb
 
 # Environment

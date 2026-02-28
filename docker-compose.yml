@@ -40,5 +40,23 @@ services:
     depends_on:
       - pocketbase
 
+  # Dev inbox: captures all SMTP mail, web UI + REST API for testing
+  # Run: ./scripts/mailpit-certs.sh  (once) before first start
+  # PocketBase Mail: host=mailpit|localhost, port=1025, TLS=Auto, AUTH=none
+  # Web UI: http://localhost:8025 | API: http://localhost:8025/api/v1/messages
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    volumes:
+      - ./mailpit-certs:/certs:ro
+    environment:
+      MP_SMTP_TLS_CERT: /certs/cert.pem
+      MP_SMTP_TLS_KEY: /certs/key.pem
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+    profiles:
+      - dev
+
 volumes:
   pb_data:

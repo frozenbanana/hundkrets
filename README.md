@@ -1,30 +1,32 @@
 # Hundkrets
 
-A lightweight peer-to-peer dog-sitting exchange platform. Dog owners match based on complementary travel dates, location, and dog compatibility—no money, mutual help.
+En lättviktig peer-to-peer hundpassningsplattform. Hundägare matchas utifrån kompletterande resedatum, plats och hundkompatibilitet – ingen betalning, ömsesidigt utbyte.
 
 ## Tech Stack
 
-- **Backend**: PocketBase (SQLite, REST API, auth)
-- **Frontend**: SolidJS + SolidStart (TypeScript)
+- **Backend:** PocketBase (SQLite, REST API, auth)
+- **Frontend:** SolidJS + SolidStart (TypeScript)
 
-## Setup
+Se [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) för arkitekturval och motiveringar.
+
+## Snabbstart
 
 ### 1. PocketBase
 
-The PocketBase binary is included. Start it (migrations run automatically):
+PocketBase-binären ingår. Starta (migrations körs automatiskt):
 
 ```bash
 ./pocketbase serve
 ```
 
-Admin UI: http://127.0.0.1:8090/_/  
+Admin: http://127.0.0.1:8090/_/  
 API: http://127.0.0.1:8090/api/
 
-Create an admin account on first run. The schema (users, dogs, watch_needs, watch_capacity) is created via migrations in `pb_migrations/`. New users must complete onboarding (profile → dogs → needs → capacity) before seeing matches; the `onboarding_complete` field tracks this.
+Skapa admin-konto vid första körning. Schemat (users, dogs, watch_needs, watch_capacity, conversations, messages) skapas via migrations i `pb_migrations/`. Nya användare måste slutföra onboarding (profil → hundar → behov → kapacitet) innan matchningar visas.
 
-**Email notifications:** When SMTP and Meta sender address are configured (Settings → Mail + Meta), users receive emails for incoming connection requests, mutual matches, and welcome after onboarding. See `docs/HOSTING-GUIDE.md` for setup.
+**E-post:** När SMTP och Meta sender address är konfigurerade (Settings → Mail + Meta) skickas mail vid förfrågningar, mutual match och välkomst. För lokal test: `docker compose --profile dev up` lägger till Mailpit (http://localhost:8025). Se [docs/EMAIL-DEBUG.md](docs/EMAIL-DEBUG.md).
 
-**Landing page map:** The homepage shows a map of users' approximate locations. PocketBase exposes a public route `/api/hundkrets/user-locations` (id, latitude, longitude, area only) – no auth needed.
+**Landningskarta:** Startsidan visar användares ungefärliga platser. PocketBase exponerar `/api/hundkrets/user-locations` (id, lat, lon, area) – ingen auth krävs.
 
 ### 2. Frontend
 
@@ -34,63 +36,97 @@ npm install
 npm run dev
 ```
 
-**Git hooks:** `npm install` in `app/` installs a pre-commit hook that runs tests before each commit. To install manually: `./scripts/install-git-hooks.sh`
+**Git hooks:** `npm install` i `app/` installerar pre-commit-hook som kör tester. Manuellt: `./scripts/install-git-hooks.sh`
 
-**Favicon:** If `public/favicon.png` has a light background, make it transparent:
+**Favicon:** Om `public/favicon.png` har ljus bakgrund:
 
 ```bash
 cd app && npm run favicon:transparent
 ```
 
-Open http://localhost:3000
+Öppna http://localhost:3000
 
-### 3. Run both
+### 3. Kör båda
 
-In one terminal: `./pocketbase serve`  
-In another: `cd app && npm run dev`
+Terminal 1: `./pocketbase serve`  
+Terminal 2: `cd app && npm run dev`
 
-### 4. Seed data (optional)
+### 4. Seed-data (valfritt)
 
-Reset and seed 10 Malmö users with dogs, needs, and capacities:
+Återställ och seeda 10 Malmö-användare med hundar, behov och kapacitet:
 
 ```bash
 ./scripts/reset-and-seed.sh
 ```
 
-Or manually: stop PocketBase, `rm -rf pb_data`, start `./pocketbase serve`, create admin, then `cd app && npm run seed`.
+Eller manuellt: stoppa PocketBase, `rm -rf pb_data`, starta `./pocketbase serve`, skapa admin, sedan `cd app && npm run seed`.
 
-All seed users: **password123!**  
-Emails: anna.malmo@example.com, erik.malmo@example.com, etc.
+Alla seed-användare: **password123!**  
+E-post: anna.malmo@example.com, erik.malmo@example.com, etc.
 
-Set your profile to **Malmö** to see matches.
+Sätt din profil till **Malmö** för att se matchningar.
 
 ## Deployment (Docker Compose)
 
-For NixOS or any server with Docker:
+För NixOS eller annan server med Docker:
 
 ```bash
-# 1. Set the PocketBase URL (how the browser reaches it)
-export VITE_POCKETBASE_URL=http://YOUR_SERVER_IP:8090   # or https://your-domain.com
+# 1. Sätt PocketBase-URL (hur webbläsaren når den)
+export VITE_POCKETBASE_URL=http://YOUR_SERVER_IP:8090   # eller https://your-domain.com
 
-# 2. Build and run
+# 2. Bygg och kör
 docker compose up -d
 
-# 3. Open the app
-# App:    http://YOUR_SERVER_IP:3000
-# Admin:  http://YOUR_SERVER_IP:8090/_/
+# 3. Öppna appen
+# App:    http://YOUR_SERVER_IP:3123
+# Admin:  http://YOUR_SERVER_IP:8099/_/
 ```
 
-Create an admin account on first run at `http://YOUR_SERVER_IP:8090/_/`. Data persists in the `pb_data` volume.
+Skapa admin vid första körning på `http://YOUR_SERVER_IP:8099/_/`. Data sparas i `pb_data`-volymen.
 
-**ARM64 (Raspberry Pi):** Edit `docker/pocketbase/Dockerfile` and change `linux_amd64` to `linux_arm64` in the download URL.
+**ARM64 (Raspberry Pi):** Ändra `linux_amd64` till `linux_arm64` i `docker/pocketbase/Dockerfile`.
 
-## Project Structure
+Se [docs/HOSTING-GUIDE.md](docs/HOSTING-GUIDE.md) för Cloudflare Tunnel och produktion.
+
+## Projektstruktur
 
 ```
-dogwatchmatch/
-├── docker/            # Dockerfiles
-├── pb_migrations/     # PocketBase schema migrations
-├── app/               # SolidJS frontend (SolidStart)
-├── pocketbase         # PocketBase binary (dev only)
-└── README.md
+hundkrets/
+├── app/                    # SolidJS-frontend (SolidStart)
+│   ├── routes/             # Filbaserad routing
+│   │   ├── index.tsx       # Landningssida
+│   │   ├── app/            # Inloggade routes (matches, profile, chats, …)
+│   │   ├── onboarding/     # Onboarding-flöde
+│   │   └── api/            # API-routes
+│   ├── src/
+│   │   ├── lib/            # Affärslogik (matching, geocode, pocketbase, …)
+│   │   └── components/     # Återanvändbara komponenter
+│   └── lib → src/lib       # Symlänk (krävs för build)
+├── pb_hooks/               # PocketBase-hooks (e-post, cleanup)
+├── pb_migrations/          # Databasschema
+├── docker/                 # Dockerfiles
+├── scripts/                # Deploy, seed, mailpit-certs
+└── docs/                   # Dokumentation
 ```
+
+## Dokumentation
+
+Se [docs/README.md](docs/README.md) för fullständig översikt.
+
+| Dokument | Beskrivning |
+|----------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arkitektur, val och dataflöde |
+| [docs/HOSTING-GUIDE.md](docs/HOSTING-GUIDE.md) | Cloudflare Tunnel, produktion |
+| [docs/EMAIL-DEBUG.md](docs/EMAIL-DEBUG.md) | Mailpit, e-postflöden, felsökning |
+| [docs/ASSET_GENERATION_PROMPTS.md](docs/ASSET_GENERATION_PROMPTS.md) | Prompts för bildgenerering |
+| [TODO.md](TODO.md) | Prioriterad funktionslista |
+
+## Skript
+
+| Kommando | Beskrivning |
+|----------|-------------|
+| `./scripts/reset-and-seed.sh` | Återställ DB och seeda Malmö-data |
+| `./scripts/mailpit-certs.sh` | Skapa cert för Mailpit (lokal e-posttest) |
+| `./scripts/install-git-hooks.sh` | Installera pre-commit (kör tester) |
+| `cd app && npm run test:email` | Testa e-postflöden (PocketBase + Mailpit) |
+| `cd app && npm run seed` | Seeda användare (kräver tom/ny DB) |

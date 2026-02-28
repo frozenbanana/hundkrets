@@ -1306,24 +1306,67 @@ nav a {
   font-size: 1.25rem;
 }
 
-/* Badge för "Vill endast passa" – tydlig, utan bildområde */
-.match-card-pass-only-badge {
+/* Utbytestyp-badge: vänster hand (ta emot), höger hand (ge), handslag (ömsesidigt) – högra botten, över bilden */
+.match-card-exchange-badge {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.65rem;
-  background: linear-gradient(135deg, rgba(139, 90, 43, 0.15), rgba(139, 90, 43, 0.08));
-  border: 1px solid rgba(139, 90, 43, 0.25);
-  border-radius: var(--radius);
-  color: var(--color-paw-dark);
-  font-size: 0.8rem;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-radius: var(--radius);
+  z-index: 2;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
-.match-card-pass-only-icon {
-  font-size: 1.1rem;
-  opacity: 0.9;
+.match-card-exchange-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* Utbyte-ikon: båda händer som möts */
+.exchange-hands-icon {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 -0.1rem;
+}
+.exchange-hands-icon svg {
+  width: 0.55rem;
+  height: 0.55rem;
+}
+.exchange-hands-icon svg:last-child {
+  margin-left: -0.35rem;
+}
+
+.match-card-exchange-receive {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(139, 90, 43, 0.25);
+  color: var(--color-paw-dark);
+}
+
+.match-card-exchange-give {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(139, 90, 43, 0.25);
+  color: var(--color-paw-dark);
+}
+
+.match-card-exchange-mutual {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(139, 90, 43, 0.35);
+  color: var(--color-paw-dark);
+}
+
+/* Pass-only text (ersätter gamla badge) */
+.match-card-pass-only-text {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text);
 }
 
 .match-card-badge {
@@ -1383,6 +1426,12 @@ nav a {
   border-color: var(--color-fur);
 }
 
+/* Lätt nedtonad för "söker passning" – kan inte passa andra */
+.match-card-receive-only {
+  border-color: rgba(139, 90, 43, 0.25);
+  background: linear-gradient(180deg, rgba(139, 90, 43, 0.04) 0%, transparent 100%);
+}
+
 /* Mobile: vertikal layout – info ovanför, bild under, inget kläm */
 @media (max-width: 768px) {
   .match-card-compact {
@@ -1428,21 +1477,8 @@ nav a {
   }
 }
 
-/* Layout för endast passa – ingen hundbild, fokus på kapacitet och tillgänglighet */
-.match-card-pass-only-layout.match-card-compact {
-  aspect-ratio: unset;
-  max-height: none;
-  min-height: unset;
-}
-
-.match-card-pass-only-layout .match-card-body {
-  flex-direction: row;
-  width: 100%;
-}
-
+/* Layout för endast passa – profilbild på höger sida istället för hundbild */
 .match-card-pass-only-layout .match-card-info {
-  flex: 1;
-  width: 100%;
   padding: 0.85rem 1rem 0;
 }
 

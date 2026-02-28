@@ -167,8 +167,10 @@ onRecordAfterCreateSuccess((e) => {
     return;
   }
   var msgRec = e.record;
-  var convId = asId(msgRec.get("conversation"));
-  var senderId = asId(msgRec.get("sender"));
+  var toId = function(v) { if (!v) return ""; if (typeof v === "string") return v; if (v && typeof v === "object" && v.id) return String(v.id); if (Array.isArray(v) && v.length > 0) return toId(v[0]); return ""; };
+  var esc = function(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); };
+  var convId = toId(msgRec.get("conversation"));
+  var senderId = toId(msgRec.get("sender"));
   if (!convId || !senderId) {
     try { $app.delete(msgRec); } catch (_) {}
     e.next();
@@ -184,8 +186,8 @@ onRecordAfterCreateSuccess((e) => {
     return;
   }
 
-  var userA = asId(conv.get("user_a"));
-  var userB = asId(conv.get("user_b"));
+  var userA = toId(conv.get("user_a"));
+  var userB = toId(conv.get("user_b"));
   if (senderId !== userA && senderId !== userB) {
     $app.logger().warn("Message removed: sender is not conversation participant", "messageId", msgRec.id, "senderId", senderId);
     try { $app.delete(msgRec); } catch (_) {}
@@ -242,7 +244,8 @@ onRecordAfterCreateSuccess((e) => {
     return;
   }
 
-  var from = getMailFrom();
+  var meta = $app.settings() && $app.settings().meta;
+  var from = (meta && meta.senderAddress && String(meta.senderAddress).trim()) ? { address: String(meta.senderAddress).trim(), name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets" } : null;
   if (!from) {
     e.next();
     return;
@@ -251,7 +254,7 @@ onRecordAfterCreateSuccess((e) => {
   var senderName = (sender && sender.get("name")) ? sender.get("name") : "Någon";
   var body = String(msgRec.get("body") || "").trim();
   var snippet = body.length > 200 ? (body.slice(0, 200) + "...") : body;
-  var safeSnippet = htmlEscape(snippet);
+  var safeSnippet = esc(snippet);
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
   var chatLink = baseUrl + "/app/chats/" + conv.id;
@@ -259,7 +262,7 @@ onRecordAfterCreateSuccess((e) => {
   var subject = isDaily ? "Daglig chattsammanfattning på Hundkrets" : (senderName + " skickade ett meddelande på Hundkrets");
   var html = isDaily
     ? "<p>Du har nya meddelanden på Hundkrets.</p><p><a href=\"" + chatLink + "\">Öppna chatten</a></p>"
-    : "<p><strong>" + htmlEscape(senderName) + "</strong> skickade ett nytt meddelande:</p><p style=\"margin: 1rem 0; padding: 0.75rem; background: #f5f5f5; border-radius: 8px;\">" + safeSnippet + "</p><p><a href=\"" + chatLink + "\">Öppna chatten</a></p>";
+    : "<p><strong>" + esc(senderName) + "</strong> skickade ett nytt meddelande:</p><p style=\"margin: 1rem 0; padding: 0.75rem; background: #f5f5f5; border-radius: 8px;\">" + safeSnippet + "</p><p><a href=\"" + chatLink + "\">Öppna chatten</a></p>";
 
   try {
     $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: recipientEmail }], subject: subject, html: html }));

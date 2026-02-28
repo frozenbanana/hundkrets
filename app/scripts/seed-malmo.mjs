@@ -22,6 +22,10 @@ const userSpecs = [
   { email: "mikael.malmo@example.com", name: "Mikael", phone: "070-111 22 08", area: "Malmö - Södra Innerstaden", neighborhood: "Södra Innerstaden", lat: 55.588, lon: 13.008, bio: "Har alltid haft stora hundar. Erfaren med reaktiva hundar.", breeds_owned_before: "Husky, Schäfer" },
   { email: "sara.malmo@example.com", name: "Sara", phone: "070-111 22 09", area: "Malmö - Slottsstaden", neighborhood: "Slottsstaden", lat: 55.595, lon: 12.992, bio: "Student med flexibelt schema. Kan passa hundar på helger.", breeds_owned_before: "Cavalier, Cocker Spaniel" },
   { email: "peter.malmo@example.com", name: "Peter", phone: "070-111 22 10", area: "Malmö - Östra Sorgenfri", neighborhood: "Östra Sorgenfri", lat: 55.612, lon: 13.028, bio: "Pensionär med gott om tid. Uppskattar sällskap av hundar.", breeds_owned_before: "Labrador, Border Collie, Blandras" },
+  // Endast behov – kan inte passa andra hundar
+  { email: "karin.malmo@example.com", name: "Karin", phone: "070-111 22 11", area: "Malmö - Västra Hamnen", neighborhood: "Västra Hamnen", lat: 55.606, lon: 12.972, bio: "Nyinflyttad, har inte möjlighet att passa andra hundar just nu.", breeds_owned_before: "Cavalier" },
+  { email: "olle.malmo@example.com", name: "Olle", phone: "070-111 22 12", area: "Malmö - Möllevången", neighborhood: "Möllevången", lat: 55.590, lon: 13.005, bio: "Söker hjälp med min hund under semestern – kan tyvärr inte erbjuda tillbaka.", breeds_owned_before: "Blandras" },
+  { email: "maria.malmo@example.com", name: "Maria", phone: "070-111 22 13", area: "Malmö - Limhamn", neighborhood: "Limhamn", lat: 55.575, lon: 12.948, bio: "Arbetar mycket, behöver passning men har inte tid att passa andra.", breeds_owned_before: "Golden Retriever" },
 ];
 
 const dogSpecs = [
@@ -35,6 +39,9 @@ const dogSpecs = [
   { name: "Rocky", breed: "Border Collie", size: "medium", gender: "male", age: 2, tempPeople: "friendly", tempFemale: "friendly", tempMale: "cautious", notes: "Behöver mycket mental stimulering. Frisbee är favorit." },
   { name: "Nala", breed: "Husky", size: "large", gender: "female", age: 4, tempPeople: "friendly", tempFemale: "neutral", tempMale: "neutral", notes: "Rymningsbenägen – alltid koppel. Älskar snö." },
   { name: "Teddy", breed: "Pudel", size: "small", gender: "male", age: 9, tempPeople: "friendly", tempFemale: "friendly", tempMale: "friendly", notes: "Senior. Tar tabletter morgon och kväll. Lugn och snäll." },
+  { name: "Mimmi", breed: "Cavalier", size: "small", gender: "female", age: 5, tempPeople: "friendly", tempFemale: "friendly", tempMale: "neutral", notes: "Lugn och snäll. Älskar soffan." },
+  { name: "Bamse", breed: "Blandras", size: "medium", gender: "male", age: 3, tempPeople: "friendly", tempFemale: "friendly", tempMale: "cautious", notes: "Energisk men lätt att hantera." },
+  { name: "Zara", breed: "Golden Retriever", size: "large", gender: "female", age: 4, tempPeople: "friendly", tempFemale: "friendly", tempMale: "friendly", notes: "Vänlig mot alla. Älskar vatten." },
 ];
 
 const needOpts = [
@@ -48,6 +55,9 @@ const needOpts = [
   { flexible_dates: false, start_date: "2025-07-10", end_date: "2025-07-25" },
   { flexible_dates: true, open_any_duration: true },
   { flexible_dates: true, open_any_duration: true },
+  { flexible_dates: true, open_any_duration: false, duration_specific: "Juli–augusti" },
+  { flexible_dates: false, start_date: "2025-08-01", end_date: "2025-08-14" },
+  { flexible_dates: true, open_any_duration: false, duration_specific: "Helger" },
 ];
 
 const capOpts = [
@@ -148,7 +158,8 @@ async function main() {
       });
     }
     const existingCaps = await pb.collection("watch_capacity").getFullList({ filter: `user = "${users[i].id}"` });
-    if (existingCaps.length === 0) {
+    const isNeedOnly = i >= 10;
+    if (existingCaps.length === 0 && !isNeedOnly) {
       const c = capOpts[i];
       await pb.collection("watch_capacity").create({
         user: users[i].id,
@@ -157,7 +168,7 @@ async function main() {
     }
   }
 
-  console.log("\n✓ Seeded 10 Malmö users with dogs, needs, capacities.");
+  console.log("\n✓ Seeded 13 Malmö users (10 med behov+kapacitet, 3 endast behov).");
   console.log("  Login: anna@malmo.seed (or any) / password123!");
 }
 

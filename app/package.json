@@ -10,6 +10,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:geocode": "node scripts/test-geocode.mjs",
+    "test:email": "node scripts/test-email-flows.mjs",
+    "test:pb-login": "node scripts/test-pb-admin-login.mjs",
     "seed": "node scripts/seed-malmo.mjs",
     "favicon:transparent": "node scripts/make-favicon-transparent.mjs",
     "logo-icon:transparent": "node scripts/make-logo-icon-transparent.mjs"
@@ -24,6 +26,7 @@
     "vinxi": "^0.5.7"
   },
   "devDependencies": {
+    "dotenv": "^17.3.1",
     "sharp": "^0.34.5",
     "typescript": "^5.6.3",
     "vitest": "^4.0.18"

@@ -1,6 +1,120 @@
-# E-post vid intresseanmälan – felsökning
+# E-post – felsökning och testning
 
-## Problemet
+Felsökning och testning av e-postflöden i Hundkrets. Se [ARCHITECTURE.md](ARCHITECTURE.md) för översikt över hur e-post triggas via PocketBase-hooks.
+
+---
+
+## Mailpit (dev inbox)
+
+För lokal testning av e-postflöden kan du använda **Mailpit** – en SMTP-server som fångar alla mail och visar dem i en web UI.
+
+### Starta Mailpit
+
+PocketBase kräver TLS (Auto/StartTLS) – Mailpit måste köras med certifikat. PocketBase verifierar certifikat och accepterar inte self-signed om certet inte är betrott i systemet.
+
+**1. Skapa certifikat** (en gång):
+
+```bash
+./scripts/mailpit-certs.sh
+```
+
+**2. Gör certet betrott** (PocketBase kräver detta):
+
+Alternativ A – mkcert (skapar direkt betrodda certs):
+
+```bash
+# Debian/Ubuntu: sudo apt install mkcert
+# macOS: brew install mkcert
+./scripts/mailpit-certs.sh   # använder mkcert om installerat
+```
+
+Alternativ B – lägg till openssl-cert i systemets trust store:
+
+```bash
+sudo cp mailpit-certs/cert.pem /usr/local/share/ca-certificates/mailpit-dev.crt
+sudo update-ca-certificates
+```
+
+Starta om PocketBase efter att certet lagts till.
+
+**3. Starta Mailpit**
+
+Med Docker Compose:
+
+```bash
+docker compose --profile dev up -d
+```
+
+Utan Docker (lokalt `./pocketbase serve`), efter att certet lagts till i trust store:
+
+```bash
+docker run -d -p 8025:8025 -p 1025:1025 \
+  -v $(pwd)/mailpit-certs:/certs:ro \
+  -e MP_SMTP_TLS_CERT=/certs/cert.pem \
+  -e MP_SMTP_TLS_KEY=/certs/key.pem \
+  -e MP_SMTP_AUTH_ACCEPT_ANY=1 \
+  --name mailpit axllent/mailpit
+```
+
+Web UI: **http://localhost:8025**
+
+### Konfigurera PocketBase
+
+1. Öppna PocketBase Admin (t.ex. http://localhost:8099 eller http://localhost:8090)
+2. **Settings** → **Mail settings**
+3. Sätt:
+   - **Host:** `mailpit` (om PocketBase körs i Docker) eller `localhost` (om PocketBase körs lokalt)
+   - **Port:** `1025`
+   - **TLS:** Auto (StartTLS)
+   - **Username/Password:** tomma
+   - **AUTH method:** Om det finns "None" eller "Off", välj det. Annars lämna PLAIN med tomma fält.
+
+### API för programmatisk testning
+
+Mailpit har ett REST API för att verifiera att mail skickats:
+
+```bash
+# Lista alla mottagna mail
+curl http://localhost:8025/api/v1/messages
+
+# Hämta ett specifikt mail (ersätt ID)
+curl http://localhost:8025/api/v1/message/{id}
+```
+
+### Automatiska e-posttester
+
+Kör integrationstester som verifierar att alla mailflöden skickar rätt e-post:
+
+```bash
+cd app && npm run test:email
+```
+
+Kräver: PocketBase + Mailpit igång, Mail settings konfigurerade, Sender address satt. Testerna verifierar:
+
+- Intresseanmälan (connection request)
+- Matchbekräftelse (båda användare)
+- Välkomstmail
+- Chattnotis (instant)
+- Återställ lösenord (reset password)
+- E-postverifiering (verification)
+- Bekräfta e-postbyte (confirm email change)
+- Login alert (ny inloggning – migration `1739622700_enable_auth_alert.js` aktiverar detta, eller manuellt i Collection > users > Options)
+
+Chattnotis-testet loggar in som userA och skapar meddelandet via `pb.collection("messages").create()` (collection rules kräver sender = @request.auth.id). Hooken körs och skickar mailet.
+
+### Schema (messages & conversations)
+
+Messages kräver: `conversation` (relation till conversations), `sender` (relation till users), `body`. Fältet `read_at` är valfritt.
+
+Conversations kräver: `user_a`, `user_b` (båda relationer till users). `pair_key` sätts av hooken. Conversations får endast skapas mellan ömsesidigt matchade användare (båda connection_requests måste finnas).
+
+**Messages createRule:** `@request.auth.id != '' && sender = @request.auth.id` (utan conversation-kontroll för att undvika 400).
+
+**Conversations createRule:** `@request.auth.id != '' && (user_a = @request.auth.id || user_b = @request.auth.id)`.
+
+---
+
+## Problemet (intresseanmälan)
 
 När en användare skickar en intresseanmälan (klickar "Jag är intresserad") ska mottagaren få ett e-post. Mailet skickades inte, och inga loggar syntes.
 
