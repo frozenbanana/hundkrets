@@ -165,7 +165,7 @@ export default function OnboardingDogs() {
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
   return (
-    <OnboardingShell step={2} totalSteps={4} title="Dina hundar">
+    <OnboardingShell step={2} totalSteps={4} title="Dina hundar" backHref="/onboarding/profile">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           Lägg till hundar om du har (valfritt). Du kan lägga till fler senare från översikten.
@@ -235,11 +235,11 @@ export default function OnboardingDogs() {
           </div>
           <div class="form-group">
             <label for="notes">Anteckningar (valfritt)</label>
-            <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="T.ex. speciella behov, diet, mediciner" rows={3} />
+            <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="T.ex. speciella behov, diet, mediciner" rows={4} />
           </div>
           {error() && <p class="form-error" role="alert">{error()}</p>}
           <button type="submit" class="btn" disabled={loading()}>
-            {loading() ? "Lägger till..." : "Lägg till hund"}
+            {loading() ? "Lägger till..." : "Lägg till nästa hund"}
           </button>
         </form>
         <Show when={dogs() && dogs()!.length > 0}>

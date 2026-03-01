@@ -22,13 +22,13 @@ export default function OnboardingChoice() {
 
   function handleChoice(type: "has_dogs" | "sitter_only") {
     setOnboardingUserType(type);
-    nav("/onboarding/profile", { replace: true });
+    nav("/onboarding/profile");
   }
 
   return (
-    <OnboardingShell step={1} totalSteps={1} title="Vad vill du göra?">
+    <OnboardingShell step={1} totalSteps={1} title="Vad vill du göra?" backHref="history">
       <div class="card">
-        <p style="color: var(--color-choice-desc); margin-bottom: 1.5rem;">
+        <p style="color: var(--color-text); margin-bottom: 1.5rem;">
           Välj hur du vill använda Hundkrets. Du kan alltid ändra senare.
         </p>
         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
@@ -41,7 +41,7 @@ export default function OnboardingChoice() {
             <span style="font-size: 2rem;">🐕</span>
             <div>
               <strong>Jag har hund/hundar</strong>
-              <p style="margin: 0.25rem 0 0; font-size: 0.9rem; font-weight: normal; color: var(--color-choice-desc);">
+              <p style="margin: 0.25rem 0 0; font-size: 0.9rem; font-weight: normal; color: #d4c4b0;">
                 Jag vill byta hundpassning med andra i mitt område
               </p>
             </div>
@@ -55,7 +55,7 @@ export default function OnboardingChoice() {
             <span style="font-size: 2rem;">🏠</span>
             <div>
               <strong>Jag vill bara passa hundar</strong>
-              <p style="margin: 0.25rem 0 0; font-size: 0.9rem; font-weight: normal; color: var(--color-choice-desc);">
+              <p style="margin: 0.25rem 0 0; font-size: 0.9rem; font-weight: normal; color: #d4c4b0;">
                 Jag har inte hund men vill passa andras hundar
               </p>
             </div>

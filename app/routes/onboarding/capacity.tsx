@@ -98,7 +98,7 @@ export default function OnboardingCapacity() {
   }
 
   return (
-    <OnboardingShell step={isSitterOnly() ? 2 : 4} totalSteps={isSitterOnly() ? 2 : 4} title="När du kan passa hundar">
+    <OnboardingShell step={isSitterOnly() ? 2 : 4} totalSteps={isSitterOnly() ? 2 : 4} title="När du kan passa hundar" backHref={isSitterOnly() ? "/onboarding/profile" : "/onboarding/needs"}>
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           När kan du passa andras hundar? Var flexibel—exakta tider bestäms privat.

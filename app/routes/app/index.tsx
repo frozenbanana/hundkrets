@@ -439,14 +439,17 @@ export default function AppHome() {
                             baseUrl={baseUrl}
                             class="dog-card-img"
                           />
-                          <div style="flex: 1; min-width: 0;">
-                            <strong>{m.name || "Okänd"}</strong>
-                            <Show when={unread > 0}>
-                              <span class="nav-badge" style="margin-left: 0.5rem;" aria-label={`${unread} olästa meddelanden`}>
-                                {unread}
-                              </span>
-                            </Show>
-                            {m.area && <span style="color: var(--color-text-muted);"> — {m.area}</span>}
+                          <div class="connection-item-content">
+                            <div class="connection-item-header">
+                              <strong>{m.name || "Okänd"}</strong>
+                              <Show when={unread > 0}>
+                                <span class="nav-badge" style="margin-left: 0.5rem;" aria-label={`${unread} olästa meddelanden`}>
+                                  {unread}
+                                </span>
+                              </Show>
+                              {m.area && <span style="color: var(--color-text-muted);"> — {m.area}</span>}
+                            </div>
+                            <div class="connection-item-body" style="flex: 1; min-width: 0;">
                             {m.bio && <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">{m.bio}</p>}
                             {m.breeds_owned_before && <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-text-muted);">Tidigare raser: {m.breeds_owned_before}</p>}
                             <Show when={dogs.length > 0}>
@@ -466,6 +469,7 @@ export default function AppHome() {
                                 Klicka för att se på kartan →
                               </A>
                             </p>
+                            </div>
                           </div>
                         </div>
                         <div class="connection-item-actions" onClick={(e) => e.stopPropagation()}>
@@ -524,9 +528,12 @@ export default function AppHome() {
                             baseUrl={baseUrl}
                             class="dog-card-img"
                           />
-                          <div style="flex: 1; min-width: 0;">
-                            <strong>{from?.name || "Okänd"}</strong>
-                            {from?.area && <span style="color: var(--color-text-muted);"> — {from.area}</span>}
+                          <div class="connection-item-content">
+                            <div class="connection-item-header">
+                              <strong>{from?.name || "Okänd"}</strong>
+                              {from?.area && <span style="color: var(--color-text-muted);"> — {from.area}</span>}
+                            </div>
+                            <div class="connection-item-body" style="flex: 1; min-width: 0;">
                             {from?.bio && <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">{from.bio}</p>}
                             {from?.breeds_owned_before && <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-text-muted);">Tidigare raser: {from.breeds_owned_before}</p>}
                             {dogs.length > 0 && <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">Hundar: {dogs.map((d) => d.name || "Hund").join(", ")}</p>}
@@ -536,6 +543,7 @@ export default function AppHome() {
                               </div>
                             )}
                             <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-paw);">Vill koppla ihop — klicka för att se på kartan →</p>
+                            </div>
                           </div>
                         </A>
                         <div class="connection-item-actions" onClick={(e) => e.stopPropagation()}>
@@ -582,9 +590,12 @@ export default function AppHome() {
                             baseUrl={baseUrl}
                             class="dog-card-img"
                           />
-                          <div style="flex: 1; min-width: 0;">
-                            <strong>{to?.name || "Okänd"}</strong>
-                            {to?.area && <span style="color: var(--color-text-muted);"> — {to.area}</span>}
+                          <div class="connection-item-content">
+                            <div class="connection-item-header">
+                              <strong>{to?.name || "Okänd"}</strong>
+                              {to?.area && <span style="color: var(--color-text-muted);"> — {to.area}</span>}
+                            </div>
+                            <div class="connection-item-body" style="flex: 1; min-width: 0;">
                             {to?.bio && <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--color-text-muted);">{to.bio}</p>}
                             {to?.breeds_owned_before && <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-text-muted);">Tidigare raser: {to.breeds_owned_before}</p>}
                             {dogs.length > 0 && <p style="margin: 0.25rem 0 0; font-size: 0.9rem;">Hundar: {dogs.map((d) => d.name || "Hund").join(", ")}</p>}
@@ -592,6 +603,7 @@ export default function AppHome() {
                               Väntar på svar från {to?.name || "dem"}.
                             </p>
                             <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--color-paw);">Klicka för att se på kartan →</p>
+                            </div>
                           </div>
                         </A>
                         <div class="connection-item-actions" onClick={(e) => e.stopPropagation()}>

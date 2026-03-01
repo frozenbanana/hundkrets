@@ -95,7 +95,7 @@ export default function OnboardingNeeds() {
   const hasDogs = () => dogs() && dogs()!.length > 0;
 
   return (
-    <OnboardingShell step={3} totalSteps={4} title="När du behöver hundpassning">
+    <OnboardingShell step={3} totalSteps={4} title="När du behöver hundpassning" backHref="/onboarding/dogs">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           När behöver du att någon passar din hund? Du kan vara flexibel—exakta tider bestäms privat.

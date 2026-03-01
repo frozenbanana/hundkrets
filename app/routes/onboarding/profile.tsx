@@ -160,7 +160,7 @@ export default function OnboardingProfile() {
   }
 
   return (
-    <OnboardingShell step={1} totalSteps={isSitterOnly() ? 2 : 4} title="Din profil">
+    <OnboardingShell step={1} totalSteps={isSitterOnly() ? 2 : 4} title="Din profil" backHref="/onboarding/choice">
       <div class="card">
         <div style="text-align: center; margin-bottom: 1.5rem;">
           <Avatar
