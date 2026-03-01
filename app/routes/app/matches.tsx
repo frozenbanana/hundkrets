@@ -219,9 +219,12 @@ export default function Matches() {
       });
       showToast("Intresse skickat");
     } catch (e) {
+      const err = e as { response?: { data?: unknown }; data?: unknown };
       console.error("[matches] handleInterested error", e);
-      showToast(parseApiError(e));
+      console.error("[matches] response.data:", err?.response?.data ?? err?.data);
+      showToast(parseApiError(e), "error");
       refetch();
+      throw e;
     } finally {
       setRefreshing(false);
     }
@@ -320,7 +323,7 @@ export default function Matches() {
       navigate(`/app/chats/${conversationId}?with=${otherUserId}`);
     } catch (err) {
       console.error("[matches] handleOpenChat error", err);
-      showToast("Kunde inte öppna chatt just nu.");
+      showToast("Kunde inte öppna chatt just nu.", "error");
     }
   }
 
@@ -352,8 +355,12 @@ export default function Matches() {
   async function submitInterestModal() {
     const target = interestModalTarget();
     if (!target) return;
-    await handleInterested(target.userId, interestModalMessage().trim() || undefined);
-    closeInterestModal();
+    try {
+      await handleInterested(target.userId, interestModalMessage().trim() || undefined);
+      closeInterestModal();
+    } catch {
+      // Modal stays open on error so user can retry
+    }
   }
 
   const [respondModalTarget, setRespondModalTarget] = createSignal<
@@ -394,7 +401,7 @@ export default function Matches() {
       showToast("Matchad! Ni kan nu kontakta varandra.");
     } catch (e) {
       console.error("[matches] handleAcceptWithReply error", e);
-      showToast(parseApiError(e));
+      showToast(parseApiError(e), "error");
       refetch();
     } finally {
       setRefreshing(false);
@@ -417,7 +424,7 @@ export default function Matches() {
       closeRespondModal();
     } catch (e) {
       console.error("[matches] handleRejectRequest error", e);
-      showToast(parseApiError(e));
+      showToast(parseApiError(e), "error");
       refetch();
     } finally {
       setRefreshing(false);

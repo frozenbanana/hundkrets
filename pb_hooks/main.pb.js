@@ -303,12 +303,19 @@ routerAdd("GET", "/api/hundkrets/user-locations", (e) => {
 });
 
 // 0. Block unverified users from creating connection requests
-onRecordCreate((e) => {
+// Use onRecordCreateRequest (API-level) so BadRequestError message reaches the client
+onRecordCreateRequest((e) => {
   if (!e || !e.record) {
     e.next();
     return;
   }
-  var fromUserId = asId(e.record.get("from_user"));
+  var fromUserVal = e.record.get("from_user");
+  var fromUserId = "";
+  if (fromUserVal) {
+    if (typeof fromUserVal === "string") fromUserId = fromUserVal;
+    else if (fromUserVal && typeof fromUserVal === "object" && fromUserVal.id) fromUserId = String(fromUserVal.id);
+    else if (Array.isArray(fromUserVal) && fromUserVal.length > 0) fromUserId = String(fromUserVal[0].id || fromUserVal[0] || "");
+  }
   if (!fromUserId) {
     e.next();
     return;

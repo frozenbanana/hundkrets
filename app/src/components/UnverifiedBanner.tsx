@@ -17,7 +17,7 @@ export function UnverifiedBanner() {
       await pb.collection("users").requestVerification(email);
       showToast("Verifieringsmail skickat! Kolla din e-post.");
     } catch (err: unknown) {
-      showToast(parseApiError(err));
+      showToast(parseApiError(err), "error");
     } finally {
       setResendLoading(false);
     }

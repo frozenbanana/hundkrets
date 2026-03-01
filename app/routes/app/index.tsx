@@ -353,7 +353,7 @@ export default function AppHome() {
       navigate(`/app/chats/${conversationId}?with=${otherUserId}`);
     } catch (err) {
       console.error("[overview] handleOpenChat error", err);
-      showToast("Kunde inte öppna chatt just nu.");
+      showToast("Kunde inte öppna chatt just nu.", "error");
     }
   }
 
@@ -379,7 +379,7 @@ export default function AppHome() {
         unsubscribeMessages = unsubMsg;
       } catch (err) {
         console.warn("[overview] realtime chat subscribe failed", err);
-        showToast("Realtime-uppdateringar kunde inte startas.");
+        showToast("Realtime-uppdateringar kunde inte startas.", "error");
       }
     })();
 

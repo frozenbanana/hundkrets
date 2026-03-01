@@ -166,9 +166,9 @@ export default function ChatThread() {
         setMessage("");
         showToast("Meddelandet skickades");
       } else if (err && typeof err === "object" && "isAbort" in err && (err as { isAbort?: boolean }).isAbort) {
-        showToast("Försök igen – förra försöket avbröts.");
+        showToast("Försök igen – förra försöket avbröts.", "error");
       } else {
-        showToast(parseApiError(err));
+        showToast(parseApiError(err), "error");
       }
     } finally {
       sendInProgress = false;
