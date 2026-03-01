@@ -12,8 +12,8 @@ type Conversation = {
   user_a: string;
   user_b: string;
   expand?: {
-    user_a?: { id: string; name?: string; area?: string; avatar?: string };
-    user_b?: { id: string; name?: string; area?: string; avatar?: string };
+    user_a?: { id: string; name?: string; area?: string; avatar?: string; verified?: boolean };
+    user_b?: { id: string; name?: string; area?: string; avatar?: string; verified?: boolean };
   };
 };
 
@@ -100,9 +100,16 @@ export default function ChatThread() {
         throw new Error("Du har inte åtkomst till denna chatt.");
       }
 
-      const messages = await pb.collection("messages").getFullList<Message>({
-        filter: `conversation = "${conversationId}"`,
-      });
+      const otherUserId = conversation.user_a === meId ? conversation.user_b : conversation.user_a;
+      const [messages, otherDogs] = await Promise.all([
+        pb.collection("messages").getFullList<Message>({
+          filter: `conversation = "${conversationId}"`,
+        }),
+        pb.collection("dogs").getFullList<{ name?: string; breed?: string }>({
+          filter: `owner = "${otherUserId}"`,
+          fields: "name,breed",
+        }),
+      ]);
       messages.sort((a, b) => messageTimeMs(a) - messageTimeMs(b));
 
       const unreadIncoming = messages.filter((m) => m.sender !== meId && !m.read_at);
@@ -124,7 +131,7 @@ export default function ChatThread() {
         }
       }
 
-      return { conversation, messages };
+      return { conversation, messages, otherDogs };
     }
   );
 
@@ -224,6 +231,12 @@ export default function ChatThread() {
             const meId = me();
             const isA = conversation().user_a === meId;
             const other = () => (isA ? conversation().expand?.user_b : conversation().expand?.user_a);
+            const otherDogs = () => loaded().otherDogs ?? [];
+            const dogsSummary = () => {
+              const dogs = otherDogs();
+              if (dogs.length === 0) return "Vill endast passa";
+              return dogs.map((d) => (d.breed ? `${d.name || "Hund"} (${d.breed})` : d.name || "Hund")).join(", ");
+            };
             return (
               <>
                 <div class="chat-header page-hero" style="align-items: flex-start;">
@@ -236,10 +249,13 @@ export default function ChatThread() {
                       avatar={other()?.avatar}
                       baseUrl={baseUrl}
                       class="avatar-sm"
+                      verified={other()?.verified}
                     />
                     <div>
                       <h1 style="margin: 0;">{other()?.name || "Chatt"}</h1>
-                      <p style="margin: 0.2rem 0 0; color: var(--color-text-muted); font-size: 0.9rem;">{other()?.area || ""}</p>
+                      <p style="margin: 0.2rem 0 0; color: var(--color-text-muted); font-size: 0.9rem;">
+                        {[other()?.area, dogsSummary()].filter(Boolean).join(" • ")}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -275,35 +291,44 @@ export default function ChatThread() {
                 </div>
 
                 <form ref={composeFormRef} class="chat-compose card" onSubmit={sendMessage}>
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label for="chat-message" class="sr-only">Meddelande</label>
-                    <textarea
-                      ref={textareaRef}
-                      id="chat-message"
-                      rows={1}
-                      maxLength={2000}
-                      placeholder="Skriv ett meddelande..."
-                      title="Enter skickar, Shift+Enter för ny rad"
-                      value={message()}
-                      onInput={(e) => {
-                        setMessage(e.currentTarget.value);
-                        resizeTextarea();
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
-                        e.preventDefault();
-                        composeFormRef?.requestSubmit();
-                      }}
-                    />
-                  </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-                    <span style="color: var(--color-text-muted); font-size: 0.85rem;">
-                      {markingRead() ? "Markerar som läst..." : ""}
-                    </span>
-                    <button type="submit" class="btn chat-send-btn" disabled={sending() || !message().trim()}>
-                      {sending() ? "Skickar..." : "Skicka"}
+                  <div class="chat-compose-row">
+                    <div class="form-group chat-compose-input-wrap">
+                      <label for="chat-message" class="sr-only">Meddelande</label>
+                      <textarea
+                        ref={textareaRef}
+                        id="chat-message"
+                        rows={1}
+                        maxLength={2000}
+                        placeholder="Skriv ett meddelande..."
+                        title="Enter skickar, Shift+Enter för ny rad"
+                        value={message()}
+                        onInput={(e) => {
+                          setMessage(e.currentTarget.value);
+                          resizeTextarea();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+                          e.preventDefault();
+                          composeFormRef?.requestSubmit();
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      class="chat-send-icon-btn"
+                      disabled={sending() || !message().trim()}
+                      title={sending() ? "Skickar..." : "Skicka"}
+                      aria-label={sending() ? "Skickar..." : "Skicka"}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
+                        <path d="m22 2-7 20-4-9-9-4Z" />
+                        <path d="M22 2 11 13" />
+                      </svg>
                     </button>
                   </div>
+                  <Show when={markingRead()}>
+                    <span class="chat-compose-status" role="status">Markerar som läst...</span>
+                  </Show>
                 </form>
               </>
             );
