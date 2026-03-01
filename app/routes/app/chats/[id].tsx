@@ -3,6 +3,7 @@ import { createEffect, createResource, createSignal, For, onCleanup, Show } from
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
 import { pb } from "~/lib/pocketbase";
+import { subscribeToMessages } from "~/lib/chat-realtime";
 import { parseApiError } from "~/lib/errors";
 import { showToast } from "~/lib/toast";
 
@@ -52,6 +53,15 @@ export default function ChatThread() {
   const [markingRead, setMarkingRead] = createSignal(false);
   let messagesContainerRef: HTMLDivElement | undefined;
   let composeFormRef: HTMLFormElement | undefined;
+  let textareaRef: HTMLTextAreaElement | undefined;
+  let sendInProgress = false;
+
+  function resizeTextarea() {
+    const el = textareaRef;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }
 
   const [data, { refetch }] = createResource(
     () => [params.id, me(), (searchParams as { with?: string }).with] as const,
@@ -120,19 +130,27 @@ export default function ChatThread() {
 
   async function sendMessage(e: Event) {
     e.preventDefault();
+    if (sendInProgress) return;
     const text = message().trim();
     if (!text || !params.id || !me()) return;
+    sendInProgress = true;
     setSending(true);
     try {
-      await pb.collection("messages").create({
-        conversation: params.id,
-        sender: me(),
-        body: text,
-      });
+      pb.autoCancellation(false);
+      try {
+        await pb.collection("messages").create({
+          conversation: params.id,
+          sender: me(),
+          body: text,
+        });
+      } finally {
+        pb.autoCancellation(true);
+      }
       setMessage("");
       await refetch();
     } catch (err: unknown) {
       // PocketBase may occasionally return 400 even when the message was persisted by hooks.
+      // Auto-cancelled requests (err.isAbort) can occur if a duplicate request was made.
       // Refetch and treat as success if we can find the just-sent message.
       await refetch();
       const mine = me();
@@ -140,10 +158,13 @@ export default function ChatThread() {
       if (justSentExists) {
         setMessage("");
         showToast("Meddelandet skickades");
+      } else if (err && typeof err === "object" && "isAbort" in err && (err as { isAbort?: boolean }).isAbort) {
+        showToast("Försök igen – förra försöket avbröts.");
       } else {
         showToast(parseApiError(err));
       }
     } finally {
+      sendInProgress = false;
       setSending(false);
     }
   }
@@ -154,25 +175,15 @@ export default function ChatThread() {
     let closed = false;
     let unsubscribe: undefined | (() => void);
 
-    void (async () => {
-      try {
-        const unsub = await pb.collection("messages").subscribe(
-          "*",
-          (evt) => {
-            const record = evt.record as unknown as Message | undefined;
-            if (!record || record.conversation !== conversationId) return;
-            void refetch();
-          }
-        );
-        if (closed) {
-          unsub();
-          return;
-        }
-        unsubscribe = unsub;
-      } catch (err) {
-        console.warn("[chat-thread] realtime subscribe failed", err);
+    void subscribeToMessages(pb, conversationId, () => void refetch()).then((unsub) => {
+      if (closed) {
+        unsub();
+        return;
       }
-    })();
+      unsubscribe = unsub;
+    }).catch((err) => {
+      console.warn("[chat-thread] realtime subscribe failed", err);
+    });
 
     onCleanup(() => {
       closed = true;
@@ -180,29 +191,21 @@ export default function ChatThread() {
     });
   });
 
-  // Fallback refresh in case realtime connection temporarily drops.
-  createEffect(() => {
-    const conversationId = params.id;
-    if (!conversationId || !me()) return;
-    const intervalId = window.setInterval(() => {
-      void refetch();
-    }, 8000);
-    onCleanup(() => window.clearInterval(intervalId));
-  });
-
   createEffect(() => {
     const list = data()?.messages;
     if (!list || !messagesContainerRef) return;
-    queueMicrotask(() => {
-      if (!messagesContainerRef) return;
-      messagesContainerRef.scrollTop = messagesContainerRef.scrollHeight;
-    });
+    messagesContainerRef.scrollTop = messagesContainerRef.scrollHeight;
+  });
+
+  createEffect(() => {
+    message();
+    queueMicrotask(resizeTextarea);
   });
 
   return (
     <AppShell>
-      <div class="container">
-        <Show when={data.loading}>
+      <div class="chat-page">
+        <Show when={data.loading && !data()}>
           <p style="color: var(--color-text-muted);">Laddar chatt...</p>
         </Show>
         <Show when={data.error}>
@@ -223,7 +226,7 @@ export default function ChatThread() {
             const other = () => (isA ? conversation().expand?.user_b : conversation().expand?.user_a);
             return (
               <>
-                <div class="page-hero" style="align-items: flex-start;">
+                <div class="chat-header page-hero" style="align-items: flex-start;">
                   <A href="/app/chats" style="font-size: 0.9rem;">← Tillbaka till chattar</A>
                   <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem;">
                     <Avatar
@@ -243,8 +246,8 @@ export default function ChatThread() {
 
                 <div
                   ref={messagesContainerRef}
-                  class="card"
-                  style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 55vh; overflow: auto;"
+                  class="chat-messages card"
+                  style="display: flex; flex-direction: column; gap: 0.5rem;"
                 >
                   <Show when={loaded().messages.length === 0}>
                     <p style="margin: 0; color: var(--color-text-muted);">Inga meddelanden ännu. Skriv första meddelandet.</p>
@@ -271,16 +274,21 @@ export default function ChatThread() {
                   </For>
                 </div>
 
-                <form ref={composeFormRef} class="card" onSubmit={sendMessage} style="margin-top: 0.75rem;">
-                  <div class="form-group" style="margin-bottom: 0.75rem;">
-                    <label for="chat-message">Meddelande</label>
+                <form ref={composeFormRef} class="chat-compose card" onSubmit={sendMessage}>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="chat-message" class="sr-only">Meddelande</label>
                     <textarea
+                      ref={textareaRef}
                       id="chat-message"
-                      rows={3}
+                      rows={1}
                       maxLength={2000}
                       placeholder="Skriv ett meddelande..."
+                      title="Enter skickar, Shift+Enter för ny rad"
                       value={message()}
-                      onInput={(e) => setMessage(e.currentTarget.value)}
+                      onInput={(e) => {
+                        setMessage(e.currentTarget.value);
+                        resizeTextarea();
+                      }}
                       onKeyDown={(e) => {
                         if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
                         e.preventDefault();
@@ -288,11 +296,11 @@ export default function ChatThread() {
                       }}
                     />
                   </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
                     <span style="color: var(--color-text-muted); font-size: 0.85rem;">
                       {markingRead() ? "Markerar som läst..." : ""}
                     </span>
-                    <button type="submit" class="btn" disabled={sending() || !message().trim()}>
+                    <button type="submit" class="btn chat-send-btn" disabled={sending() || !message().trim()}>
                       {sending() ? "Skickar..." : "Skicka"}
                     </button>
                   </div>
