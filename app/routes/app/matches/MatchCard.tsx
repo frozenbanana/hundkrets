@@ -198,7 +198,6 @@ export function MatchCard(props: {
                 avatar={listing.user.avatar}
                 baseUrl={baseUrl}
                 class="match-card-img"
-                verified={listing.user.verified}
               />
             }
           >
