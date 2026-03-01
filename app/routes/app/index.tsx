@@ -2,6 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { isUserVerified } from "~/lib/auth";
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
 import { conversationPairKey } from "~/lib/chat";
@@ -12,8 +13,8 @@ interface ConnectionRequest {
   to_user: string;
   message?: string;
   expand?: {
-    from_user?: { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string };
-    to_user?: { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string };
+    from_user?: { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string; verified?: boolean };
+    to_user?: { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string; verified?: boolean };
   };
 }
 
@@ -105,7 +106,7 @@ export default function AppHome() {
   const matches = createMemo(() => {
     const conns = connections() ?? [];
     const mutual = mutualUserIds();
-    const expanded = new Map<string, { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string }>();
+    const expanded = new Map<string, { id: string; name?: string; area?: string; avatar?: string; bio?: string; breeds_owned_before?: string; verified?: boolean }>();
     for (const c of conns) {
       const otherId = c.from_user === me() ? c.to_user : c.to_user === me() ? c.from_user : null;
       if (otherId && mutual.has(otherId)) {
@@ -438,6 +439,7 @@ export default function AppHome() {
                             avatar={m.avatar}
                             baseUrl={baseUrl}
                             class="dog-card-img"
+                            verified={m.verified}
                           />
                           <div class="connection-item-content">
                             <div class="connection-item-header">
@@ -527,6 +529,7 @@ export default function AppHome() {
                             avatar={from?.avatar}
                             baseUrl={baseUrl}
                             class="dog-card-img"
+                            verified={from?.verified}
                           />
                           <div class="connection-item-content">
                             <div class="connection-item-header">
@@ -551,7 +554,8 @@ export default function AppHome() {
                             type="button"
                             class="btn"
                             style="font-size: 0.85rem;"
-                            disabled={actionLoading()}
+                            disabled={actionLoading() || !isUserVerified()}
+                            title={!isUserVerified() ? "Verifiera din e-post för att svara på förfrågningar." : undefined}
                             onClick={() => openRespondModal(req)}
                           >
                             Svara
@@ -589,6 +593,7 @@ export default function AppHome() {
                             avatar={to?.avatar}
                             baseUrl={baseUrl}
                             class="dog-card-img"
+                            verified={to?.verified}
                           />
                           <div class="connection-item-content">
                             <div class="connection-item-header">
@@ -656,7 +661,8 @@ export default function AppHome() {
                 <button
                   type="button"
                   class="btn"
-                  disabled={actionLoading()}
+                  disabled={actionLoading() || !isUserVerified()}
+                  title={!isUserVerified() ? "Verifiera din e-post för att svara på förfrågningar." : undefined}
                   onClick={() => handleAcceptWithReply()}
                 >
                   Acceptera

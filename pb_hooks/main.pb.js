@@ -302,6 +302,30 @@ routerAdd("GET", "/api/hundkrets/user-locations", (e) => {
   return e.json(200, items);
 });
 
+// 0. Block unverified users from creating connection requests
+onRecordCreate((e) => {
+  if (!e || !e.record) {
+    e.next();
+    return;
+  }
+  var fromUserId = asId(e.record.get("from_user"));
+  if (!fromUserId) {
+    e.next();
+    return;
+  }
+  var user = null;
+  try {
+    user = $app.findRecordById("users", fromUserId);
+  } catch (_) {
+    e.next();
+    return;
+  }
+  if (user && user.get("verified") !== true) {
+    throw new BadRequestError("Du måste verifiera din e-post för att skicka intresseanmälningar.");
+  }
+  e.next();
+}, "connection_requests");
+
 // 1. Incoming connection request + Match confirmation
 // Note: mailFrom/sendMailSafe inlined - PocketBase JSVM may not share function scope with hooks
 // Note: RecordEvent has record, app, context, type - NOT e.collection. We filter by collection name in the 2nd param.

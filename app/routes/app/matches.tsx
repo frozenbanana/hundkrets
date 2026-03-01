@@ -12,6 +12,7 @@ import {
   Show,
 } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { isUserVerified } from "~/lib/auth";
 import { findListings } from "~/lib/matching";
 import { approximateCoords, pointInBounds, type MapBounds } from "~/lib/geocode";
 import { AppShell } from "~/components/AppShell";
@@ -219,7 +220,7 @@ export default function Matches() {
       showToast("Intresse skickat");
     } catch (e) {
       console.error("[matches] handleInterested error", e);
-      if ((e as { status?: number })?.status !== 400) console.error(e);
+      showToast(parseApiError(e));
       refetch();
     } finally {
       setRefreshing(false);
@@ -801,6 +802,7 @@ export default function Matches() {
             onClose={closeInterestModal}
             onSubmit={submitInterestModal}
             loading={refreshing()}
+            isVerified={isUserVerified()}
           />
         )}
       </Show>
@@ -814,6 +816,7 @@ export default function Matches() {
             onAccept={handleAcceptWithReply}
             onReject={handleRejectRequest}
             loading={refreshing()}
+            isVerified={isUserVerified()}
           />
         )}
       </Show>

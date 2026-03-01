@@ -12,8 +12,8 @@ type Conversation = {
   last_message_at?: string;
   updated?: string;
   expand?: {
-    user_a?: { id: string; name?: string; area?: string; avatar?: string };
-    user_b?: { id: string; name?: string; area?: string; avatar?: string };
+    user_a?: { id: string; name?: string; area?: string; avatar?: string; verified?: boolean };
+    user_b?: { id: string; name?: string; area?: string; avatar?: string; verified?: boolean };
   };
 };
 
@@ -158,6 +158,7 @@ export default function Chats() {
                         avatar={other?.avatar}
                         baseUrl={baseUrl}
                         class="avatar-sm"
+                        verified={other?.verified}
                       />
                       <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline;">

@@ -7,8 +7,9 @@ export function InterestModal(props: {
   onClose: () => void;
   onSubmit: () => void;
   loading: boolean;
+  isVerified?: boolean;
 }) {
-  const { target, message, onMessageChange, onClose, onSubmit, loading } = props;
+  const { target, message, onMessageChange, onClose, onSubmit, loading, isVerified = true } = props;
   return (
     <div
       class="modal-backdrop"
@@ -47,7 +48,13 @@ export function InterestModal(props: {
           <button type="button" class="btn btn-secondary" onClick={onClose}>
             Avbryt
           </button>
-          <button type="button" class="btn" disabled={loading} onClick={() => onSubmit()}>
+          <button
+            type="button"
+            class="btn"
+            disabled={loading || !isVerified}
+            title={!isVerified ? "Verifiera din e-post för att skicka intresseanmälningar." : undefined}
+            onClick={() => onSubmit()}
+          >
             Skicka
           </button>
         </div>

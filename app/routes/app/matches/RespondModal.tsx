@@ -6,8 +6,9 @@ export function RespondModal(props: {
   onAccept: () => void;
   onReject: () => void;
   loading: boolean;
+  isVerified?: boolean;
 }) {
-  const { target, message, onMessageChange, onClose, onAccept, onReject, loading } = props;
+  const { target, message, onMessageChange, onClose, onAccept, onReject, loading, isVerified = true } = props;
   return (
     <div
       class="modal-backdrop"
@@ -46,7 +47,13 @@ export function RespondModal(props: {
           <button type="button" class="btn btn-secondary" disabled={loading} onClick={onReject}>
             Avvisa
           </button>
-          <button type="button" class="btn" disabled={loading} onClick={() => onAccept()}>
+          <button
+            type="button"
+            class="btn"
+            disabled={loading || !isVerified}
+            title={!isVerified ? "Verifiera din e-post för att svara på förfrågningar." : undefined}
+            onClick={() => onAccept()}
+          >
             Acceptera
           </button>
         </div>

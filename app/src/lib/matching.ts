@@ -12,6 +12,8 @@ export interface User extends RecordModel {
   avatar?: string;
   /** Set to true when user completes onboarding (capacity step). Add this field in PocketBase admin. */
   onboarding_complete?: boolean;
+  /** Email verification status from PocketBase auth */
+  verified?: boolean;
 }
 
 export interface Dog extends RecordModel {

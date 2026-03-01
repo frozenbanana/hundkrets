@@ -171,6 +171,7 @@ export default function OnboardingProfile() {
             avatar={avatarFile() ? undefined : pb.authStore.model?.avatar}
             src={avatarPreviewUrl()}
             baseUrl={import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}
+            verified={(pb.authStore.model as { verified?: boolean } | null)?.verified}
           />
         </div>
         <form onSubmit={handleSubmit}>

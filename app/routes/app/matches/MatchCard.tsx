@@ -131,6 +131,7 @@ export function MatchCard(props: {
               avatar={listing.user.avatar}
               baseUrl={baseUrl}
               class="match-card-avatar"
+              verified={listing.user.verified}
             />
             <span class="match-card-username">{listing.user.name || "Okänd"}</span>
           </div>
@@ -197,6 +198,7 @@ export function MatchCard(props: {
                 avatar={listing.user.avatar}
                 baseUrl={baseUrl}
                 class="match-card-img"
+                verified={listing.user.verified}
               />
             }
           >

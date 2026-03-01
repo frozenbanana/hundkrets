@@ -1,5 +1,6 @@
 import { For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { isUserVerified } from "~/lib/auth";
 import { Avatar } from "~/components/Avatar";
 import { DogImage } from "~/components/DogImage";
 import type { Conn } from "./types";
@@ -146,6 +147,7 @@ export function MatchDetailModal(props: {
               avatar={listing.user.avatar}
               baseUrl={baseUrl}
               class="modal-detail-avatar"
+              verified={listing.user.verified}
             />
             <div class="modal-detail-user-info">
               <h2 id="detail-modal-title" class="modal-detail-user-name">
@@ -332,7 +334,8 @@ export function MatchDetailModal(props: {
               <button
                 type="button"
                 class="btn"
-                disabled={refreshing()}
+                disabled={refreshing() || !isUserVerified()}
+                title={!isUserVerified() ? "Verifiera din e-post för att svara på förfrågningar." : undefined}
                 onClick={() => onRespondClick(connFromThem()!, listing.user.name)}
               >
                 Svara
@@ -341,7 +344,8 @@ export function MatchDetailModal(props: {
               <button
                 type="button"
                 class="btn"
-                disabled={refreshing()}
+                disabled={refreshing() || !isUserVerified()}
+                title={!isUserVerified() ? "Verifiera din e-post för att skicka intresseanmälningar." : undefined}
                 onClick={() => onInterestedClick(listing.user.id, listing.user.name)}
               >
                 Jag är intresserad

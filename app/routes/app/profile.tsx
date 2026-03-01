@@ -248,6 +248,7 @@ export default function Profile() {
             avatar={avatarFile() ? undefined : pb.authStore.model?.avatar}
             src={avatarPreviewUrl()}
             baseUrl={baseUrl}
+            verified={(pb.authStore.model as { verified?: boolean } | null)?.verified}
           />
         </div>
       </div>

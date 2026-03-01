@@ -27,8 +27,11 @@ export default function Register() {
         password: password(),
         passwordConfirm: passwordConfirm(),
       });
+      await pb.collection("users").authWithPassword(email(), password());
       await pb.collection("users").requestVerification(email());
-      nav("/register/verify-email?email=" + encodeURIComponent(email()), { replace: true });
+      const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
+      const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
+      nav(done ? "/app/matches" : "/onboarding/choice", { replace: true });
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {

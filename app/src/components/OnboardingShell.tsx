@@ -1,5 +1,6 @@
 import { A, useNavigate } from "@solidjs/router";
 import { Show } from "solid-js";
+import { UnverifiedBanner } from "~/components/UnverifiedBanner";
 
 interface OnboardingShellProps {
   step: number;
@@ -19,6 +20,7 @@ export function OnboardingShell(props: OnboardingShellProps) {
   };
   return (
     <div class="container">
+      <UnverifiedBanner />
       <Show when={showBack()}>
         {props.backHref === "history" ? (
           <button type="button" class="onboarding-back" onClick={handleBack} style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; background: none; border: none; color: var(--color-text-muted); font-size: 0.95rem; cursor: pointer; padding: 0;">

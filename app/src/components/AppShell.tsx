@@ -3,6 +3,7 @@ import { createMemo, createResource, createSignal, onMount, Show } from "solid-j
 import { pb } from "~/lib/pocketbase";
 import { Avatar } from "~/components/Avatar";
 import { AdminMessageBanner } from "~/components/AdminMessageBanner";
+import { UnverifiedBanner } from "~/components/UnverifiedBanner";
 import { getRequestsSeenAt, requestsSeenVersion } from "~/lib/requestsSeen";
 import { countUnreadIncomingMessages } from "~/lib/chat";
 
@@ -91,6 +92,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
             neighborhood={user()?.neighborhood}
             size="sm"
             class="avatar-sm app-nav-avatar"
+            verified={(user() as { verified?: boolean } | null)?.verified}
           />
         </div>
         <button
@@ -130,6 +132,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
         </div>
       </nav>
       <AdminMessageBanner />
+      <UnverifiedBanner />
       {props.children}
     </div>
   );
