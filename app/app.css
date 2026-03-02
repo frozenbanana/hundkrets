@@ -12,6 +12,9 @@
   --color-text-muted: #5c4a3a;
   /** Higher-contrast text for choice descriptions on buttons */
   --color-choice-desc: #c4b19b;
+  /** Soft brown tint for "receiving help" choice */
+  --color-receiver-bg: #ebe0d5;
+  --color-receiver-border: #c4a882;
   --shadow-paw: 0 2px 8px rgba(139, 90, 43, 0.15);
   --radius-dog: 1rem;
 }
@@ -306,6 +309,17 @@ a:hover {
 
 .btn-secondary:hover {
   background: var(--color-nose);
+}
+
+.btn-receiver {
+  background: var(--color-receiver-bg);
+  color: var(--color-text);
+  border: 2px solid var(--color-receiver-border);
+}
+
+.btn-receiver:hover {
+  background: #e0d2c4;
+  border-color: var(--color-fur);
 }
 
 .btn-outline {

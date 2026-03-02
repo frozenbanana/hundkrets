@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { isSitterOnly } from "~/lib/onboarding";
+import { isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { DogImage } from "~/components/DogImage";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
@@ -165,7 +165,7 @@ export default function OnboardingDogs() {
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
   return (
-    <OnboardingShell step={2} totalSteps={4} title="Dina hundar" backHref="/onboarding/profile">
+    <OnboardingShell step={2} totalSteps={isReceiverOnly() ? 3 : 4} title="Dina hundar" backHref="/onboarding/profile">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           Lägg till hundar om du har (valfritt). Du kan lägga till fler senare från översikten.

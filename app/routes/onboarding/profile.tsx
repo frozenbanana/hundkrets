@@ -2,7 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { getOnboardingUserType, isSitterOnly } from "~/lib/onboarding";
+import { getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { geocodeAddress } from "~/lib/geocode";
 import { parseApiError } from "~/lib/errors";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
@@ -160,7 +160,7 @@ export default function OnboardingProfile() {
   }
 
   return (
-    <OnboardingShell step={1} totalSteps={isSitterOnly() ? 2 : 4} title="Din profil" backHref="/onboarding/choice">
+    <OnboardingShell step={1} totalSteps={isSitterOnly() ? 2 : isReceiverOnly() ? 3 : 4} title="Din profil" backHref="/onboarding/choice">
       <div class="card">
         <div style="text-align: center; margin-bottom: 1.5rem;">
           <Avatar
@@ -189,7 +189,7 @@ export default function OnboardingProfile() {
             hint="På mobil: ta selfie eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
           />
           <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
-            Vi riktar oss till Sverige. Din adress hjälper att hitta matchningar i närheten. Din fullständiga adress visas bara när ni kopplar ihop.
+            Vi riktar oss till Sverige. Adressen används för att räkna ut distans till andra hundägare. Den kommer inte delas med andra—din fullständiga adress visas bara när ni kopplar ihop.
           </p>
           <div class="form-group">
             <label for="name">Namn *</label>
@@ -198,14 +198,17 @@ export default function OnboardingProfile() {
           <SwedishAddressInput value={address()} onSelect={setAddress} />
           <div class="form-group">
             <label for="bio">Bio (valfritt)</label>
+            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">Hjälper andra att lära känna dig innan de väljer att matcha.</p>
             <textarea id="bio" value={bio()} onInput={(e) => setBio(e.currentTarget.value)} placeholder="Berätta lite om dig och din erfarenhet med hundar" rows={3} />
           </div>
           <div class="form-group">
             <label for="breeds_owned_before">Vilka hundraser har du tidigare haft erfarenhet av?</label>
+            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">Visas i din profil så att andra vet vad du har erfarenhet av.</p>
             <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />
           </div>
           <div class="form-group">
             <label for="phone">Telefon *</label>
+            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">Används så att andra kan kontakta dig när ni har kopplat ihop. Delas inte med andra innan matchning.</p>
             <input id="phone" type="tel" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} required placeholder="070-123 45 67" autocomplete="tel" />
           </div>
           {error() && <p class="form-error" role="alert">{error()}</p>}

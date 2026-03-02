@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { isSitterOnly } from "~/lib/onboarding";
+import { clearOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -79,8 +79,14 @@ export default function OnboardingNeeds() {
         data.end_date = endDate();
       }
       await pb.collection("watch_needs").create(data);
-      showToast("Behov tillagt");
-      nav("/onboarding/capacity");
+      if (isReceiverOnly()) {
+        await setOnboardingComplete();
+        showToast("Klart! Du kan nu se dina matchningar.");
+        nav("/app/matches");
+      } else {
+        showToast("Behov tillagt");
+        nav("/onboarding/capacity");
+      }
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -88,14 +94,31 @@ export default function OnboardingNeeds() {
     }
   }
 
-  function handleSkip() {
-    nav("/onboarding/capacity");
+  async function handleSkip() {
+    if (isReceiverOnly()) {
+      await setOnboardingComplete();
+      showToast("Klart! Du kan nu se dina matchningar.");
+      nav("/app/matches");
+    } else {
+      nav("/onboarding/capacity");
+    }
+  }
+
+  async function setOnboardingComplete() {
+    const userId = pb.authStore.model?.id;
+    if (!userId) return;
+    await pb.collection("users").update(userId, { onboarding_complete: true });
+    pb.authStore.save(pb.authStore.token!, {
+      ...pb.authStore.model,
+      onboarding_complete: true,
+    });
+    clearOnboardingUserType();
   }
 
   const hasDogs = () => dogs() && dogs()!.length > 0;
 
   return (
-    <OnboardingShell step={3} totalSteps={4} title="När du behöver hundpassning" backHref="/onboarding/dogs">
+    <OnboardingShell step={3} totalSteps={isReceiverOnly() ? 3 : 4} title="När du behöver hundpassning" backHref="/onboarding/dogs">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           När behöver du att någon passar din hund? Du kan vara flexibel—exakta tider bestäms privat.

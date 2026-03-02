@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { isSitterOnly, clearOnboardingUserType } from "~/lib/onboarding";
+import { isReceiverOnly, isSitterOnly, clearOnboardingUserType } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -18,6 +18,10 @@ export default function OnboardingCapacity() {
     const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
     if (done) {
       nav("/app/matches", { replace: true });
+      return;
+    }
+    if (isReceiverOnly()) {
+      nav("/onboarding/needs", { replace: true });
       return;
     }
   });
