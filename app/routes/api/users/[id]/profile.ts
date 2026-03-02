@@ -1,0 +1,127 @@
+/**
+ * Public profile API – fetches user, needs, capacities, dogs for display.
+ * No auth required. Uses PocketBase admin to bypass collection rules.
+ * GET /api/users/:id/profile
+ */
+import type { APIEvent } from "@solidjs/start/server";
+import PocketBase from "pocketbase";
+
+const PB_URL =
+  typeof process !== "undefined"
+    ? process.env.POCKETBASE_SERVER_URL ||
+      process.env.VITE_POCKETBASE_URL ||
+      "http://127.0.0.1:8090"
+    : "http://127.0.0.1:8090";
+
+let cachedPb: PocketBase | null = null;
+
+async function getAdminPb(): Promise<PocketBase> {
+  if (cachedPb?.authStore.isValid) return cachedPb;
+  const email = process.env.PB_ADMIN_EMAIL;
+  const password = process.env.PB_ADMIN_PASSWORD;
+  if (!email || !password) {
+    throw new Error("PB_ADMIN_EMAIL and PB_ADMIN_PASSWORD must be set for public profile API");
+  }
+  const pb = new PocketBase(PB_URL);
+  await pb.collection("_superusers").authWithPassword(email, password);
+  cachedPb = pb;
+  return pb;
+}
+
+function pickPublicUser(u: Record<string, unknown>): Record<string, unknown> {
+  const allowed = ["id", "name", "avatar", "area", "city", "neighborhood", "bio", "breeds_owned_before", "verified"];
+  const out: Record<string, unknown> = {};
+  for (const k of allowed) {
+    if (k in u && u[k] !== undefined) out[k] = u[k];
+  }
+  return out;
+}
+
+function pickPublicDog(d: Record<string, unknown>): Record<string, unknown> {
+  const allowed = ["id", "name", "breed", "size", "gender", "age", "image", "notes", "temperament_new_people", "temperament_new_dogs_female", "temperament_new_dogs_male"];
+  const out: Record<string, unknown> = {};
+  for (const k of allowed) {
+    if (k in d && d[k] !== undefined) out[k] = d[k];
+  }
+  return out;
+}
+
+function pickPublicNeed(n: Record<string, unknown>): Record<string, unknown> {
+  const allowed = ["id", "dog", "start_date", "end_date", "flexible_dates", "open_any_duration", "duration_specific", "notes"];
+  const out: Record<string, unknown> = {};
+  for (const k of allowed) {
+    if (k in n && n[k] !== undefined) out[k] = n[k];
+  }
+  return out;
+}
+
+function pickPublicCapacity(c: Record<string, unknown>): Record<string, unknown> {
+  const allowed = ["id", "start_date", "end_date", "flexible_dates", "open_any_duration", "duration_specific", "dog_sizes", "dog_genders", "max_dogs", "notes"];
+  const out: Record<string, unknown> = {};
+  for (const k of allowed) {
+    if (k in c && c[k] !== undefined) out[k] = c[k];
+  }
+  return out;
+}
+
+export async function GET(event: APIEvent) {
+  const id = event.params?.id;
+  if (!id || typeof id !== "string") {
+    return new Response(JSON.stringify({ error: "Missing user id" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    const pb = await getAdminPb();
+
+    const [user, needsRaw, capacitiesRaw] = await Promise.all([
+      pb.collection("users").getOne(id).catch(() => null),
+      pb.collection("watch_needs").getFullList({ filter: `user = "${id}"` }),
+      pb.collection("watch_capacity").getFullList({ filter: `user = "${id}"` }),
+    ]);
+
+    if (!user) {
+      return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const u = user as unknown as Record<string, unknown>;
+
+    const needs = (needsRaw as Record<string, unknown>[]).map((n) => pickPublicNeed(n));
+
+    const capacities = (capacitiesRaw as Record<string, unknown>[]).map((c) => pickPublicCapacity(c));
+
+    const dogIds = new Set<string>();
+    for (const n of needsRaw as { dog: string }[]) {
+      dogIds.add(n.dog);
+    }
+    const dogsList = dogIds.size > 0
+      ? await pb.collection("dogs").getFullList({ filter: Array.from(dogIds).map((d) => `id="${d}"`).join(" || ") })
+      : [];
+    const dogs = (dogsList as Record<string, unknown>[]).map((d) => pickPublicDog(d));
+
+    const payload = {
+      user: pickPublicUser(u),
+      needs,
+      capacities,
+      dogs,
+    };
+
+    return new Response(JSON.stringify(payload), {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=60",
+      },
+    });
+  } catch (err) {
+    console.error("[profile API]", err);
+    return new Response(
+      JSON.stringify({ error: "Failed to load profile" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+}

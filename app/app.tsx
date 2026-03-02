@@ -1,8 +1,17 @@
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
-import { ErrorBoundary, Suspense } from "solid-js";
+import { MetaProvider } from "@solidjs/meta";
+import { ErrorBoundary, Suspense, onMount } from "solid-js";
+import { refreshAuth } from "~/lib/authStore";
 import { ToastContainer } from "~/components/Toast";
 import "./app.css";
+
+function AuthRefresh() {
+  onMount(() => {
+    refreshAuth().catch(() => {});
+  });
+  return null;
+}
 
 export default function App() {
   return (
@@ -16,16 +25,19 @@ export default function App() {
         </div>
       )}
     >
-      <Router
-        root={(props) => (
-          <Suspense fallback={<div class="loading">Laddar Hundkrets…</div>}>
-            {props.children}
-            <ToastContainer />
-          </Suspense>
-        )}
-      >
-        <FileRoutes />
-      </Router>
+      <MetaProvider>
+        <Router
+          root={(props) => (
+            <Suspense fallback={<div class="loading">Laddar Hundkrets…</div>}>
+              <AuthRefresh />
+              {props.children}
+              <ToastContainer />
+            </Suspense>
+          )}
+        >
+          <FileRoutes />
+        </Router>
+      </MetaProvider>
     </ErrorBoundary>
   );
 }

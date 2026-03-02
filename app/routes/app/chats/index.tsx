@@ -148,9 +148,15 @@ export default function Chats() {
                 const isA = conv.user_a === meId;
                 const other = isA ? conv.expand?.user_b : conv.expand?.user_a;
                 const unread = data()?.unreadByConversation.get(conv.id) ?? 0;
+                const chatUrl = `/app/chats/${conv.id}?with=${other?.id ?? ""}`;
+                const profileUrl = other?.id ? `/users/${other.id}?from=chat&chat=${conv.id}` : chatUrl;
                 return (
-                  <A href={`/app/chats/${conv.id}?with=${other?.id ?? ""}`} class="card" style="display: block; text-decoration: none; color: inherit;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div class="card chat-list-card">
+                    <A
+                      href={profileUrl}
+                      class="chat-list-profile-link"
+                      aria-label={`Visa ${other?.name || "användaren"}s profil`}
+                    >
                       <Avatar
                         name={other?.name}
                         area={other?.area}
@@ -160,22 +166,22 @@ export default function Chats() {
                         class="avatar-sm"
                         verified={other?.verified}
                       />
-                      <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline;">
-                          <strong>{other?.name || "Okänd användare"}</strong>
-                          <span style="font-size: 0.8rem; color: var(--color-text-muted); white-space: nowrap;">
-                            {formatDateTime(conv.last_message_at)}
-                          </span>
-                        </div>
-                        <p style="margin: 0.25rem 0 0; color: var(--color-text-muted); font-size: 0.9rem;">
-                          {other?.area || "Öppna chatt"}
-                        </p>
+                      <strong>{other?.name || "Okänd användare"}</strong>
+                    </A>
+                    <A href={chatUrl} class="chat-list-chat-link">
+                      <div style="display: flex; justify-content: flex-end;">
+                        <span style="font-size: 0.8rem; color: var(--color-text-muted); white-space: nowrap;">
+                          {formatDateTime(conv.last_message_at)}
+                        </span>
                       </div>
-                      <Show when={unread > 0}>
-                        <span class="nav-badge" aria-label={`${unread} olästa`}>{unread}</span>
-                      </Show>
-                    </div>
-                  </A>
+                      <p style="margin: 0.25rem 0 0; color: var(--color-text-muted); font-size: 0.9rem;">
+                        {other?.area || "Öppna chatt"}
+                      </p>
+                    </A>
+                    <Show when={unread > 0}>
+                      <span class="nav-badge" aria-label={`${unread} olästa`}>{unread}</span>
+                    </Show>
+                  </div>
                 );
               }}
             </For>

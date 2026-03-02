@@ -18,7 +18,6 @@ import { approximateCoords, pointInBounds, type MapBounds } from "~/lib/geocode"
 import { AppShell } from "~/components/AppShell";
 import { MatchesMap } from "~/components/MatchesMap";
 import { MatchCards } from "./matches/MatchCard";
-import { MatchDetailModal } from "./matches/MatchDetailModal";
 import { InterestModal } from "./matches/InterestModal";
 import { RespondModal } from "./matches/RespondModal";
 import type { Conn } from "./matches/types";
@@ -43,29 +42,18 @@ export default function Matches() {
     const next = filterFromParams(searchParams as { match?: string; not_matched?: string; request?: string; outgoing?: string });
     setMatchFilter(next);
   });
-  const [selectedUserId, setSelectedUserId] = createSignal<string | undefined>(
-    (searchParams as { user?: string }).user
-  );
-
   createEffect(() => {
     if (typeof window === "undefined") return;
     const filter = matchFilter();
-    const params = searchParams as { user?: string };
-    const url = buildMatchesUrl(filter, params.user);
+    const url = buildMatchesUrl(filter);
     const current = window.location.pathname + (window.location.search || "");
     if (current !== url) navigate(url, { replace: true });
-  });
-
-  createEffect(() => {
-    const user = (searchParams as { user?: string }).user;
-    if (user) setSelectedUserId(user);
   });
 
   createEffect(() => {
     if ((searchParams as { request?: string }).request === "true") markRequestsSeen();
   });
   const [mapBounds, setMapBounds] = createSignal<MapBounds | null>(null);
-  const [detailModalListingId, setDetailModalListingId] = createSignal<string | undefined>();
   const [mobileViewMode, setMobileViewMode] = createSignal<"list" | "map">("list");
   const [isMobileViewport, setIsMobileViewport] = createSignal(
     typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches
@@ -432,30 +420,18 @@ export default function Matches() {
   }
 
   function handleOpenDetail(userId: string) {
-    setSelectedUserId(userId);
-    setDetailModalListingId(userId);
-  }
-
-  function handleCloseDetail() {
-    setDetailModalListingId(undefined);
+    navigate(`/users/${userId}?from=matches`);
   }
 
   function handleFilterChange(filter: MatchFilter) {
     setMatchFilter(filter);
     if (filter === "requested_me") markRequestsSeen();
-    const params = searchParams as { user?: string };
-    const url = buildMatchesUrl(filter, params.user);
+    const url = buildMatchesUrl(filter);
     navigate(url, { replace: true });
   }
 
   function handleMarkerClick(userId: string) {
-    setSelectedUserId(userId);
-    setDetailModalListingId(userId);
-    const idx = data()?.listings.findIndex((l) => l.user.id === userId);
-    if (idx !== undefined && idx >= 0 && listContainerRef && mobileViewMode() === "list") {
-      const card = listContainerRef.querySelector(`[data-listing-id="${userId}"]`);
-      card?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
+    navigate(`/users/${userId}?from=matches`);
   }
 
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
@@ -553,16 +529,6 @@ export default function Matches() {
       const [lat, lon] = approximateCoords(u.latitude, u.longitude, u.id ?? "");
       return pointInBounds(lat, lon, bounds);
     });
-  });
-
-  createEffect(() => {
-    const selected = selectedUserId();
-    const detailId = detailModalListingId();
-    const filtered = filteredListings();
-    if (selected && !filtered.some((l) => l.user.id === selected)) {
-      setSelectedUserId(undefined);
-      if (detailId === selected) setDetailModalListingId(undefined);
-    }
   });
 
   return (
@@ -735,7 +701,7 @@ export default function Matches() {
                 myLon={pb.authStore.model?.longitude}
                 filterByBounds
                 onBoundsChange={setMapBounds}
-                selectedUserId={selectedUserId()}
+                selectedUserId={undefined}
                 onMarkerClick={handleMarkerClick}
                 style={{ height: "100%", "min-height": "400px" }}
               />
@@ -771,33 +737,6 @@ export default function Matches() {
               Zooma in för att filtrera. Klicka på ett kort eller en markör för att se detaljer.
             </p>
           </div>
-        </Show>
-        <Show when={detailModalListingId()}>
-          {(userId) => {
-            const listing = () => filteredListings().find((l) => l.user.id === userId());
-            return (
-              <Show when={listing()}>
-                {(l) => (
-                  <MatchDetailModal
-                    listing={l()!}
-                    baseUrl={baseUrl}
-                    getConnections={() => (data()?.connections ?? []) as Conn[]}
-                    myNeeds={data()?.myNeeds}
-                    myCapacities={data()?.myCapacities}
-                    refreshing={refreshing}
-                    onInterestedClick={openInterestModal}
-                    onRespondClick={openRespondModal}
-                    onWithdraw={handleWithdraw}
-                    onUnmatch={handleUnmatch}
-                    onOpenChat={handleOpenChat}
-                    onClose={handleCloseDetail}
-                    dateStr={dateStr}
-                    sizesStr={sizesStr}
-                  />
-                )}
-              </Show>
-            );
-          }}
         </Show>
       </div>
       <Show when={interestModalTarget()}>

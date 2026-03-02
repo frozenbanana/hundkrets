@@ -1,4 +1,4 @@
-import { A, useNavigate } from "@solidjs/router";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
@@ -6,6 +6,8 @@ import { handleOAuthRedirect } from "~/lib/oauth";
 
 export default function Register() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = () => searchParams.redirect;
   const [email, setEmail] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [passwordConfirm, setPasswordConfirm] = createSignal("");
@@ -29,6 +31,11 @@ export default function Register() {
       });
       await pb.collection("users").authWithPassword(email(), password());
       await pb.collection("users").requestVerification(email());
+      const redirect = redirectTo();
+      if (redirect && redirect.startsWith("/")) {
+        nav(redirect, { replace: true });
+        return;
+      }
       const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
       const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
       nav(done ? "/app/matches" : "/onboarding/choice", { replace: true });

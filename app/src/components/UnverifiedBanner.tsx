@@ -1,9 +1,11 @@
 import { createSignal, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { authVersion } from "~/lib/authStore";
 import { parseApiError } from "~/lib/errors";
 import { showToast } from "~/lib/toast";
 
 export function UnverifiedBanner() {
+  authVersion(); // Re-render when auth is refreshed
   const show = () =>
     pb.authStore.isValid && (pb.authStore.model as { verified?: boolean } | null)?.verified !== true;
 

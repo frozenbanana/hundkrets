@@ -241,7 +241,11 @@ export default function ChatThread() {
               <>
                 <div class="chat-header page-hero" style="align-items: flex-start;">
                   <A href="/app/chats" style="font-size: 0.9rem;">← Tillbaka till chattar</A>
-                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem;">
+                  <A
+                    href={other()?.id ? `/users/${other()!.id}?from=chat&chat=${params.id}` : "/app/chats"}
+                    class="chat-header-profile-link"
+                    aria-label={other()?.id ? `Visa ${other()!.name || "användaren"}s profil` : undefined}
+                  >
                     <Avatar
                       name={other()?.name}
                       area={other()?.area}
@@ -257,7 +261,7 @@ export default function ChatThread() {
                         {[other()?.area, dogsSummary()].filter(Boolean).join(" • ")}
                       </p>
                     </div>
-                  </div>
+                  </A>
                 </div>
 
                 <div
