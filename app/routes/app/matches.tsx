@@ -558,7 +558,7 @@ export default function Matches() {
                   <li style="color: var(--color-text-muted);">Profilbild (valfritt)</li>
                 </Show>
               </ul>
-              <A href="/app/profile" class="btn">
+              <A href="/app/settings" class="btn">
                 Gå till profil och ange adress
               </A>
             </div>
@@ -574,7 +574,7 @@ export default function Matches() {
               <p style="margin: 0 0 0.75rem; color: var(--color-text-muted);">
                 Uppdatera din profil med full adress för att filtrera på avstånd och se kartan.
               </p>
-              <A href="/app/profile" class="btn btn-secondary">
+              <A href="/app/settings" class="btn btn-secondary">
                 Uppdatera adress
               </A>
             </div>

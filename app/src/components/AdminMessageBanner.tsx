@@ -17,7 +17,7 @@ type AdminMessage = {
 
 function getRouteKey(pathname: string): RouteKey | null {
   if (pathname === "/app") return "app_home";
-  if (pathname === "/app/profile") return "profile";
+  if (pathname === "/app/profile" || pathname === "/app/settings") return "profile";
   if (pathname.startsWith("/app/dogs")) return "dogs";
   if (pathname.startsWith("/app/needs")) return "needs";
   if (pathname.startsWith("/app/capacity")) return "capacity";

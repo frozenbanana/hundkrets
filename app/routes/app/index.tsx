@@ -194,7 +194,7 @@ export default function AppHome() {
     const { user, dogs, needs, capacity } = data;
 
     if (!user?.avatar?.trim()) {
-      actions.push({ href: "/app/profile", label: "Lägg till profilbild" });
+      actions.push({ href: "/app/settings", label: "Lägg till profilbild" });
     }
     const profileIncomplete = !user?.name?.trim() || !user?.phone?.trim() || !user?.area?.trim();
     if (profileIncomplete) {
@@ -202,7 +202,7 @@ export default function AppHome() {
       if (!user?.name?.trim()) missing.push("namn");
       if (!user?.phone?.trim()) missing.push("telefon");
       if (!user?.area?.trim()) missing.push("område");
-      actions.push({ href: "/app/profile", label: `Fyll i din profil (${missing.join(", ")})` });
+      actions.push({ href: "/app/settings", label: `Fyll i din profil (${missing.join(", ")})` });
     }
     if (dogs.length === 0) {
       actions.push({ href: "/app/dogs", label: "Lägg till dina hundar" });
@@ -415,7 +415,15 @@ export default function AppHome() {
             </ul>
           </Show>
           <Show when={!dashboardData.loading && quickActions().length === 0}>
-            <p style="color: var(--color-text-muted);">Allt klart! <A href="/app/matches">Se matchningar</A>.</p>
+            <p style="color: var(--color-text-muted);">
+              Allt klart!
+              <Show when={isUserVerified()}>
+                {" "}
+                <A href={me() ? `/users/${me()}?from=app` : "/app/profile"}>Se din profil</A>
+                {" · "}
+              </Show>
+              <A href="/app/matches">Se matchningar</A>.
+            </p>
           </Show>
         </div>
 

@@ -2375,6 +2375,11 @@ nav a {
   opacity: 0.9;
 }
 
+.profile-owner-toolbar {
+  max-width: 640px;
+  margin: 0 auto 1rem;
+}
+
 .profile-hero {
   max-width: 640px;
   margin: 0 auto 2rem;
