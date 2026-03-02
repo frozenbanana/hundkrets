@@ -27,9 +27,9 @@ type Message = {
 };
 
 function formatDateTime(s: string | undefined): string {
-  if (!s) return "—";
+  if (!s) return "";
   const d = new Date(s);
-  if (isNaN(d.getTime())) return "—";
+  if (isNaN(d.getTime())) return "";
   return d.toLocaleString("sv-SE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
@@ -150,11 +150,12 @@ export default function Chats() {
                 const unread = data()?.unreadByConversation.get(conv.id) ?? 0;
                 const chatUrl = `/app/chats/${conv.id}?with=${other?.id ?? ""}`;
                 const profileUrl = other?.id ? `/users/${other.id}?from=chat&chat=${conv.id}` : chatUrl;
+                const timeStr = formatDateTime(conv.last_message_at);
                 return (
                   <div class="card chat-list-card">
                     <A
                       href={profileUrl}
-                      class="chat-list-profile-link"
+                      class="chat-list-avatar-link"
                       aria-label={`Visa ${other?.name || "användaren"}s profil`}
                     >
                       <Avatar
@@ -166,17 +167,22 @@ export default function Chats() {
                         class="avatar-sm"
                         verified={other?.verified}
                       />
-                      <strong>{other?.name || "Okänd användare"}</strong>
                     </A>
-                    <A href={chatUrl} class="chat-list-chat-link">
-                      <div style="display: flex; justify-content: flex-end;">
-                        <span style="font-size: 0.8rem; color: var(--color-text-muted); white-space: nowrap;">
-                          {formatDateTime(conv.last_message_at)}
-                        </span>
+                    <A href={chatUrl} class="chat-list-chat-link" aria-label="Öppna chatt">
+                      <div class="chat-list-content">
+                        <div class="chat-list-content-header">
+                          <strong>{other?.name || "Okänd användare"}</strong>
+                          <Show when={timeStr}>
+                            <span class="chat-list-time">{timeStr}</span>
+                          </Show>
+                        </div>
+                        <p class="chat-list-area">{other?.area || "Öppna chatt"}</p>
                       </div>
-                      <p style="margin: 0.25rem 0 0; color: var(--color-text-muted); font-size: 0.9rem;">
-                        {other?.area || "Öppna chatt"}
-                      </p>
+                      <span class="chat-list-arrow" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </span>
                     </A>
                     <Show when={unread > 0}>
                       <span class="nav-badge" aria-label={`${unread} olästa`}>{unread}</span>

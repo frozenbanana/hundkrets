@@ -2178,36 +2178,79 @@ nav a {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  position: relative;
 }
 
-.chat-list-profile-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  text-decoration: none;
-  color: inherit;
+.chat-list-avatar-link {
   flex: 0 0 auto;
-  padding: 0.25rem 0;
+  padding: 0.25rem;
   border-radius: var(--radius-dog);
   transition: background 0.15s;
+  text-decoration: none;
 }
 
-.chat-list-profile-link:hover {
+.chat-list-avatar-link:hover {
   background: var(--color-fur-light);
+}
+
+.chat-list-content {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0;
+}
+
+.chat-list-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.chat-list-time {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chat-list-area {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
 }
 
 .chat-list-chat-link {
   flex: 1;
   min-width: 0;
-  text-decoration: none;
-  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0.25rem 0;
   border-radius: var(--radius-dog);
-  transition: background 0.15s;
+  text-decoration: none;
+  color: inherit;
 }
 
-.chat-list-chat-link:hover {
+.chat-list-chat-link .chat-list-arrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  margin: -0.25rem -0.25rem -0.25rem 0;
+  border-radius: var(--radius-dog);
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.chat-list-arrow:hover {
   background: var(--color-fur-light);
+  color: inherit;
+}
+
+.chat-list-chat-link .chat-list-arrow svg {
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 .chat-page .chat-messages {
