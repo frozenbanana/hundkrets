@@ -136,6 +136,15 @@ async function main() {
     console.log("Created test users:", userA.email, userB.email);
   }
 
+  // Ensure test users are verified (connection_requests hook requires it)
+  try {
+    await pb.collection("users").update(userA.id, { verified: true });
+    await pb.collection("users").update(userB.id, { verified: true });
+  } catch (updErr) {
+    console.error("Failed to set verified on test users:", updErr?.message || updErr);
+    console.error("  Connection/match tests will likely fail. Run with fresh DB (rm -rf pb_data) or verify users in Admin UI.");
+  }
+
   // Clean Mailpit
   await mailpitDeleteAll();
   await new Promise((r) => setTimeout(r, 300));
@@ -165,7 +174,10 @@ async function main() {
     console.log("✓ Connection request email");
     passed++;
   } catch (e) {
-    console.error("✗ Connection request email:", e.message);
+    const res = e?.response ?? e?.data;
+    const data = res?.data ?? res;
+    const msg = (typeof data?.message === "string" ? data.message : null) || (data && typeof data === "object" && !Array.isArray(data) ? Object.values(data).find((v) => typeof v === "object" && v?.message)?.message : null) || e.message;
+    console.error("✗ Connection request email:", msg);
     failed++;
   }
 
@@ -184,7 +196,10 @@ async function main() {
     console.log("✓ Match confirmation emails (both users)");
     passed++;
   } catch (e) {
-    console.error("✗ Match confirmation emails:", e.message);
+    const res = e?.response ?? e?.data;
+    const data = res?.data ?? res;
+    const msg = (typeof data?.message === "string" ? data.message : null) || (data && typeof data === "object" && !Array.isArray(data) ? Object.values(data).find((v) => typeof v === "object" && v?.message)?.message : null) || e.message;
+    console.error("✗ Match confirmation emails:", msg);
     failed++;
   }
 

@@ -89,7 +89,7 @@ Kör integrationstester som verifierar att alla mailflöden skickar rätt e-post
 cd app && npm run test:email
 ```
 
-Kräver: PocketBase + Mailpit igång, Mail settings konfigurerade, Sender address satt. Testerna verifierar:
+Kräver: PocketBase + Mailpit igång, Mail settings konfigurerade, Sender address satt. Seed-användare (*@example.com) markeras som verifierade via migration – starta om PocketBase en gång för att köra migrationen. Testerna verifierar:
 
 - Intresseanmälan (connection request)
 - Matchbekräftelse (båda användare)

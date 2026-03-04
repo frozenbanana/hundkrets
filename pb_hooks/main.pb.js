@@ -13,7 +13,7 @@ onMailerSend((e) => {
     var rec = $app.newRecord("email_log");
     rec.set("to", toStr);
     rec.set("subject", msg.subject || "");
-    rec.set("sent_at", new Date().toISOString());
+    rec.set("sent_at", new Date());
     var subj = String(msg.subject || "");
     var type = "";
     if (subj.indexOf("Välkommen till Hundkrets") >= 0) type = "welcome";
@@ -27,7 +27,7 @@ onMailerSend((e) => {
     if (type) rec.set("type", type);
     $app.save(rec);
   } catch (err) {
-    $app.logger().warn("Email log failed", "error", err);
+    $app.logger().warn("Email log failed", "error", err && (err.message || String(err)));
   }
   e.next();
 });
@@ -359,6 +359,23 @@ onRecordCreateRequest((e) => {
   if (user && user.get("verified") !== true) {
     throw new BadRequestError("Du måste verifiera din e-post för att skicka intresseanmälningar.");
   }
+  var toUserVal = e.record.get("to_user");
+  var toUserId = "";
+  if (toUserVal) {
+    if (typeof toUserVal === "string") toUserId = toUserVal;
+    else if (toUserVal && typeof toUserVal === "object" && toUserVal.id) toUserId = String(toUserVal.id);
+    else if (Array.isArray(toUserVal) && toUserVal.length > 0) toUserId = String(toUserVal[0].id || toUserVal[0] || "");
+  }
+  if (toUserId) {
+    try {
+      var existing = $app.findFirstRecordByFilter("connection_requests", "from_user = {:f} && to_user = {:t}", { f: fromUserId, t: toUserId });
+      if (existing) {
+        throw new BadRequestError("Du har redan skickat intresse till denna användare.");
+      }
+    } catch (err) {
+      if (err instanceof BadRequestError) throw err;
+    }
+  }
   e.next();
 }, "connection_requests");
 
@@ -373,11 +390,18 @@ onRecordAfterCreateSuccess((e) => {
 
   $app.logger().info("Connection request created, preparing email");
 
+  function toId(v) {
+    if (!v) return "";
+    if (typeof v === "string") return v;
+    if (v && typeof v === "object" && v.id) return String(v.id);
+    if (Array.isArray(v) && v.length > 0) return toId(v[0]);
+    return "";
+  }
   var conn = e.record;
-  var fromId = conn.get("from_user");
-  var toId = conn.get("to_user");
-  if (!fromId || !toId) {
-    $app.logger().warn("Connection request missing from_user or to_user", "fromId", fromId, "toId", toId);
+  var fromId = toId(conn.get("from_user"));
+  var toIdVal = toId(conn.get("to_user"));
+  if (!fromId || !toIdVal) {
+    $app.logger().warn("Connection request missing from_user or to_user", "fromId", fromId, "toId", toIdVal);
     e.next();
     return;
   }
@@ -386,7 +410,7 @@ onRecordAfterCreateSuccess((e) => {
   var toUser = null;
   try {
     fromUser = $app.findRecordById("users", fromId);
-    toUser = $app.findRecordById("users", toId);
+    toUser = $app.findRecordById("users", toIdVal);
   } catch (err) {
     $app.logger().warn("Connection request: could not load users", "error", err);
     e.next();
@@ -397,13 +421,13 @@ onRecordAfterCreateSuccess((e) => {
   var fromEmail = fromUser ? fromUser.get("email") : null;
 
   if (!toEmail) {
-    $app.logger().warn("Connection request: recipient has no email", "toUserId", toId);
+    $app.logger().warn("Connection request: recipient has no email", "toUserId", toIdVal);
   }
 
   // Check if reverse request exists (mutual match)
   var reverse = null;
   try {
-    reverse = $app.findFirstRecordByFilter("connection_requests", "from_user = {:from} && to_user = {:to}", { from: toId, to: fromId });
+    reverse = $app.findFirstRecordByFilter("connection_requests", "from_user = {:from} && to_user = {:to}", { from: toIdVal, to: fromId });
   } catch (err) {}
   var isMatch = !!reverse;
 
@@ -437,6 +461,18 @@ onRecordAfterCreateSuccess((e) => {
   var matchesMatchedLink = baseUrl + "/app/matches?match=true";
 
   if (isMatch) {
+    // Deduplicate: only send match email for the first request in this direction.
+    // If the user double-clicks or creates from multiple tabs, skip duplicate emails.
+    var sameDir = [];
+    try {
+      sameDir = $app.findRecordsByFilter("connection_requests", "from_user = {:f} && to_user = {:t}", "created", 2, 0, { f: fromId, t: toIdVal });
+    } catch (_) {}
+    if (sameDir && sameDir.length > 1 && sameDir[0].id !== conn.id) {
+      $app.logger().info("Connection request: duplicate detected, skipping match email");
+      e.next();
+      return;
+    }
+
     var htmlBoth = "<p>Ni har kopplat ihop! Du kan nu se varandras telefon och adress i matchningar.</p><p><a href=\"" + matchesMatchedLink + "\">Öppna matchningar</a></p>";
     var subject = "Ni har matchat på Hundkrets!";
     if (toEmail) {

@@ -56,6 +56,7 @@ migrate((app) => {
     record.set("address_private", `${u.neighborhood}, ${CITY}, Sverige`);
     record.set("latitude", u.lat);
     record.set("longitude", u.lon);
+    record.set("verified", true);
     if (u.bio) record.set("bio", u.bio);
     if (u.breeds_owned_before) record.set("breeds_owned_before", u.breeds_owned_before);
     app.save(record);
