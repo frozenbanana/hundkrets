@@ -3,6 +3,35 @@
 
 $app.logger().info("Hundkrets pb_hooks loaded");
 
+// Log all sent emails to email_log collection
+onMailerSend((e) => {
+  try {
+    var msg = e.message;
+    var toArr = msg.to || [];
+    var toStr = toArr.map(function (r) { return r.address || r; }).filter(Boolean).join(", ");
+    if (!toStr) toStr = "(no recipient)";
+    var rec = $app.newRecord("email_log");
+    rec.set("to", toStr);
+    rec.set("subject", msg.subject || "");
+    rec.set("sent_at", new Date().toISOString());
+    var subj = String(msg.subject || "");
+    var type = "";
+    if (subj.indexOf("Välkommen till Hundkrets") >= 0) type = "welcome";
+    else if (subj.indexOf("Ni har matchat") >= 0) type = "connection_match";
+    else if (subj.indexOf("är intresserad av dig") >= 0) type = "connection_request";
+    else if (subj.indexOf("Daglig chattsammanfattning") >= 0) type = "chat_daily";
+    else if (subj.indexOf("skickade ett meddelande") >= 0) type = "chat_instant";
+    else if (subj.indexOf("password") >= 0 || subj.indexOf("lösenord") >= 0) type = "auth_password_reset";
+    else if (subj.indexOf("verifiera") >= 0 || subj.indexOf("verify") >= 0) type = "auth_verification";
+    else if (subj.indexOf("inloggning") >= 0 || subj.indexOf("login") >= 0) type = "auth_alert";
+    if (type) rec.set("type", type);
+    $app.save(rec);
+  } catch (err) {
+    $app.logger().warn("Email log failed", "error", err);
+  }
+  e.next();
+});
+
 // Delete user: manually remove all related records before user delete
 // Fixes "Failed to delete record. Make sure that the record is not part of a required relation reference"
 // Order matters: watch_needs (refs user+dog) -> connection_requests -> watch_capacity -> dogs
