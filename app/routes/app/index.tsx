@@ -151,7 +151,7 @@ export default function AppHome() {
         });
         for (const msg of messages) {
           if (!relevantConversations.has(msg.conversation)) continue;
-          if (msg.sender === meId || msg.read_at) continue;
+          if (!msg.sender || msg.sender === meId || msg.read_at) continue;
           const other = otherByConversation.get(msg.conversation);
           if (!other) continue;
           unreadByOther.set(other, (unreadByOther.get(other) ?? 0) + 1);

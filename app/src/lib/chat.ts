@@ -29,7 +29,7 @@ export function countUnreadIncomingMessages<T extends MessageLike>(messages: T[]
   if (!meId) return 0;
   let count = 0;
   for (const m of messages) {
-    if (m.sender !== meId && !m.read_at) count += 1;
+    if (m.sender && m.sender !== meId && !m.read_at) count += 1;
   }
   return count;
 }

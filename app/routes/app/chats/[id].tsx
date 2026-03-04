@@ -20,11 +20,12 @@ type Conversation = {
 type Message = {
   id: string;
   conversation: string;
-  sender: string;
+  sender?: string;
   body?: string;
   read_at?: string;
   created?: string;
   updated?: string;
+  message_type?: "user" | "system";
 };
 
 function messageTimeMs(m: Message): number {
@@ -112,7 +113,7 @@ export default function ChatThread() {
       ]);
       messages.sort((a, b) => messageTimeMs(a) - messageTimeMs(b));
 
-      const unreadIncoming = messages.filter((m) => m.sender !== meId && !m.read_at);
+      const unreadIncoming = messages.filter((m) => m.sender && m.sender !== meId && !m.read_at);
       if (unreadIncoming.length > 0) {
         setMarkingRead(true);
         try {
@@ -274,6 +275,21 @@ export default function ChatThread() {
                   </Show>
                   <For each={loaded().messages}>
                     {(m) => {
+                      const isSystem = m.message_type === "system";
+                      if (isSystem) {
+                        return (
+                          <div style="display: flex; justify-content: center;">
+                            <div
+                              style="max-width: 85%; padding: 0.75rem 1rem; border-radius: 10px; background: rgba(124, 179, 66, 0.15); border: 2px solid var(--color-grass); color: var(--color-text); text-align: center;"
+                            >
+                              <p style="margin: 0 0 0.25rem; font-size: 0.75rem; color: var(--color-grass); font-weight: 600;">
+                                Hundkrets
+                              </p>
+                              <p style="margin: 0; white-space: pre-wrap;">{m.body}</p>
+                            </div>
+                          </div>
+                        );
+                      }
                       const mine = m.sender === meId;
                       return (
                         <div style={`display: flex; ${mine ? "justify-content: flex-end" : "justify-content: flex-start"}`}>

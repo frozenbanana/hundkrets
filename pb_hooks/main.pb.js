@@ -148,16 +148,29 @@ onRecordAfterCreateSuccess((e) => {
     e.next();
     return;
   }
+  function toId(v) {
+    if (!v) return "";
+    if (typeof v === "string") return v;
+    if (v && typeof v === "object" && v.id) return String(v.id);
+    if (Array.isArray(v) && v.length > 0) return toId(v[0]);
+    return "";
+  }
+  function pk(a, b) {
+    var x = String(a || "");
+    var y = String(b || "");
+    if (!x || !y) return "";
+    return x < y ? (x + ":" + y) : (y + ":" + x);
+  }
   var conv = e.record;
-  var userA = asId(conv.get("user_a"));
-  var userB = asId(conv.get("user_b"));
+  var userA = toId(conv.get("user_a"));
+  var userB = toId(conv.get("user_b"));
   if (!userA || !userB || userA === userB) {
     try { $app.delete(conv); } catch (_) {}
     e.next();
     return;
   }
 
-  var key = pairKey(userA, userB);
+  var key = pk(userA, userB);
   try {
     conv.set("pair_key", key);
     $app.save(conv);
@@ -190,6 +203,7 @@ onRecordAfterCreateSuccess((e) => {
 }, "conversations");
 
 // Chat guard + notification: sender must be participant and recipient gets email by preference.
+// System messages (message_type === "system") skip sender validation and email.
 onRecordAfterCreateSuccess((e) => {
   if (!e || !e.record) {
     e.next();
@@ -200,7 +214,10 @@ onRecordAfterCreateSuccess((e) => {
   var esc = function(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); };
   var convId = toId(msgRec.get("conversation"));
   var senderId = toId(msgRec.get("sender"));
-  if (!convId || !senderId) {
+  var msgType = String(msgRec.get("message_type") || "user");
+  var isSystem = msgType === "system";
+
+  if (!convId) {
     try { $app.delete(msgRec); } catch (_) {}
     e.next();
     return;
@@ -211,6 +228,16 @@ onRecordAfterCreateSuccess((e) => {
     conv = $app.findRecordById("conversations", convId);
   } catch (_) {
     try { $app.delete(msgRec); } catch (_) {}
+    e.next();
+    return;
+  }
+
+  if (isSystem || !senderId) {
+    // System message: only update last_message_at, no email
+    try {
+      conv.set("last_message_at", new Date().toISOString());
+      $app.save(conv);
+    } catch (_) {}
     e.next();
     return;
   }
@@ -397,6 +424,12 @@ onRecordAfterCreateSuccess((e) => {
     if (Array.isArray(v) && v.length > 0) return toId(v[0]);
     return "";
   }
+  function pairKey(a, b) {
+    var x = String(a || "");
+    var y = String(b || "");
+    if (!x || !y) return "";
+    return x < y ? (x + ":" + y) : (y + ":" + x);
+  }
   var conn = e.record;
   var fromId = toId(conn.get("from_user"));
   var toIdVal = toId(conn.get("to_user"));
@@ -472,6 +505,57 @@ onRecordAfterCreateSuccess((e) => {
       e.next();
       return;
     }
+
+    // Create conversation and seed chat with connection request messages + system message
+    var key = pairKey(fromId, toIdVal);
+    var conv = null;
+    try {
+      conv = $app.findFirstRecordByFilter("conversations", "pair_key = {:k}", { k: key });
+    } catch (_) {}
+    if (!conv) {
+      var userA = fromId < toIdVal ? fromId : toIdVal;
+      var userB = fromId < toIdVal ? toIdVal : fromId;
+      var convCol = $app.findCollectionByNameOrId("conversations");
+      var convRec = new Record(convCol);
+      convRec.set("user_a", userA);
+      convRec.set("user_b", userB);
+      convRec.set("pair_key", key);
+      $app.save(convRec);
+      conv = convRec;
+    }
+    var convId = conv.id;
+
+    // Connection request messages (chronological: reverse first, then conn)
+    var msgCol = $app.findCollectionByNameOrId("messages");
+    var reverseMsg = reverse ? String(reverse.get("message") || "").trim() : "";
+    var connMsg = String(conn.get("message") || "").trim();
+    if (reverseMsg) {
+      var m1 = new Record(msgCol);
+      m1.set("conversation", convId);
+      m1.set("sender", toId(reverse.get("from_user")));
+      m1.set("body", reverseMsg);
+      m1.set("message_type", "user");
+      $app.save(m1);
+    }
+    if (connMsg) {
+      var m2 = new Record(msgCol);
+      m2.set("conversation", convId);
+      m2.set("sender", fromId);
+      m2.set("body", connMsg);
+      m2.set("message_type", "user");
+      $app.save(m2);
+    }
+    var sysBody = "Ni har matchat! Skapa gärna en plan tillsammans för hur ni introducerar hundarna – det underlättar första mötet.";
+    var mSys = new Record(msgCol);
+    mSys.set("conversation", convId);
+    mSys.set("body", sysBody);
+    mSys.set("message_type", "system");
+    $app.save(mSys);
+
+    try {
+      conv.set("last_message_at", new Date().toISOString());
+      $app.save(conv);
+    } catch (_) {}
 
     var htmlBoth = "<p>Ni har kopplat ihop! Du kan nu se varandras telefon och adress i matchningar.</p><p><a href=\"" + matchesMatchedLink + "\">Öppna matchningar</a></p>";
     var subject = "Ni har matchat på Hundkrets!";
