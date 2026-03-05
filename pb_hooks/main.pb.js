@@ -10,7 +10,8 @@ onMailerSend((e) => {
     var toArr = msg.to || [];
     var toStr = toArr.map(function (r) { return r.address || r; }).filter(Boolean).join(", ");
     if (!toStr) toStr = "(no recipient)";
-    var rec = $app.newRecord("email_log");
+    var collection = $app.findCollectionByNameOrId("email_log");
+    var rec = new Record(collection);
     rec.set("to", toStr);
     rec.set("subject", msg.subject || "");
     rec.set("sent_at", new Date());

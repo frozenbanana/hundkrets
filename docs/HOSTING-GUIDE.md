@@ -106,7 +106,14 @@ You should see `pocketbase` and `app` running.
 
 ### 4.1 Update `.env` and restart
 
-After creating the admin, update `.env` with those credentials, then:
+After creating the admin, add these to `app/.env` (required for the public profile API at `/users/[id]`):
+
+```bash
+PB_ADMIN_EMAIL=your-admin@email.com
+PB_ADMIN_PASSWORD=your-admin-password
+```
+
+Then restart:
 
 ```bash
 docker compose up -d
@@ -184,6 +191,7 @@ Data in `pb_data` persists across restarts.
 | Email links go to wrong URL | Set **App URL** in PocketBase Admin → Settings → Meta to `https://hundkrets.se`. For verification emails, set **Verification** template **Action URL** to `https://hundkrets.se/verify-email?token={TOKEN}`. For email change, set **Change email** template **Action URL** to `https://hundkrets.se/verify-email-change?token={TOKEN}`. For password reset, set **Password reset** template **Action URL** to `https://hundkrets.se/reset-password?token={TOKEN}` |
 | CORS errors | Ensure both hostnames use the same parent domain (`hundkrets.se` and `api.hundkrets.se`) |
 | Google OAuth fails | Redirect URI in Google Console must be `{VITE_POCKETBASE_URL}/api/oauth2-redirect` exactly |
+| Profile returns 500 | Add `PB_ADMIN_EMAIL` and `PB_ADMIN_PASSWORD` to `app/.env` (must match the admin created in PocketBase). Restart: `docker compose up -d` |
 
 ---
 
