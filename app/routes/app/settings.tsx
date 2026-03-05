@@ -1,19 +1,20 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { A, useNavigate } from "@solidjs/router";
 import { pb } from "~/lib/pocketbase";
+import { setAuthVersion } from "~/lib/authStore";
 import { showToast } from "~/lib/toast";
-import { geocodeAddress } from "~/lib/geocode";
+import { geocodePostalCode } from "~/lib/geocode";
 import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
-import { SwedishAddressInput, type AddressValue } from "~/components/SwedishAddressInput";
+import { PostalCodeInput, type PostalCodeValue } from "~/components/PostalCodeInput";
 
 export default function Settings() {
   const nav = useNavigate();
   const [name, setName] = createSignal("");
   const [phone, setPhone] = createSignal("");
-  const [address, setAddress] = createSignal<Partial<AddressValue>>({});
+  const [address, setAddress] = createSignal<Partial<PostalCodeValue>>({});
   const [bio, setBio] = createSignal("");
   const [breedsOwnedBefore, setBreedsOwnedBefore] = createSignal("");
   const [avatarFile, setAvatarFile] = createSignal<File | null>(null);
@@ -84,16 +85,13 @@ export default function Settings() {
       let addr = address();
       if (!addr.latitude || !addr.longitude) {
         const form = e.target as HTMLFormElement;
-        const street = form.querySelector<HTMLInputElement>("#address-line1")?.value?.trim();
-        const postalCode = form.querySelector<HTMLInputElement>("#postal-code")?.value?.trim();
-        const city = form.querySelector<HTMLInputElement>("#address-level2")?.value?.trim();
-        const raw = [street, postalCode, city].filter(Boolean).join(", ");
-        if (raw) {
-          const geocoded = await geocodeAddress(raw, city || undefined);
+        const postalInput = form.querySelector<HTMLInputElement>("#postal-code")?.value?.trim();
+        if (postalInput) {
+          const geocoded = await geocodePostalCode(postalInput);
           if (geocoded) {
-            const area = [geocoded.city, geocoded.neighborhood].filter(Boolean).join(" - ") || geocoded.display_name;
+            const area = geocoded.city || geocoded.neighborhood || geocoded.display_name || "";
             addr = {
-              address_private: geocoded.display_name,
+              address_private: `Postnummer ${postalInput}, ${area}`.trim(),
               latitude: geocoded.lat,
               longitude: geocoded.lon,
               city: geocoded.city ?? "",
@@ -104,7 +102,7 @@ export default function Settings() {
         }
       }
       if (!addr.latitude || !addr.longitude) {
-        setError("Ange en giltig adress.");
+        setError("Ange ett giltigt postnummer.");
         setLoading(false);
         return;
       }
@@ -132,6 +130,7 @@ export default function Settings() {
         fd.append("avatar", file);
         const updated = await pb.collection("users").update(userId, fd);
         pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, ...updated });
+        setAuthVersion((v) => v + 1);
       } else {
         await pb.collection("users").update(userId, {
           name: name(),
@@ -160,6 +159,7 @@ export default function Settings() {
           breeds_owned_before: breedsOwnedBefore(),
           chat_email_frequency: chatEmailFrequency(),
         });
+        setAuthVersion((v) => v + 1);
       }
       setSaved(true);
       showToast("Profil sparad");
@@ -247,7 +247,7 @@ export default function Settings() {
         </A>
       </div>
       <div class="card">
-      <p style="color: var(--color-text-muted); margin-bottom: 1rem;">Din adress hjälper att hitta matchningar i närheten. Din fullständiga adress visas bara när ni kopplar ihop.</p>
+      <p style="color: var(--color-text-muted); margin-bottom: 1rem;">Postnumret används för att hitta matchningar i närheten. Din exakta adress delas inte.</p>
       <form onSubmit={handleSubmit}>
         <ImageCaptureInput
           id="avatar"
@@ -274,7 +274,7 @@ export default function Settings() {
             autocomplete="name"
           />
         </div>
-        <SwedishAddressInput value={address()} onSelect={setAddress} />
+        <PostalCodeInput id="postal-code" value={address()} onSelect={setAddress} />
         <div class="form-group">
           <label for="bio">Bio (valfritt)</label>
           <textarea id="bio" value={bio()} onInput={(e) => setBio(e.currentTarget.value)} placeholder="Berätta lite om dig och din erfarenhet med hundar" rows={3} />
@@ -284,13 +284,15 @@ export default function Settings() {
           <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />
         </div>
         <div class="form-group">
-          <label for="phone">Telefon *</label>
+          <label for="phone">Telefon (valfritt)</label>
+          <p style="color: var(--color-text-muted); font-size: 0.9rem; margin: 0.25rem 0 0.5rem;">
+            Utan teleofon delas e-postadress istället vid matchning.
+          </p>
           <input
             id="phone"
             type="tel"
             value={phone()}
             onInput={(e) => setPhone(e.currentTarget.value)}
-            required
             placeholder="070-123 45 67"
             autocomplete="tel"
           />

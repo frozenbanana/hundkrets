@@ -30,7 +30,7 @@ export default function OnboardingCapacity() {
   const [durationSpecific, setDurationSpecific] = createSignal("");
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
-  const [dogSizes, setDogSizes] = createSignal<("small" | "medium" | "large")[]>([]);
+  const [dogSizes, setDogSizes] = createSignal<("small" | "medium" | "large")[]>(["small", "medium", "large"]);
   const [dogGenders, setDogGenders] = createSignal<"male" | "female" | "any">("any");
   const [maxDogs, setMaxDogs] = createSignal(1);
   const [notes, setNotes] = createSignal("");
@@ -102,12 +102,13 @@ export default function OnboardingCapacity() {
   }
 
   return (
-    <OnboardingShell step={isSitterOnly() ? 2 : 4} totalSteps={isSitterOnly() ? 2 : 4} title="När du kan passa hundar" backHref={isSitterOnly() ? "/onboarding/profile" : "/onboarding/needs"}>
+    <OnboardingShell step={isSitterOnly() ? 2 : 4} totalSteps={isSitterOnly() ? 2 : 4} title="När du kan passa hundar" nextStepHint="Nästa: Se matchningar" backHref={isSitterOnly() ? "/onboarding/choice" : "/onboarding/needs"}>
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           När kan du passa andras hundar? Var flexibel—exakta tider bestäms privat.
         </p>
         <form onSubmit={handleSubmit}>
+          {error() && <p class="form-error" role="alert" style="margin-bottom: 1rem;">{error()}</p>}
           <div class="flexible-toggle" onClick={() => setFlexible(!flexible())}>
             <input
               type="checkbox"
@@ -174,7 +175,7 @@ export default function OnboardingCapacity() {
             <label for="dogGenders">Hundkön</label>
             <select id="dogGenders" value={dogGenders()} onInput={(e) => setDogGenders(e.currentTarget.value as "male" | "female" | "any")}>
               <option value="male">Endast hane</option>
-              <option value="female">Endast hona</option>
+              <option value="female">Endast tik</option>
               <option value="any">Valfritt</option>
             </select>
           </div>
@@ -184,9 +185,13 @@ export default function OnboardingCapacity() {
           </div>
           <div class="form-group">
             <label for="notes">Anteckningar</label>
-            <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} />
+            <textarea
+              id="notes"
+              value={notes()}
+              onInput={(e) => setNotes(e.currentTarget.value)}
+              placeholder="T.ex. Jag är väldigt flexibel, kan ta alla hundar. Hör av dig."
+            />
           </div>
-          {error() && <p class="form-error" role="alert">{error()}</p>}
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
             <button type="submit" class="btn" disabled={loading()}>
               {loading() ? "Sparar..." : "Spara och fortsätt"}

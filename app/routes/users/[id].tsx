@@ -684,7 +684,7 @@ export default function UserProfile() {
                                       <p class="need-card-line">
                                         <span class="need-card-label">Temperament:</span>
                                         <br />
-                                        Nya människor: {temperamentLabel[d.temperament_new_people ?? ""] || d.temperament_new_people || "—"} · Nya hundar (Hona):{" "}
+                                        Nya människor: {temperamentLabel[d.temperament_new_people ?? ""] || d.temperament_new_people || "—"} · Nya hundar (Tik):{" "}
                                         {temperamentLabel[d.temperament_new_dogs_female ?? ""] || d.temperament_new_dogs_female || "—"} · Nya hundar (Hane):{" "}
                                         {temperamentLabel[d.temperament_new_dogs_male ?? ""] || d.temperament_new_dogs_male || "—"}
                                       </p>
@@ -1050,7 +1050,7 @@ export default function UserProfile() {
                                       <p class="need-card-line">
                                         <span class="need-card-label">Temperament:</span>
                                         <br />
-                                        Nya människor: {temperamentLabel[d.temperament_new_people ?? ""] || d.temperament_new_people || "—"} · Nya hundar (Hona):{" "}
+                                        Nya människor: {temperamentLabel[d.temperament_new_people ?? ""] || d.temperament_new_people || "—"} · Nya hundar (Tik):{" "}
                                         {temperamentLabel[d.temperament_new_dogs_female ?? ""] || d.temperament_new_dogs_female || "—"} · Nya hundar (Hane):{" "}
                                         {temperamentLabel[d.temperament_new_dogs_male ?? ""] || d.temperament_new_dogs_male || "—"}
                                       </p>

@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { MAX_IMAGE_SIZE_BYTES } from "~/lib/errors";
 
 function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
@@ -21,11 +22,29 @@ interface ImageCaptureInputProps {
   previewShape?: "circle" | "rect";
   /** "profile" = centered card layout with styled button, for profile picture */
   variant?: "default" | "profile";
+  /** Max file size in bytes (default 5 MB). Validates before accepting. */
+  maxSize?: number;
 }
 
 export function ImageCaptureInput(props: ImageCaptureInputProps) {
   const [blobUrl, setBlobUrl] = createSignal<string | undefined>();
   const [isDragging, setIsDragging] = createSignal(false);
+  const [sizeError, setSizeError] = createSignal("");
+  const maxSize = () => props.maxSize ?? MAX_IMAGE_SIZE_BYTES;
+
+  function validateAndAccept(file: File | null) {
+    setSizeError("");
+    if (!file) {
+      props.onInput(null);
+      return;
+    }
+    if (file.size > maxSize()) {
+      setSizeError("Filen är för stor. Max 5 MB.");
+      props.onInput(null);
+      return;
+    }
+    props.onInput(file);
+  }
 
   function handleDragOver(e: DragEvent) {
     e.preventDefault();
@@ -44,7 +63,7 @@ export function ImageCaptureInput(props: ImageCaptureInputProps) {
     e.stopPropagation();
     setIsDragging(false);
     const file = e.dataTransfer?.files?.[0];
-    if (file && isImageFile(file)) props.onInput(file);
+    if (file && isImageFile(file)) validateAndAccept(file);
   }
 
   let lastBlobUrl: string | undefined;
@@ -125,6 +144,9 @@ export function ImageCaptureInput(props: ImageCaptureInputProps) {
           )}
           {props.hint && (
             <p class="image-capture-hint">{props.hint}</p>
+          )}
+          {sizeError() && (
+            <p class="form-error" role="alert" style="margin-top: 0.5rem;">{sizeError()}</p>
           )}
           {isDragging() && (
             <p class="image-capture-drop-hint">{props.dropHint ?? "Släpp bilden här"}</p>

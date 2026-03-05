@@ -26,7 +26,7 @@ export function dateStr(n: {
   return "—";
 }
 
-export const genderLabel: Record<string, string> = { male: "Hane", female: "Hona", any: "Alla" };
+export const genderLabel: Record<string, string> = { male: "Hane", female: "Tik", any: "Alla" };
 export const sizeLabel: Record<string, string> = { small: "Liten", medium: "Mellan", large: "Stor" };
 export const temperamentLabel: Record<string, string> = {
   friendly: "Vänlig",

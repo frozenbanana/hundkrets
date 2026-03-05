@@ -51,4 +51,9 @@ describe("parseAddress", () => {
     expect(r.postalCode).toBe("21142");
     expect(r.street).toBe("Storgatan 1");
   });
+
+  it("parses Postnummer XXX XX, Ort format from onboarding", () => {
+    const r = parseAddress("Postnummer 211 42, Malmö");
+    expect(r).toEqual({ street: "", postalCode: "211 42", city: "Malmö" });
+  });
 });

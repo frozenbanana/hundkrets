@@ -165,7 +165,7 @@ export default function EditWatchCapacity() {
                 <label for="dogGenders">Hundkön</label>
                 <select id="dogGenders" value={dogGenders()} onInput={(e) => setDogGenders(e.currentTarget.value as "male" | "female" | "any")}>
                   <option value="male">Endast hane</option>
-                  <option value="female">Endast hona</option>
+                  <option value="female">Endast tik</option>
                   <option value="any">Valfritt</option>
                 </select>
               </div>

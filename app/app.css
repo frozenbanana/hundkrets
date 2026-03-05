@@ -15,6 +15,9 @@
   /** Soft brown tint for "receiving help" choice */
   --color-receiver-bg: #ebe0d5;
   --color-receiver-border: #c4a882;
+  /** Validation feedback */
+  --color-input-valid: var(--color-grass);
+  --color-input-invalid: #e65100;
   --shadow-paw: 0 2px 8px rgba(139, 90, 43, 0.15);
   --radius-dog: 1rem;
 }
@@ -83,6 +86,31 @@ a:hover {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--color-paw);
+}
+
+/* Validation feedback – grön om ok, orange om fel (efter blur) */
+.form-group input.input-valid,
+.form-group select.input-valid,
+.form-group textarea.input-valid {
+  border-color: var(--color-input-valid);
+}
+
+.form-group input.input-valid:focus,
+.form-group select.input-valid:focus,
+.form-group textarea.input-valid:focus {
+  border-color: var(--color-input-valid);
+}
+
+.form-group input.input-invalid,
+.form-group select.input-invalid,
+.form-group textarea.input-invalid {
+  border-color: var(--color-input-invalid);
+}
+
+.form-group input.input-invalid:focus,
+.form-group select.input-invalid:focus,
+.form-group textarea.input-invalid:focus {
+  border-color: var(--color-input-invalid);
 }
 
 .form-group textarea {
@@ -361,6 +389,45 @@ a:hover {
 .card h2, .card h3 {
   margin-top: 0;
   color: var(--color-paw-dark);
+}
+
+.quick-actions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.quick-actions-list li {
+  margin-bottom: 0.75rem;
+}
+
+.quick-actions-list li:last-child {
+  margin-bottom: 0;
+}
+
+.quick-action-link {
+  display: block;
+  text-decoration: none;
+  color: var(--color-paw-dark);
+  padding: 0.5rem 0;
+  border-radius: var(--radius-dog);
+  transition: background 0.15s ease;
+}
+
+.quick-action-link:hover {
+  background: rgba(139, 90, 43, 0.06);
+}
+
+.quick-action-label {
+  display: block;
+  font-weight: 600;
+}
+
+.quick-action-reason {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-top: 0.15rem;
 }
 
 nav {
@@ -1085,6 +1152,21 @@ nav a {
 
 .onboarding-progress .step.done {
   background: var(--color-grass);
+}
+
+.onboarding-progress-label {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-top: 0.5rem;
+}
+
+.onboarding-next-hint {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
 }
 
 /* Checkbox for flexible dates */

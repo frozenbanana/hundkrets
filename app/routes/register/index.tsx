@@ -2,6 +2,7 @@ import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { createSignal } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
+import { ValidatedInput } from "~/components/ValidatedInput";
 import { handleOAuthRedirect } from "~/lib/oauth";
 
 export default function Register() {
@@ -57,35 +58,38 @@ export default function Register() {
       <form onSubmit={handleSubmit}>
         <div class="form-group">
           <label for="email">E-post</label>
-          <input
+          <ValidatedInput
             id="email"
             type="email"
             autocomplete="email"
             value={email()}
             onInput={(e) => setEmail(e.currentTarget.value)}
+            validation="email"
             required
           />
         </div>
         <div class="form-group">
           <label for="password">Lösenord</label>
-          <input
+          <ValidatedInput
             id="password"
             type="password"
             autocomplete="new-password"
             value={password()}
             onInput={(e) => setPassword(e.currentTarget.value)}
+            validation="required"
             required
             minLength={8}
           />
         </div>
         <div class="form-group">
           <label for="passwordConfirm">Bekräfta lösenord</label>
-          <input
+          <ValidatedInput
             id="passwordConfirm"
             type="password"
             autocomplete="new-password"
             value={passwordConfirm()}
             onInput={(e) => setPasswordConfirm(e.currentTarget.value)}
+            validation="required"
             required
           />
         </div>

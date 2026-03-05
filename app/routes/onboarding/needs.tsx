@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
-import { createResource, createSignal, For, onMount, Show } from "solid-js";
+import { createEffect, createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { clearOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
@@ -42,6 +42,13 @@ export default function OnboardingNeeds() {
       return pb.collection("dogs").getFullList({ filter: `owner = "${userId}"` });
     }
   );
+
+  createEffect(() => {
+    const list = dogs();
+    if (list && list.length > 0 && !dogId()) {
+      setDogId(list[0].id);
+    }
+  });
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -118,7 +125,7 @@ export default function OnboardingNeeds() {
   const hasDogs = () => dogs() && dogs()!.length > 0;
 
   return (
-    <OnboardingShell step={3} totalSteps={isReceiverOnly() ? 3 : 4} title="När du behöver hundpassning" backHref="/onboarding/dogs">
+    <OnboardingShell step={3} totalSteps={isReceiverOnly() ? 3 : 4} title="När du behöver hundpassning" nextStepHint={isReceiverOnly() ? "Nästa: Se matchningar" : "Nästa: När du kan passa hundar"} backHref="/onboarding/dogs">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           När behöver du att någon passar din hund? Du kan vara flexibel—exakta tider bestäms privat.
@@ -129,6 +136,7 @@ export default function OnboardingNeeds() {
         </Show>
         <Show when={hasDogs()}>
         <form onSubmit={handleSubmit}>
+          {error() && <p class="form-error" role="alert" style="margin-bottom: 1rem;">{error()}</p>}
           <Show when={dogs() && dogs()!.length > 0}>
             <div class="form-group">
               <label for="dog">Vilken hund? *</label>
@@ -185,7 +193,6 @@ export default function OnboardingNeeds() {
             <label for="notes">Anteckningar</label>
             <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="Några speciella behov?" />
           </div>
-          {error() && <p class="form-error" role="alert">{error()}</p>}
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
             <button type="submit" class="btn" disabled={loading()}>
               {loading() ? "Sparar..." : "Spara och fortsätt"}

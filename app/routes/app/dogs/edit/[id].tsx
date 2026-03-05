@@ -138,7 +138,7 @@ export default function EditDog() {
             <label for="gender">Kön *</label>
             <select id="gender" value={gender()} onInput={(e) => setGender(e.currentTarget.value as "male" | "female")}>
               <option value="male">Hane</option>
-              <option value="female">Hona</option>
+              <option value="female">Tik</option>
             </select>
           </div>
           <div class="form-group">
@@ -156,7 +156,7 @@ export default function EditDog() {
                 </select>
               </div>
               <div>
-                <label for="temp_dogs_f" style="font-weight: 500; font-size: 0.9rem;">Mötande nya hundar (hona)</label>
+                <label for="temp_dogs_f" style="font-weight: 500; font-size: 0.9rem;">Mötande nya hundar (tik)</label>
                 <select id="temp_dogs_f" value={temperamentNewDogsFemale()} onInput={(e) => setTemperamentNewDogsFemale(e.currentTarget.value)}>
                   <option value="">—</option>
                   {TEMPERAMENT_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}

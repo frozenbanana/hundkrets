@@ -56,7 +56,7 @@ export default function DogsList() {
                     <p>{dog.breed || "—"} • {dog.size} • {dog.gender}</p>
                     {(dog.temperament_new_people || dog.temperament_new_dogs_female || dog.temperament_new_dogs_male) && (
                       <p style="font-size: 0.9rem; color: var(--color-text-muted);">
-                        Nya människor: {dog.temperament_new_people || "—"} • Nya hundar (Hona): {dog.temperament_new_dogs_female || "—"} • Nya hundar (Hane): {dog.temperament_new_dogs_male || "—"}
+                        Nya människor: {dog.temperament_new_people || "—"} • Nya hundar (Tik): {dog.temperament_new_dogs_female || "—"} • Nya hundar (Hane): {dog.temperament_new_dogs_male || "—"}
                       </p>
                     )}
                     <A href={`/app/dogs/edit/${dog.id}`} class="btn btn-secondary" style="margin-right: 0.5rem;">Redigera</A>

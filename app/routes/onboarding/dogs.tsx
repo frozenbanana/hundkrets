@@ -6,6 +6,7 @@ import { isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { DogImage } from "~/components/DogImage";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
+import { ValidatedInput } from "~/components/ValidatedInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
 export default function OnboardingDogs() {
@@ -165,15 +166,16 @@ export default function OnboardingDogs() {
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
   return (
-    <OnboardingShell step={2} totalSteps={isReceiverOnly() ? 3 : 4} title="Dina hundar" backHref="/onboarding/profile">
+    <OnboardingShell step={2} totalSteps={isReceiverOnly() ? 3 : 4} title="Dina hundar" nextStepHint="Nästa: När du behöver hundpassning" backHref="/onboarding/choice">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           Lägg till hundar om du har (valfritt). Du kan lägga till fler senare från översikten.
         </p>
         <form onSubmit={handleAddDog}>
+          {error() && <p class="form-error" role="alert" style="margin-bottom: 1rem;">{error()}</p>}
           <div class="form-group">
-            <label for="name">Hundens namn</label>
-            <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} placeholder="T.ex. Bella" />
+            <label for="name">Hundens namn *</label>
+            <ValidatedInput id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} validation="required" required placeholder="T.ex. Bella" />
           </div>
           <ImageCaptureInput
             id="image"
@@ -182,11 +184,11 @@ export default function OnboardingDogs() {
             onInput={setImageFile}
             previewShape="rect"
             hint="På mobil: ta foto eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
-            dropHint="Drop image here"
+            dropHint="Släpp bilden här"
           />
           <div class="form-group">
             <label for="breed">Ras</label>
-            <input id="breed" type="text" value={breed()} onInput={(e) => setBreed(e.currentTarget.value)} />
+            <input id="breed" type="text" value={breed()} onInput={(e) => setBreed(e.currentTarget.value)} placeholder="T.ex. Labrador"/>
           </div>
           <div class="form-group">
             <label for="size">Storlek *</label>
@@ -200,7 +202,7 @@ export default function OnboardingDogs() {
             <label for="gender">Kön *</label>
             <select id="gender" value={gender()} onInput={(e) => setGender(e.currentTarget.value as "male" | "female")}>
               <option value="male">Hane</option>
-              <option value="female">Hona</option>
+              <option value="female">Tik</option>
             </select>
           </div>
           <div class="form-group">
@@ -218,7 +220,7 @@ export default function OnboardingDogs() {
                 </select>
               </div>
               <div>
-                <label for="temp_dogs_f" style="font-weight: 500; font-size: 0.9rem;">Mötande nya hundar (hona)</label>
+                <label for="temp_dogs_f" style="font-weight: 500; font-size: 0.9rem;">Mötande nya hundar (tik)</label>
                 <select id="temp_dogs_f" value={temperamentNewDogsFemale()} onInput={(e) => setTemperamentNewDogsFemale(e.currentTarget.value)}>
                   <option value="">—</option>
                   {TEMPERAMENT_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
@@ -237,7 +239,6 @@ export default function OnboardingDogs() {
             <label for="notes">Anteckningar (valfritt)</label>
             <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="T.ex. speciella behov, diet, mediciner" rows={4} />
           </div>
-          {error() && <p class="form-error" role="alert">{error()}</p>}
           <button type="submit" class="btn" disabled={loading()}>
             {loading() ? "Lägger till..." : "Lägg till nästa hund"}
           </button>

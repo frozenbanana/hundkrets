@@ -7,6 +7,8 @@ interface OnboardingShellProps {
   step: number;
   totalSteps: number;
   title: string;
+  /** Kort beskrivning av nästa steg, t.ex. "Nästa: Lägg till dina hundar" */
+  nextStepHint?: string;
   /** When set, shows a "Tillbaka" link. Use a path for previous step, or "history" to use browser history (nav(-1)). */
   backHref?: string;
   children: import("solid-js").JSX.Element;
@@ -61,6 +63,14 @@ export function OnboardingShell(props: OnboardingShellProps) {
             />
           ))}
         </div>
+        <p class="onboarding-progress-label" aria-live="polite">
+          Steg {props.step} av {props.totalSteps}
+        </p>
+        {props.nextStepHint && (
+          <p class="onboarding-next-hint">
+            {props.nextStepHint}
+          </p>
+        )}
         {props.children}
       </div>
     </div>

@@ -2,6 +2,7 @@ import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { createSignal, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
+import { ValidatedInput } from "~/components/ValidatedInput";
 import { handleOAuthRedirect } from "~/lib/oauth";
 
 export default function Login() {
@@ -50,23 +51,25 @@ export default function Login() {
       <form onSubmit={handleSubmit}>
         <div class="form-group">
           <label for="email">E-post</label>
-          <input
+          <ValidatedInput
             id="email"
             type="email"
             autocomplete="email"
             value={email()}
             onInput={(e) => setEmail(e.currentTarget.value)}
+            validation="email"
             required
           />
         </div>
         <div class="form-group">
           <label for="password">Lösenord</label>
-          <input
+          <ValidatedInput
             id="password"
             type="password"
             autocomplete="current-password"
             value={password()}
             onInput={(e) => setPassword(e.currentTarget.value)}
+            validation="required"
             required
           />
           <p style="margin-top: 0.25rem; font-size: 0.9rem;">

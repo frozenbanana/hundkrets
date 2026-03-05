@@ -1,20 +1,21 @@
-import { A, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
-import { geocodeAddress } from "~/lib/geocode";
+import { geocodePostalCode } from "~/lib/geocode";
 import { parseApiError } from "~/lib/errors";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { Avatar } from "~/components/Avatar";
-import { SwedishAddressInput, type AddressValue } from "~/components/SwedishAddressInput";
+import { PostalCodeInput, type PostalCodeValue } from "~/components/PostalCodeInput";
+import { ValidatedInput } from "~/components/ValidatedInput";
 
 export default function OnboardingProfile() {
   const nav = useNavigate();
   const [name, setName] = createSignal("");
   const [phone, setPhone] = createSignal("");
-  const [address, setAddress] = createSignal<Partial<AddressValue>>({});
+  const [address, setAddress] = createSignal<Partial<PostalCodeValue>>({});
   const [bio, setBio] = createSignal("");
   const [breedsOwnedBefore, setBreedsOwnedBefore] = createSignal("");
   const [avatarFile, setAvatarFile] = createSignal<File | null>(null);
@@ -32,6 +33,7 @@ export default function OnboardingProfile() {
     }
   });
   const [error, setError] = createSignal("");
+  const [optionalOpen, setOptionalOpen] = createSignal(false);
 
   onMount(() => {
     if (!pb.authStore.isValid) {
@@ -76,16 +78,13 @@ export default function OnboardingProfile() {
       let addr = address();
       if (!addr.latitude || !addr.longitude) {
         const form = e.target as HTMLFormElement;
-        const street = form.querySelector<HTMLInputElement>("#address-line1")?.value?.trim();
-        const postalCode = form.querySelector<HTMLInputElement>("#postal-code")?.value?.trim();
-        const city = form.querySelector<HTMLInputElement>("#address-level2")?.value?.trim();
-        const raw = [street, postalCode, city].filter(Boolean).join(", ");
-        if (raw) {
-          const geocoded = await geocodeAddress(raw, city || undefined);
+        const postalInput = form.querySelector<HTMLInputElement>("#postal-code")?.value?.trim();
+        if (postalInput) {
+          const geocoded = await geocodePostalCode(postalInput);
           if (geocoded) {
-            const area = [geocoded.city, geocoded.neighborhood].filter(Boolean).join(" - ") || geocoded.display_name;
+            const area = geocoded.city || geocoded.neighborhood || geocoded.display_name || "";
             addr = {
-              address_private: geocoded.display_name,
+              address_private: `Postnummer ${postalInput}, ${area}`.trim(),
               latitude: geocoded.lat,
               longitude: geocoded.lon,
               city: geocoded.city ?? "",
@@ -96,7 +95,7 @@ export default function OnboardingProfile() {
         }
       }
       if (!addr.latitude || !addr.longitude) {
-        setError("Ange en giltig adress.");
+        setError("Ange ett giltigt postnummer.");
         setLoading(false);
         return;
       }
@@ -160,7 +159,7 @@ export default function OnboardingProfile() {
   }
 
   return (
-    <OnboardingShell step={1} totalSteps={isSitterOnly() ? 2 : isReceiverOnly() ? 3 : 4} title="Din profil" backHref="/onboarding/choice">
+    <OnboardingShell step={1} totalSteps={isSitterOnly() ? 2 : isReceiverOnly() ? 3 : 4} title="Din profil" nextStepHint={isSitterOnly() ? "Nästa: När du kan passa hundar" : "Nästa: Lägg till dina hundar"} backHref="/onboarding/choice">
       <div class="card">
         <div style="text-align: center; margin-bottom: 1.5rem;">
           <Avatar
@@ -175,43 +174,69 @@ export default function OnboardingProfile() {
           />
         </div>
         <form onSubmit={handleSubmit}>
-          <ImageCaptureInput
-            id="avatar"
-            label="Profilbild (valfritt)"
-            variant="profile"
-            value={avatarFile()}
-            onInput={setAvatarFile}
-            existingUrl={
-              pb.authStore.model?.avatar && pb.authStore.model?.id
-                ? `${import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}/api/files/users/${pb.authStore.model.id}/${pb.authStore.model.avatar}`
-                : undefined
-            }
-            hint="På mobil: ta selfie eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
-          />
-          <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
-            Vi riktar oss till Sverige. Adressen används för att räkna ut distans till andra hundägare. Den kommer inte delas med andra—din fullständiga adress visas bara när ni kopplar ihop.
-          </p>
-          <div class="form-group">
-            <label for="name">Namn *</label>
-            <input id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} required placeholder="Ditt namn" autocomplete="name" />
-          </div>
-          <SwedishAddressInput value={address()} onSelect={setAddress} />
-          <div class="form-group">
-            <label for="bio">Bio (valfritt)</label>
-            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">Hjälper andra att lära känna dig innan de väljer att matcha.</p>
-            <textarea id="bio" value={bio()} onInput={(e) => setBio(e.currentTarget.value)} placeholder="Berätta lite om dig och din erfarenhet med hundar" rows={3} />
-          </div>
-          <div class="form-group">
-            <label for="breeds_owned_before">Vilka hundraser har du tidigare haft erfarenhet av?</label>
-            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">Visas i din profil så att andra vet vad du har erfarenhet av.</p>
-            <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />
-          </div>
-          <div class="form-group">
-            <label for="phone">Telefon *</label>
-            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">Används så att andra kan kontakta dig när ni har kopplat ihop. Delas inte med andra innan matchning.</p>
-            <input id="phone" type="tel" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} required placeholder="070-123 45 67" autocomplete="tel" />
-          </div>
-          {error() && <p class="form-error" role="alert">{error()}</p>}
+          {error() && <p class="form-error" role="alert" style="margin-bottom: 1rem;">{error()}</p>}
+          <section style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem; color: var(--color-text);">Namn och område</h2>
+            <div class="form-group">
+              <label for="name">Namn *</label>
+              <ValidatedInput id="name" type="text" value={name()} onInput={(e) => setName(e.currentTarget.value)} validation="required" required placeholder="Ditt namn" autocomplete="name" />
+            </div>
+            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.75rem;">
+              Postnumret används för att hitta hundägare i ditt område. Din exakta adress delas inte.
+            </p>
+            <PostalCodeInput id="postal-code" value={address()} onSelect={setAddress} />
+          </section>
+
+          <section style="margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem; color: var(--color-text);">Kontakt</h2>
+            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: 0 0 0.75rem;">
+              Din e-post delas med andra när ni matchar, så att ni kan kontakta varandra.
+            </p>
+            <div class="form-group">
+              <label for="phone">Telefon (valfritt)</label>
+              <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">Används så att andra kan ringa dig när ni har kopplat ihop. Delas inte med andra innan matchning.</p>
+              <input id="phone" type="tel" value={phone()} onInput={(e) => setPhone(e.currentTarget.value)} placeholder="070-123 45 67" autocomplete="tel" />
+            </div>
+          </section>
+
+          <section class="onboarding-optional-section" style="margin-bottom: 1.5rem;">
+            <button
+              type="button"
+              onClick={() => setOptionalOpen((o) => !o)}
+              style="width: 100%; text-align: left; background: none; border: none; padding: 0; cursor: pointer; font: inherit;"
+              aria-expanded={optionalOpen()}
+            >
+              <h2 style="font-size: 1rem; font-weight: 600; margin: 0; color: var(--color-text); display: flex; align-items: center; gap: 0.5rem;">
+                Valfritt – kan du fylla i senare i appen
+                <span aria-hidden="true">{optionalOpen() ? " ▼" : " ▶"}</span>
+              </h2>
+            </button>
+            <Show when={optionalOpen()}>
+              <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: 0.5rem 0 0.75rem;">Hjälper andra att lära känna dig innan de väljer att matcha.</p>
+              <ImageCaptureInput
+                id="avatar"
+                label="Profilbild (valfritt)"
+                variant="profile"
+                value={avatarFile()}
+                onInput={setAvatarFile}
+                existingUrl={
+                  pb.authStore.model?.avatar && pb.authStore.model?.id
+                    ? `${import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}/api/files/users/${pb.authStore.model.id}/${pb.authStore.model.avatar}`
+                    : undefined
+                }
+                hint="På mobil: ta selfie eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
+              />
+              <div class="form-group">
+                <label for="bio">Bio (valfritt)</label>
+                <textarea id="bio" value={bio()} onInput={(e) => setBio(e.currentTarget.value)} placeholder="Berätta lite om dig och din erfarenhet med hundar" rows={3} />
+              </div>
+              <div class="form-group">
+                <label for="breeds_owned_before">Vilka hundraser har du tidigare haft erfarenhet av?</label>
+                <input id="breeds_owned_before" type="text" value={breedsOwnedBefore()} onInput={(e) => setBreedsOwnedBefore(e.currentTarget.value)} placeholder="T.ex. Labrador, Golden Retriever, blandras" />
+              </div>
+            </Show>
+          </section>
+
           <button type="submit" class="btn" disabled={loading()}>
             {loading() ? "Sparar..." : "Spara och fortsätt"}
           </button>

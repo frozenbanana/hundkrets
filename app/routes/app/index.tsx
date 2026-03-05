@@ -19,8 +19,8 @@ interface ConnectionRequest {
 }
 
 interface DashboardData {
-  user: { avatar?: string; name?: string; phone?: string; area?: string; address_private?: string } | null;
-  dogs: { id: string; name?: string; image?: string }[];
+  user: { avatar?: string; name?: string; phone?: string; area?: string; address_private?: string; bio?: string } | null;
+  dogs: { id: string; name?: string; image?: string; notes?: string }[];
   needs: unknown[];
   capacity: unknown[];
 }
@@ -188,36 +188,79 @@ export default function AppHome() {
 
   const quickActions = createMemo(() => {
     const data = dashboardData();
-    const actions: { href: string; label: string }[] = [];
+    const actions: { href: string; label: string; reason?: string }[] = [];
     if (!data) return actions;
 
     const { user, dogs, needs, capacity } = data;
 
     if (!user?.avatar?.trim()) {
-      actions.push({ href: "/app/settings", label: "Lägg till profilbild" });
+      actions.push({
+        href: "/app/settings",
+        label: "Lägg till profilbild",
+        reason: "Profiler med bild får fler matchningar",
+      });
     }
-    const profileIncomplete = !user?.name?.trim() || !user?.phone?.trim() || !user?.area?.trim();
+    if (!user?.bio?.trim()) {
+      actions.push({
+        href: "/app/settings",
+        label: "Lägg till en bio",
+        reason: "Användare med bio får mer matchningar",
+      });
+    }
+    const profileIncomplete = !user?.name?.trim() || !user?.area?.trim();
     if (profileIncomplete) {
       const missing: string[] = [];
       if (!user?.name?.trim()) missing.push("namn");
-      if (!user?.phone?.trim()) missing.push("telefon");
       if (!user?.area?.trim()) missing.push("område");
-      actions.push({ href: "/app/settings", label: `Fyll i din profil (${missing.join(", ")})` });
+      actions.push({
+        href: "/app/settings",
+        label: `Fyll i din profil (${missing.join(", ")})`,
+        reason: "En komplett profil ökar chansen att matcha",
+      });
     }
     if (dogs.length === 0) {
-      actions.push({ href: "/app/dogs", label: "Lägg till dina hundar" });
+      actions.push({
+        href: "/app/dogs",
+        label: "Lägg till dina hundar",
+        reason: "Du behöver minst en hund för att matcha med andra",
+      });
     } else {
       const dogsWithoutImage = dogs.filter((d) => !d.image?.trim());
       if (dogsWithoutImage.length > 0) {
         const names = dogsWithoutImage.map((d) => d.name || "Hund").join(", ");
-        actions.push({ href: "/app/dogs", label: `Lägg till bild på ${names}` });
+        actions.push({
+          href: "/app/dogs",
+          label: `Lägg till bild på ${names}`,
+          reason: "Hundar med bild får fler matchningar",
+        });
+      }
+      const dogsWithoutNotes = dogs.filter((d) => !d.notes?.trim());
+      if (dogsWithoutNotes.length > 0) {
+        const names = dogsWithoutNotes.map((d) => d.name || "Hund").join(", ");
+        const reason =
+          dogsWithoutNotes.length === 1
+            ? `Din hund ${names} har inte några anteckningar`
+            : `Dina hundar ${names} har inte några anteckningar`;
+        actions.push({
+          href: "/app/dogs",
+          label: "Lägg till anteckningar",
+          reason,
+        });
       }
     }
     if (needs.length === 0) {
-      actions.push({ href: "/app/needs", label: "Lägg till när du behöver hundpassning" });
+      actions.push({
+        href: "/app/needs",
+        label: "Lägg till när du behöver hundpassning",
+        reason: "Vi matchar dig med andra som kan passa din hund",
+      });
     }
     if (capacity.length === 0) {
-      actions.push({ href: "/app/capacity", label: "Lägg till när du kan passa hundar" });
+      actions.push({
+        href: "/app/capacity",
+        label: "Lägg till när du kan passa hundar",
+        reason: "Du behöver tillgänglighet för att matcha med andra",
+      });
     }
     actions.push({ href: "/app/matches", label: "Se matchningar" });
     return actions;
@@ -404,11 +447,16 @@ export default function AppHome() {
             <p style="color: var(--color-text-muted);">Laddar...</p>
           </Show>
           <Show when={!dashboardData.loading && quickActions().length > 0}>
-            <ul>
+            <ul class="quick-actions-list">
               <For each={quickActions()}>
                 {(action) => (
                   <li>
-                    <A href={action.href}>{action.label}</A>
+                    <A href={action.href} class="quick-action-link">
+                      <span class="quick-action-label">{action.label}</span>
+                      {action.reason && (
+                        <span class="quick-action-reason">{action.reason}</span>
+                      )}
+                    </A>
                   </li>
                 )}
               </For>
@@ -416,7 +464,7 @@ export default function AppHome() {
           </Show>
           <Show when={!dashboardData.loading && quickActions().length === 0}>
             <p style="color: var(--color-text-muted);">
-              Allt klart!
+              Din profil är komplett. Nu är du redo för matchningar.
               <Show when={isUserVerified()}>
                 {" "}
                 <A href={me() ? `/users/${me()}?from=app` : "/app/profile"}>Se din profil</A>

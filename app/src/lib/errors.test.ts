@@ -38,7 +38,7 @@ describe("parseApiError", () => {
       response?: { message: string };
     };
     err.response = { message: "Record not found" };
-    expect(parseApiError(err)).toBe("Record not found");
+    expect(parseApiError(err)).toBe("Hittade inte posten.");
   });
 
   it("returns Error.message when no response data", () => {
@@ -63,5 +63,15 @@ describe("parseApiError", () => {
     };
     err.data = { message: "Server error" };
     expect(parseApiError(err)).toBe("Server error");
+  });
+
+  it("translates file size error to Swedish", () => {
+    const err = new Error() as Error & {
+      response?: { message: string };
+    };
+    err.response = {
+      message: "Failed to upload pic.png - the maximum allowed file size is 5242880 bytes.",
+    };
+    expect(parseApiError(err)).toBe("Filen är för stor. Max 5 MB.");
   });
 });

@@ -243,7 +243,7 @@ export function MatchDetailModal(props: {
                                   {temperamentLabel[d.temperament_new_people ?? ""] ||
                                     d.temperament_new_people ||
                                     "—"}{" "}
-                                  · Nya hundar (Hona):{" "}
+                                  · Nya hundar (Tik):{" "}
                                   {temperamentLabel[d.temperament_new_dogs_female ?? ""] ||
                                     d.temperament_new_dogs_female ||
                                     "—"}{" "}

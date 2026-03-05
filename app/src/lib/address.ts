@@ -10,6 +10,16 @@ export function parseAddress(
   addressPrivate: string,
   cityFromDb?: string
 ): { street: string; postalCode: string; city: string } {
+  // Handle "Postnummer 211 42, Malmö" format from onboarding (postal-code-only)
+  const postnummerMatch = addressPrivate.match(/Postnummer\s+(\d{3}\s?\d{2}),\s*(.+)/i);
+  if (postnummerMatch) {
+    return {
+      street: "",
+      postalCode: postnummerMatch[1].trim(),
+      city: postnummerMatch[2].trim(),
+    };
+  }
+
   const rawParts = addressPrivate.split(", ");
   const parts =
     rawParts.length > 1

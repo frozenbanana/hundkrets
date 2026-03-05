@@ -1,15 +1,21 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createMemo, createResource, createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { authVersion } from "~/lib/authStore";
 import { Avatar } from "~/components/Avatar";
 import { AdminMessageBanner } from "~/components/AdminMessageBanner";
 import { UnverifiedBanner } from "~/components/UnverifiedBanner";
 import { getRequestsSeenAt, requestsSeenVersion } from "~/lib/requestsSeen";
 import { countUnreadIncomingMessages } from "~/lib/chat";
 
+const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
+
 export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   const nav = useNavigate();
-  const user = () => pb.authStore.model;
+  const user = () => {
+    authVersion(); // Re-render when auth data changes (e.g. avatar upload)
+    return pb.authStore.model;
+  };
   const me = () => (pb.authStore.isValid ? pb.authStore.model?.id : undefined);
   const [menuOpen, setMenuOpen] = createSignal(false);
 
@@ -70,6 +76,13 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   onMount(() => {
     if (!pb.authStore.isValid) {
       nav("/login", { replace: true });
+      return;
+    }
+    const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
+    const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
+    if (!done) {
+      nav("/onboarding/choice", { replace: true });
+      return;
     }
   });
 
@@ -93,6 +106,9 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
             size="sm"
             class="avatar-sm app-nav-avatar"
             verified={(user() as { verified?: boolean } | null)?.verified}
+            id={user()?.id}
+            avatar={(user() as { avatar?: string } | null)?.avatar}
+            baseUrl={baseUrl}
           />
         </div>
         <button

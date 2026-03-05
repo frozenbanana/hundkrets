@@ -4,7 +4,7 @@ import { pb } from "~/lib/pocketbase";
 import { AppShell } from "~/components/AppShell";
 
 const sizeLabel: Record<string, string> = { small: "Liten", medium: "Mellan", large: "Stor" };
-const genderLabel: Record<string, string> = { male: "Hane", female: "Hona", any: "Valfritt" };
+const genderLabel: Record<string, string> = { male: "Hane", female: "Tik", any: "Valfritt" };
 
 function formatDate(s: string | undefined): string {
   if (!s) return "—";
