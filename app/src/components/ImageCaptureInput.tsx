@@ -134,6 +134,7 @@ export function ImageCaptureInput(props: ImageCaptureInputProps) {
             id={props.id}
             type="file"
             accept="image/*"
+            capture={props.capture ?? (isProfile() ? "user" : undefined)}
             class="image-capture-input"
             onInput={(e) => props.onInput(e.currentTarget.files?.[0] ?? null)}
           />

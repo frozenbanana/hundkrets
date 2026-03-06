@@ -20,6 +20,10 @@
   --color-input-invalid: #e65100;
   --shadow-paw: 0 2px 8px rgba(139, 90, 43, 0.15);
   --radius-dog: 1rem;
+  /** Border color for dividers, profile header, etc. */
+  --color-border: rgba(139, 90, 43, 0.2);
+  /** Alias for border-radius used in match cards, modals, maps */
+  --radius: var(--radius-dog);
 }
 
 * {
