@@ -58,6 +58,7 @@ export default function Matches() {
       : true
   );
   const [mobileFilterOpen, setMobileFilterOpen] = createSignal(false);
+  const [hoveredUserId, setHoveredUserId] = createSignal<string | undefined>(undefined);
 
   const filterLabel = () =>
     matchFilter() === "all"
@@ -513,10 +514,6 @@ export default function Matches() {
       }),
       { replace: true }
     );
-  }
-
-  function handleMarkerClick(userId: string) {
-    navigate(`/users/${userId}?from=matches`);
   }
 
   function handleClearFilters() {
@@ -1060,7 +1057,8 @@ export default function Matches() {
                 filterByBounds
                 onBoundsChange={setMapBounds}
                 selectedUserId={undefined}
-                onMarkerClick={handleMarkerClick}
+                hoveredUserId={!isMobileViewport() ? hoveredUserId() : undefined}
+                baseUrl={baseUrl}
                 style={{ height: "100%", "min-height": "400px" }}
               />
               </Show>
@@ -1087,6 +1085,7 @@ export default function Matches() {
                   dateStr={dateStr}
                   sizesStr={sizesStr}
                   onOpenDetail={handleOpenDetail}
+                  onCardHover={!isMobileViewport() ? setHoveredUserId : undefined}
                 />
               </Show>
             </div>

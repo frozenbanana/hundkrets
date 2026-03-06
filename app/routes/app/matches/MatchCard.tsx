@@ -5,7 +5,7 @@ import { DogImage } from "~/components/DogImage";
 import { ExchangeHandsIcon, HandLeftIcon, HandRightIcon } from "./ExchangeTypeIcon";
 import type { Conn } from "./types";
 import type { ListingItem } from "./helpers";
-import { canPassStr, getFirstDog, getExchangeType, isPassOnly } from "./helpers";
+import { canPassStr, formatLastLoginAgo, getFirstDog, getExchangeType, isPassOnly } from "./helpers";
 
 export function MatchCard(props: {
   listing: ListingItem;
@@ -20,8 +20,9 @@ export function MatchCard(props: {
   }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
   onOpenDetail: (userId: string) => void;
+  onCardHover?: (userId: string | undefined) => void;
 }) {
-  const { listing, baseUrl, getConnections, dateStr, sizesStr, onOpenDetail } = props;
+  const { listing, baseUrl, getConnections, dateStr, sizesStr, onOpenDetail, onCardHover } = props;
   const conns = () => getConnections();
   const me = () => pb.authStore.model?.id;
   const mutual = () => {
@@ -67,6 +68,8 @@ export function MatchCard(props: {
   const extraNeedsHint = () => (listing.needs.length > 1 ? `+${listing.needs.length - 1}` : null);
   const extraCapacitiesHint = () =>
     listing.capacities.length > 1 ? `+${listing.capacities.length - 1}` : null;
+  const lastLoginStr = () =>
+    formatLastLoginAgo((listing.user as { last_login_at?: string }).last_login_at);
 
   return (
     <div
@@ -77,6 +80,8 @@ export function MatchCard(props: {
       }}
       data-listing-id={listing.user.id}
       onClick={() => onOpenDetail(listing.user.id)}
+      onMouseEnter={() => onCardHover?.(listing.user.id)}
+      onMouseLeave={() => onCardHover?.(undefined)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onOpenDetail(listing.user.id)}
@@ -184,6 +189,11 @@ export function MatchCard(props: {
               <span class="match-card-value">{locationStr()}</span>
             </div>
           )}
+          <Show when={lastLoginStr()}>
+            <div class="match-card-last-login" aria-hidden="true">
+              {lastLoginStr()}
+            </div>
+          </Show>
         </div>
         <div class="match-card-image">
           <Show
@@ -224,6 +234,7 @@ export function MatchCards(props: {
   }) => string;
   sizesStr: (s: string | string[] | undefined) => string;
   onOpenDetail: (userId: string) => void;
+  onCardHover?: (userId: string | undefined) => void;
 }) {
   return (
     <div class="match-cards-list">
@@ -236,6 +247,7 @@ export function MatchCards(props: {
             dateStr={props.dateStr}
             sizesStr={props.sizesStr}
             onOpenDetail={props.onOpenDetail}
+            onCardHover={props.onCardHover}
           />
         )}
       </For>

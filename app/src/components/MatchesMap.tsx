@@ -28,8 +28,10 @@ interface Props {
   onBoundsChange?: (bounds: MapBounds | null) => void;
   /** Highlight and zoom to this user's listing */
   selectedUserId?: string;
-  /** Called when a marker is clicked */
-  onMarkerClick?: (userId: string) => void;
+  /** User ID of card being hovered (desktop) – marker grows slightly */
+  hoveredUserId?: string;
+  /** Base URL for avatar images */
+  baseUrl: string;
   style?: Record<string, string>;
 }
 
@@ -44,6 +46,7 @@ export function MatchesMap(props: Props) {
     const el = mapRef();
     const listings = props.listings;
     const selectedId = props.selectedUserId;
+    const hoveredId = props.hoveredUserId;
     if (!el) return;
 
     const elChanged = prevEl !== el;
@@ -98,6 +101,8 @@ export function MatchesMap(props: Props) {
           longitude?: number;
           name?: string;
           area?: string;
+          avatar?: string;
+          bio?: string;
         };
         if (typeof u.latitude !== "number" || typeof u.longitude !== "number") continue;
         const [lat, lon] = approximateCoords(u.latitude, u.longitude, u.id ?? "");
@@ -109,22 +114,69 @@ export function MatchesMap(props: Props) {
         const isMatched = props.mutualUserIds?.(u.id ?? "") ?? false;
         const requestedMe = props.requestedMeUserIds?.has(u.id ?? "") ?? false;
         const markerColor = isMatched ? "#e65100" : requestedMe ? "#16a34a" : "#2563eb";
-        const size = isSelected ? 28 : 20;
+        const isHovered = hoveredId === u.id;
+        const size = isSelected ? 28 : isHovered ? 24 : 20;
 
         const providerIcon = L.divIcon({
           className: "marker-provider",
-          html: `<div style="width:${size}px;height:${size}px;background:${markerColor};border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`,
+          html: `<div style="width:${size}px;height:${size}px;background:${markerColor};border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);transition:width 0.15s,height 0.15s;"></div>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
         });
 
-        const m = L.marker([lat, lon], { icon: providerIcon })
-          .addTo(markerLayer!)
-          .bindPopup(`<strong>${u.name || "Okänd"}</strong><br>${u.area || ""}<br><em>Ungefärlig plats</em>`);
+        const avatarUrl =
+          u.avatar && u.id
+            ? `${props.baseUrl}/api/files/users/${u.id}/${u.avatar}`
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || "User")}&size=48&background=d4a574&color=ffffff`;
+        const bio = (u.bio || "").trim();
+        const bioTruncated = bio.length > 100 ? bio.slice(0, 97) + "..." : bio;
+        const profileUrl = `/users/${u.id}?from=matches`;
+        const esc = (s: string) => s.replace(/</g, "&lt;").replace(/"/g, "&quot;");
+        const dogs = (listing.dogs ?? []) as { id?: string; image?: string; name?: string; breed?: string; age?: number }[];
+        const dogsHtml =
+          dogs.length > 0
+            ? dogs
+                .map((d) => {
+                  const imgUrl =
+                    d.image && d.id
+                      ? `${props.baseUrl}/api/files/dogs/${d.id}/${d.image}`
+                      : "";
+                  const ageStr = typeof d.age === "number" ? `${d.age} år` : "";
+                  const parts = [d.name || "Hund", ageStr, d.breed || ""].filter(Boolean);
+                  const infoStr = parts.join(" · ");
+                  return `
+                    <div class="map-popup-dog-row">
+                      ${imgUrl ? `<img src="${imgUrl}" alt="" class="map-popup-dog-img" />` : '<div class="map-popup-dog-placeholder">🐕</div>'}
+                      <span class="map-popup-dog-info">${esc(infoStr)}</span>
+                    </div>
+                  `;
+                })
+                .join("")
+            : "";
+        const popupHtml = `
+          <div class="map-popup-mini-card">
+            <img src="${avatarUrl}" alt="" class="map-popup-avatar" />
+            <div class="map-popup-main">
+              <div class="map-popup-header">
+                <strong class="map-popup-name">${esc(u.name || "Okänd")}</strong>
+                <a href="${profileUrl}" class="map-popup-link" aria-label="Besök profil" title="Besök profil">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+              ${bioTruncated ? `<p class="map-popup-bio">${esc(bioTruncated)}</p>` : ""}
+              ${dogs.length > 0
+                ? `<div class="map-popup-dogs-section">
+                <span class="map-popup-dogs-label">Hund(ar)</span>
+                <div class="map-popup-dogs-list">${dogsHtml}</div>
+              </div>`
+                : '<p class="map-popup-no-dogs">Inga hundar registrerade</p>'}
+            </div>
+          </div>
+        `;
 
-        if (props.onMarkerClick && u.id) {
-          m.on("click", () => props.onMarkerClick!(u.id!));
-        }
+        L.marker([lat, lon], { icon: providerIcon })
+          .addTo(markerLayer!)
+          .bindPopup(popupHtml, { className: "map-popup-mini", closeButton: false });
       }
 
       const layerCount = markerLayer.getLayers().length;
@@ -151,7 +203,8 @@ export function MatchesMap(props: Props) {
     }
 
     const initialBounds = props.filterByBounds && map ? map.getBounds() : null;
-    updateMarkers(initialBounds, false);
+    const skipViewUpdate = !elChanged && !listChanged;
+    updateMarkers(initialBounds, skipViewUpdate);
     if (props.filterByBounds && map && props.onBoundsChange) {
       props.onBoundsChange(initialBounds ? extractBounds(initialBounds) : null);
     } else if (!props.filterByBounds && props.onBoundsChange) {
