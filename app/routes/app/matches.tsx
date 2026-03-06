@@ -27,25 +27,71 @@ import {
   sizesStr,
   filterFromParams,
   buildMatchesUrl,
+  buildMatchesParams,
+  getExchangeType,
   type MatchFilter,
+  type MatchSort,
 } from "./matches/helpers";
 
 export default function Matches() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = createSignal(false);
-  const [matchFilter, setMatchFilter] = createSignal<MatchFilter>(
-    filterFromParams(searchParams as { match?: string; not_matched?: string; request?: string; outgoing?: string })
+  const [matchFilter, setMatchFilter] = createSignal<MatchFilter>("all");
+  const [excludeGive, setExcludeGive] = createSignal(false);
+  const [excludeMutual, setExcludeMutual] = createSignal(false);
+  const [excludeReceive, setExcludeReceive] = createSignal(false);
+  const [matchSort, setMatchSort] = createSignal<MatchSort>("active");
+  const [sortRowVisible, setSortRowVisible] = createSignal(
+    typeof window !== "undefined"
+      ? (localStorage.getItem("matches-sort-visible") ?? "true") === "true"
+      : true
+  );
+  const [excludeRowVisible, setExcludeRowVisible] = createSignal(
+    typeof window !== "undefined"
+      ? (localStorage.getItem("matches-exclude-visible") ?? "true") === "true"
+      : true
+  );
+  const [filterRowVisible, setFilterRowVisible] = createSignal(
+    typeof window !== "undefined"
+      ? (localStorage.getItem("matches-filter-visible") ?? "true") === "true"
+      : true
+  );
+  const [mobileFilterOpen, setMobileFilterOpen] = createSignal(false);
+
+  const filterLabel = () =>
+    matchFilter() === "all"
+      ? "Alla"
+      : matchFilter() === "matched"
+        ? "Matchade"
+        : matchFilter() === "not_matched"
+          ? "Tillgängliga"
+          : matchFilter() === "outgoing"
+            ? "Skickade"
+            : "Mottagna";
+
+  const [introDismissed, setIntroDismissed] = createSignal(
+    typeof window !== "undefined" && localStorage.getItem("matches-intro-dismissed") === "true"
   );
 
   createEffect(() => {
-    const next = filterFromParams(searchParams as { match?: string; not_matched?: string; request?: string; outgoing?: string });
-    setMatchFilter(next);
+    const p = searchParams as Record<string, string | undefined>;
+    const { filter, excludeGive: eg, excludeMutual: em, excludeReceive: er, sort } = filterFromParams(p);
+    setMatchFilter(filter);
+    setExcludeGive(eg);
+    setExcludeMutual(em);
+    setExcludeReceive(er);
+    setMatchSort(sort);
   });
   createEffect(() => {
     if (typeof window === "undefined") return;
-    const filter = matchFilter();
-    const url = buildMatchesUrl(filter);
+    const url = buildMatchesUrl({
+      filter: matchFilter(),
+      excludeGive: excludeGive(),
+      excludeMutual: excludeMutual(),
+      excludeReceive: excludeReceive(),
+      sort: matchSort(),
+    });
     const current = window.location.pathname + (window.location.search || "");
     if (current !== url) navigate(url, { replace: true });
   });
@@ -426,12 +472,60 @@ export default function Matches() {
   function handleFilterChange(filter: MatchFilter) {
     setMatchFilter(filter);
     if (filter === "requested_me") markRequestsSeen();
-    const url = buildMatchesUrl(filter);
-    navigate(url, { replace: true });
+    setSearchParams(
+      buildMatchesParams({
+        filter,
+        excludeGive: excludeGive(),
+        excludeMutual: excludeMutual(),
+        excludeReceive: excludeReceive(),
+        sort: matchSort(),
+      }),
+      { replace: true }
+    );
+  }
+
+  function handleSortChange(sort: MatchSort) {
+    setMatchSort(sort);
+    setSearchParams(
+      buildMatchesParams({
+        filter: matchFilter(),
+        excludeGive: excludeGive(),
+        excludeMutual: excludeMutual(),
+        excludeReceive: excludeReceive(),
+        sort,
+      }),
+      { replace: true }
+    );
+  }
+
+  function handleExcludeToggle(type: "give" | "mutual" | "receive") {
+    const next = !(type === "give" ? excludeGive() : type === "mutual" ? excludeMutual() : excludeReceive());
+    if (type === "give") setExcludeGive(next);
+    else if (type === "mutual") setExcludeMutual(next);
+    else setExcludeReceive(next);
+    setSearchParams(
+      buildMatchesParams({
+        filter: matchFilter(),
+        excludeGive: type === "give" ? next : excludeGive(),
+        excludeMutual: type === "mutual" ? next : excludeMutual(),
+        excludeReceive: type === "receive" ? next : excludeReceive(),
+        sort: matchSort(),
+      }),
+      { replace: true }
+    );
   }
 
   function handleMarkerClick(userId: string) {
     navigate(`/users/${userId}?from=matches`);
+  }
+
+  function handleClearFilters() {
+    setMatchFilter("all");
+    setExcludeGive(false);
+    setExcludeMutual(false);
+    setExcludeReceive(false);
+    setMatchSort("active");
+    setSearchParams({}, { replace: true });
   }
 
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
@@ -508,13 +602,42 @@ export default function Matches() {
   });
 
   const matchFilteredListings = createMemo(() => {
-    const listings = data()?.listings ?? [];
+    let listings = data()?.listings ?? [];
     const filter = matchFilter();
-    if (filter === "matched") return listings.filter((l) => isMutual(l.user.id));
-    if (filter === "not_matched") return listings.filter((l) => !isMutual(l.user.id));
-    if (filter === "requested_me")
-      return listings.filter((l) => requestedMeUserIds().has(l.user.id));
-    if (filter === "outgoing") return listings.filter((l) => outgoingUserIds().has(l.user.id));
+    if (filter === "matched") listings = listings.filter((l) => isMutual(l.user.id));
+    else if (filter === "not_matched") listings = listings.filter((l) => !isMutual(l.user.id));
+    else if (filter === "requested_me")
+      listings = listings.filter((l) => requestedMeUserIds().has(l.user.id));
+    else if (filter === "outgoing")
+      listings = listings.filter((l) => outgoingUserIds().has(l.user.id));
+
+    if (excludeGive()) listings = listings.filter((l) => getExchangeType(l) !== "give");
+    if (excludeMutual()) listings = listings.filter((l) => getExchangeType(l) !== "mutual");
+    if (excludeReceive()) listings = listings.filter((l) => getExchangeType(l) !== "receive");
+
+    const sort = matchSort();
+    if (sort === "recent") {
+      listings = [...listings].sort((a, b) => {
+        const aC = (a.user as { created?: string }).created ?? "";
+        const bC = (b.user as { created?: string }).created ?? "";
+        return bC.localeCompare(aC);
+      });
+    } else if (sort === "active") {
+      listings = [...listings].sort((a, b) => {
+        const aL = (a.user as { last_login_at?: string }).last_login_at;
+        const bL = (b.user as { last_login_at?: string }).last_login_at;
+        if (!aL && !bL) return 0;
+        if (!aL) return 1;
+        if (!bL) return -1;
+        return bL.localeCompare(aL);
+      });
+    } else {
+      listings = [...listings].sort(
+        (a, b) =>
+          ((a as { distanceKm?: number }).distanceKm ?? 999) -
+          ((b as { distanceKm?: number }).distanceKm ?? 999)
+      );
+    }
     return listings;
   });
 
@@ -534,15 +657,34 @@ export default function Matches() {
   return (
     <AppShell>
       <div class="matches-page">
+        <div class="matches-sticky-header">
         <div class="container matches-header-container">
-          <div class="page-hero">
-            <span class="paw-emoji">🐾</span>
-            <h1>Matchningar</h1>
-            <p style="color: var(--color-text-muted);">
-              Hundägare i ditt område som vill byta hundpassning. Klicka "Jag är intresserad" för att
-              koppla ihop—när de gör det kan ni dela uppgifer och chatta.
-            </p>
-          </div>
+          <Show when={!introDismissed() && (!isMobileViewport() || !(data()?.listings && data()!.listings.length > 0))}>
+            <div class="page-hero">
+              <div class="matches-intro-box">
+                <span class="paw-emoji">🐾</span>
+                <h1>Matchningar</h1>
+                <p style="color: var(--color-text-muted); margin: 0;">
+                  Hundägare i ditt område som vill byta hundpassning. Klicka "Jag är intresserad" för
+                  att koppla ihop—när de gör det kan ni dela uppgifter och chatta.
+                </p>
+                <button
+                  type="button"
+                  class="matches-intro-close"
+                  onClick={() => {
+                    setIntroDismissed(true);
+                    if (typeof localStorage !== "undefined") {
+                      localStorage.setItem("matches-intro-dismissed", "true");
+                    }
+                  }}
+                  aria-label="Stäng"
+                  title="Stäng – visas inte igen"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </Show>
           <Show when={!pb.authStore.model?.area && !pb.authStore.model?.city}>
             <div class="profile-incomplete-card">
               <h3 style="margin: 0 0 0.5rem; color: var(--color-paw-dark);">
@@ -604,66 +746,270 @@ export default function Matches() {
             </A>
           </Show>
           <Show when={data()?.listings && data()!.listings.length > 0}>
-            <div class="matches-toolbar">
-              <div class="matches-filter-tabs" role="tablist">
+            {/* Mobile: Utforska header + filter icon */}
+            <Show when={isMobileViewport()}>
+              <div class="matches-mobile-header">
+                <h1 class="matches-mobile-title">Utforska</h1>
                 <button
                   type="button"
-                  role="tab"
-                  class="matches-filter-tab"
-                  classList={{ "matches-filter-tab-active": matchFilter() === "all" }}
-                  onClick={() => handleFilterChange("all")}
+                  class="matches-filter-icon-btn"
+                  classList={{ "matches-filter-icon-active": mobileFilterOpen() }}
+                  onClick={() => setMobileFilterOpen((o) => !o)}
+                  aria-label={mobileFilterOpen() ? "Dölj filter" : "Visa filter"}
+                  aria-expanded={mobileFilterOpen()}
                 >
-                  Alla ({tabCounts().all})
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  class="matches-filter-tab"
-                  classList={{ "matches-filter-tab-active": matchFilter() === "matched" }}
-                  onClick={() => handleFilterChange("matched")}
-                >
-                  Matchade ({tabCounts().matched})
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  class="matches-filter-tab"
-                  classList={{ "matches-filter-tab-active": matchFilter() === "not_matched" }}
-                  onClick={() => handleFilterChange("not_matched")}
-                >
-                  Ej matchade ({tabCounts().not_matched})
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  class="matches-filter-tab"
-                  classList={{ "matches-filter-tab-active": matchFilter() === "outgoing" }}
-                  onClick={() => handleFilterChange("outgoing")}
-                >
-                  Skickade ({tabCounts().outgoing})
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  class="matches-filter-tab matches-filter-tab-with-badge"
-                  classList={{ "matches-filter-tab-active": matchFilter() === "requested_me" }}
-                  onClick={() => handleFilterChange("requested_me")}
-                >
-                  <Show
-                    when={requestedMeUnseenCount() > 0}
-                    fallback={<>Mottagna ({tabCounts().requested_me})</>}
-                  >
-                    Mottagna
-                    <span
-                      class="matches-filter-tab-badge"
-                      aria-label={`${requestedMeUnseenCount()} nya`}
-                    >
-                      {requestedMeUnseenCount()}
-                    </span>
-                  </Show>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" role="img">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                  </svg>
                 </button>
               </div>
+              <Show when={mobileFilterOpen()}>
+                <div class="matches-mobile-filter-section">
+                  <div class="matches-mobile-filter-header">
+                    <span class="matches-mobile-filter-title">Filter</span>
+                    <button
+                      type="button"
+                      class="matches-mobile-filter-clear"
+                      onClick={handleClearFilters}
+                    >
+                      Rensa
+                    </button>
+                  </div>
+                  <div class="matches-mobile-filter-content">
+                    <div class="matches-mobile-filter-group">
+                      <span class="matches-mobile-filter-label">Kategori</span>
+                      <div class="matches-filter-tabs" role="tablist">
+                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchFilter() === "all" }} onClick={() => handleFilterChange("all")}>Alla ({tabCounts().all})</button>
+                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchFilter() === "matched" }} onClick={() => handleFilterChange("matched")}>Matchade ({tabCounts().matched})</button>
+                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchFilter() === "not_matched" }} onClick={() => handleFilterChange("not_matched")}>Tillgängliga ({tabCounts().not_matched})</button>
+                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchFilter() === "outgoing" }} onClick={() => handleFilterChange("outgoing")}>Skickade ({tabCounts().outgoing})</button>
+                        <button type="button" role="tab" class="matches-filter-tab matches-filter-tab-with-badge" classList={{ "matches-filter-tab-active": matchFilter() === "requested_me" }} onClick={() => handleFilterChange("requested_me")}>
+                          <Show when={requestedMeUnseenCount() > 0} fallback={<>Mottagna ({tabCounts().requested_me})</>}>
+                            Mottagna <span class="matches-filter-tab-badge" aria-label={`${requestedMeUnseenCount()} nya`}>{requestedMeUnseenCount()}</span>
+                          </Show>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="matches-mobile-filter-group">
+                      <span class="matches-mobile-filter-label">Exkludera</span>
+                      <div class="matches-exclude-tabs" role="group">
+                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": excludeGive() }} onClick={() => handleExcludeToggle("give")} title="Exkludera de som bara vill passa hundar">Bara vill passa</button>
+                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": excludeMutual() }} onClick={() => handleExcludeToggle("mutual")} title="Exkludera utbytare">Utbytare</button>
+                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": excludeReceive() }} onClick={() => handleExcludeToggle("receive")} title="Exkludera de som bara vill få passning">Bara vill få passning</button>
+                      </div>
+                    </div>
+                    <div class="matches-mobile-filter-group">
+                      <span class="matches-mobile-filter-label">Sortera</span>
+                      <div class="matches-sort-tabs" role="tablist">
+                        <button type="button" role="tab" class="matches-sort-tab" classList={{ "matches-sort-tab-active": matchSort() === "distance" }} onClick={() => handleSortChange("distance")}>Avstånd</button>
+                        <button type="button" role="tab" class="matches-sort-tab" classList={{ "matches-sort-tab-active": matchSort() === "recent" }} onClick={() => handleSortChange("recent")}>Senaste</button>
+                        <button type="button" role="tab" class="matches-sort-tab" classList={{ "matches-sort-tab-active": matchSort() === "active" }} onClick={() => handleSortChange("active")}>Senast aktiv</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+            </Show>
+            {/* Desktop: original toolbar */}
+            <Show when={!isMobileViewport()}>
+            <div class="matches-toolbar">
+              <div class="matches-filter-row">
+                <button
+                  type="button"
+                  class="matches-sort-toggle"
+                  onClick={() => {
+                    const next = !filterRowVisible();
+                    setFilterRowVisible(next);
+                    if (typeof localStorage !== "undefined") {
+                      localStorage.setItem("matches-filter-visible", String(next));
+                    }
+                  }}
+                  title={filterRowVisible() ? "Dölj kategori" : "Visa kategorier"}
+                  aria-expanded={filterRowVisible()}
+                >
+                  <span class="matches-sort-toggle-label">
+                    Visa: {filterLabel()}
+                  </span>
+                  <span class="matches-sort-toggle-icon" aria-hidden="true">
+                    {filterRowVisible() ? "▲" : "▼"}
+                  </span>
+                </button>
+                <Show when={filterRowVisible()}>
+                  <div class="matches-filter-tabs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": matchFilter() === "all" }}
+                      onClick={() => handleFilterChange("all")}
+                    >
+                      Alla ({tabCounts().all})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": matchFilter() === "matched" }}
+                      onClick={() => handleFilterChange("matched")}
+                    >
+                      Matchade ({tabCounts().matched})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": matchFilter() === "not_matched" }}
+                      onClick={() => handleFilterChange("not_matched")}
+                    >
+                      Tillgängliga ({tabCounts().not_matched})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": matchFilter() === "outgoing" }}
+                      onClick={() => handleFilterChange("outgoing")}
+                    >
+                      Skickade ({tabCounts().outgoing})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-filter-tab matches-filter-tab-with-badge"
+                      classList={{ "matches-filter-tab-active": matchFilter() === "requested_me" }}
+                      onClick={() => handleFilterChange("requested_me")}
+                    >
+                      <Show
+                        when={requestedMeUnseenCount() > 0}
+                        fallback={<>Mottagna ({tabCounts().requested_me})</>}
+                      >
+                        Mottagna
+                        <span
+                          class="matches-filter-tab-badge"
+                          aria-label={`${requestedMeUnseenCount()} nya`}
+                        >
+                          {requestedMeUnseenCount()}
+                        </span>
+                      </Show>
+                    </button>
+                  </div>
+                </Show>
+              </div>
+              <div class="matches-exclude-row">
+                <button
+                  type="button"
+                  class="matches-sort-toggle"
+                  onClick={() => {
+                    const next = !excludeRowVisible();
+                    setExcludeRowVisible(next);
+                    if (typeof localStorage !== "undefined") {
+                      localStorage.setItem("matches-exclude-visible", String(next));
+                    }
+                  }}
+                  title={excludeRowVisible() ? "Dölj exkludera" : "Visa exkludera"}
+                  aria-expanded={excludeRowVisible()}
+                >
+                  <span class="matches-sort-toggle-label">
+                    Exkludera:{" "}
+                    {[
+                      excludeGive() && "Bara vill passa",
+                      excludeMutual() && "Utbytare",
+                      excludeReceive() && "Bara vill få passning",
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || "Inga"}
+                  </span>
+                  <span class="matches-sort-toggle-icon" aria-hidden="true">
+                    {excludeRowVisible() ? "▲" : "▼"}
+                  </span>
+                </button>
+                <Show when={excludeRowVisible()}>
+                  <div class="matches-exclude-tabs" role="group">
+                    <button
+                      type="button"
+                      class="matches-exclude-tab"
+                      classList={{ "matches-exclude-tab-active": excludeGive() }}
+                      onClick={() => handleExcludeToggle("give")}
+                      title="Exkludera de som bara vill passa hundar"
+                    >
+                      Bara vill passa
+                    </button>
+                    <button
+                      type="button"
+                      class="matches-exclude-tab"
+                      classList={{ "matches-exclude-tab-active": excludeMutual() }}
+                      onClick={() => handleExcludeToggle("mutual")}
+                      title="Exkludera utbytare (behov + kapacitet)"
+                    >
+                      Utbytare
+                    </button>
+                    <button
+                      type="button"
+                      class="matches-exclude-tab"
+                      classList={{ "matches-exclude-tab-active": excludeReceive() }}
+                      onClick={() => handleExcludeToggle("receive")}
+                      title="Exkludera de som bara vill få passning"
+                    >
+                      Bara vill få passning
+                    </button>
+                  </div>
+                </Show>
+              </div>
+              <div class="matches-sort-row">
+                <button
+                  type="button"
+                  class="matches-sort-toggle"
+                  onClick={() => {
+                    const next = !sortRowVisible();
+                    setSortRowVisible(next);
+                    if (typeof localStorage !== "undefined") {
+                      localStorage.setItem("matches-sort-visible", String(next));
+                    }
+                  }}
+                  title={sortRowVisible() ? "Dölj sortering" : "Visa sortering"}
+                  aria-expanded={sortRowVisible()}
+                >
+                  <span class="matches-sort-toggle-label">
+                    Sortering: {matchSort() === "distance" ? "Avstånd" : matchSort() === "recent" ? "Senaste" : "Senast aktiv"}
+                  </span>
+                  <span class="matches-sort-toggle-icon" aria-hidden="true">
+                    {sortRowVisible() ? "▲" : "▼"}
+                  </span>
+                </button>
+                <Show when={sortRowVisible()}>
+                  <div class="matches-sort-tabs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-sort-tab"
+                      classList={{ "matches-sort-tab-active": matchSort() === "distance" }}
+                      onClick={() => handleSortChange("distance")}
+                    >
+                      Avstånd
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-sort-tab"
+                      classList={{ "matches-sort-tab-active": matchSort() === "recent" }}
+                      onClick={() => handleSortChange("recent")}
+                    >
+                      Senaste
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-sort-tab"
+                      classList={{ "matches-sort-tab-active": matchSort() === "active" }}
+                      onClick={() => handleSortChange("active")}
+                    >
+                      Senast aktiv
+                    </button>
+                  </div>
+                </Show>
+              </div>
             </div>
+            </Show>
           </Show>
         </div>
         <Show when={data()?.listings && data()!.listings.length > 0}>
@@ -685,6 +1031,9 @@ export default function Matches() {
               Karta
             </button>
           </div>
+        </Show>
+        </div>
+        <Show when={data()?.listings && data()!.listings.length > 0}>
           <div
             class="matches-split"
             classList={{
@@ -711,7 +1060,7 @@ export default function Matches() {
                 <div class="matches-empty-state">
                   <p style="color: var(--color-text-muted); margin: 0;">
                     {matchFilter() === "outgoing"
-                      ? 'Du har inte skickat några förfrågningar än. Bläddra bland Alla eller Ej matchade och klicka på "Jag är intresserad" för att koppla ihop.'
+                      ? 'Du har inte skickat några förfrågningar än. Bläddra bland Alla eller Tillgängliga och klicka på "Jag är intresserad" för att koppla ihop.'
                       : matchFilter() === "requested_me"
                         ? "Ingen har skickat förfrågan till dig än."
                         : matchFilter() === "matched"
