@@ -1,5 +1,5 @@
 import { A, useNavigate } from "@solidjs/router";
-import { createMemo, createResource, createSignal, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { authVersion } from "~/lib/authStore";
 import { Avatar } from "~/components/Avatar";
@@ -18,6 +18,18 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   };
   const me = () => (pb.authStore.isValid ? pb.authStore.model?.id : undefined);
   const [menuOpen, setMenuOpen] = createSignal(false);
+  let menuLinksRef: HTMLDivElement | undefined;
+  let hamburgerRef: HTMLButtonElement | undefined;
+
+  createEffect((prev) => {
+    const open = menuOpen();
+    if (open) {
+      menuLinksRef?.focus();
+    } else if (prev === true) {
+      hamburgerRef?.focus({ preventScroll: true });
+    }
+    return open;
+  }, false);
 
   const [connections] = createResource(
     () => me(),
@@ -91,6 +103,27 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
     nav("/", { replace: true });
   }
 
+  function handleMenuKeyDown(e: KeyboardEvent) {
+    if (e.key !== "Tab" || !menuOpen()) return;
+    const el = e.currentTarget as HTMLElement;
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    }
+  }
+
   return (
     <div>
       <nav class="app-nav">
@@ -112,6 +145,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
           />
         </div>
         <button
+          ref={hamburgerRef}
           type="button"
           class="app-nav-hamburger"
           aria-label={menuOpen() ? "Stäng meny" : "Öppna meny"}
@@ -122,7 +156,13 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
           <span class="app-nav-hamburger-bar" />
           <span class="app-nav-hamburger-bar" />
         </button>
-        <div class="app-nav-links" classList={{ "app-nav-links-open": menuOpen() }}>
+        <div
+          class="app-nav-links"
+          classList={{ "app-nav-links-open": menuOpen() }}
+          ref={menuLinksRef}
+          tabIndex={-1}
+          onKeyDown={handleMenuKeyDown}
+        >
           <A href="/app" onClick={() => setMenuOpen(false)}>Översikt</A>
           <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
           <A href="/app/dogs" onClick={() => setMenuOpen(false)}>Mina hundar</A>

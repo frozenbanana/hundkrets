@@ -328,7 +328,7 @@ export default function Settings() {
           <p style="color: var(--color-text-muted); font-size: 0.9rem; margin: 0.25rem 0 0.5rem;">
             Du får en bekräftelselänk till din nya e-post innan ändringen träder i kraft.
           </p>
-          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <div class="settings-email-change-row">
             <input
               id="new-email"
               type="email"
@@ -336,7 +336,6 @@ export default function Settings() {
               onInput={(e) => setNewEmail(e.currentTarget.value)}
               placeholder="ny@epost.se"
               autocomplete="email"
-              style="flex: 1; min-width: 200px;"
             />
             <button type="button" class="btn btn-secondary" onClick={openEmailChangeModal} disabled={!newEmail().trim()}>
               Byt e-post

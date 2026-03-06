@@ -373,6 +373,24 @@ a:hover {
   background: #b91c1c;
 }
 
+/* Settings: email change row - stacks on mobile */
+.settings-email-change-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.settings-email-change-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 400px) {
+  .settings-email-change-row input {
+    min-width: 200px;
+  }
+}
+
 .danger-zone {
   margin-top: 1.5rem;
   padding: 1rem;
@@ -1786,6 +1804,10 @@ nav a {
 }
 
 @media (max-width: 768px) {
+  .match-card-pill {
+    font-size: 0.8rem;
+  }
+
   .matches-mobile-toggle {
     display: flex;
   }
@@ -2171,7 +2193,7 @@ nav a {
 /* Toast notifications */
 .toast-container {
   position: fixed;
-  bottom: 1.5rem;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0));
   left: 50%;
   transform: translateX(-50%);
   z-index: 1100;
