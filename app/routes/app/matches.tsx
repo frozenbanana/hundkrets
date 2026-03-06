@@ -1050,6 +1050,7 @@ export default function Matches() {
             }}
           >
             <div class="matches-map-panel">
+              <Show when={!isMobileViewport() || mobileViewMode() === "map"}>
               <MatchesMap
                 listings={matchFilteredListings()}
                 mutualUserIds={(id) => isMutual(id)}
@@ -1062,6 +1063,7 @@ export default function Matches() {
                 onMarkerClick={handleMarkerClick}
                 style={{ height: "100%", "min-height": "400px" }}
               />
+              </Show>
             </div>
             <div class="matches-list-panel" ref={(el) => (listContainerRef = el)}>
               <Show when={filteredListings().length === 0} fallback={null}>

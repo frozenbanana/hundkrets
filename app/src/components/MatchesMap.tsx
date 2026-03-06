@@ -64,7 +64,7 @@ export function MatchesMap(props: Props) {
         ? [props.myLat!, props.myLon!]
         : [59.33, 18.07]; // Stockholm fallback
 
-      map = L.map(el).setView(defaultCenter, 10);
+      map = L.map(el).setView(defaultCenter, 13);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
