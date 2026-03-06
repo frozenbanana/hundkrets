@@ -2,7 +2,7 @@ import { For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { Avatar } from "~/components/Avatar";
 import { DogImage } from "~/components/DogImage";
-import { ExchangeHandsIcon, HandLeftIcon, HandRightIcon } from "./ExchangeTypeIcon";
+import { HandLeftIcon, HandRightIcon } from "./ExchangeTypeIcon";
 import type { Conn } from "./types";
 import type { ListingItem } from "./helpers";
 import { canPassStr, formatLastLoginAgo, getFirstDog, getExchangeType, isPassOnly } from "./helpers";
@@ -93,14 +93,13 @@ export function MatchCard(props: {
       {!mutual() && requestedOutgoing() && (
         <span class="match-card-badge match-card-badge-outgoing">Intresse skickat</span>
       )}
-      <Show when={exchangeType()}>
+      <Show when={exchangeType() && exchangeType() !== "mutual"}>
         {(type) => (
           <div
             class="match-card-exchange-badge"
             classList={{
               "match-card-exchange-receive": type() === "receive",
               "match-card-exchange-give": type() === "give",
-              "match-card-exchange-mutual": type() === "mutual",
             }}
           >
             {type() === "receive" && (
@@ -113,12 +112,6 @@ export function MatchCard(props: {
               <>
                 <HandRightIcon class="match-card-exchange-icon" aria-hidden={true} />
                 <span>Vill endast passa</span>
-              </>
-            )}
-            {type() === "mutual" && (
-              <>
-                <ExchangeHandsIcon class="match-card-exchange-icon" aria-hidden={true} />
-                <span>Utbyte</span>
               </>
             )}
           </div>

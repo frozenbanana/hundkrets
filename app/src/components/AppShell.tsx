@@ -142,7 +142,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
     <div>
       <nav class="app-nav">
         <div class="app-nav-brand">
-          <A href="/app" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;">
+          <A href="/app/matches" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;">
             <img src="/logo-icon.png" alt="" width="28" height="28" style="border-radius: 6px;" />
             Hundkrets
           </A>
@@ -178,7 +178,13 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
           tabIndex={-1}
           onKeyDown={handleMenuKeyDown}
         >
-          <A href="/app" onClick={() => setMenuOpen(false)}>Översikt</A>
+          <A href="/app/matches" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
+            Utforska
+            <Show when={badgeCount() > 0}>
+              <span class="nav-badge" aria-label={`${badgeCount()} nya`}>{badgeCount()}</span>
+            </Show>
+          </A>
+          <A href="/app/overview" onClick={() => setMenuOpen(false)}>Översikt</A>
           <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
           <A href="/app/dogs" onClick={() => setMenuOpen(false)}>Mina hundar</A>
           <A href="/app/needs" onClick={() => setMenuOpen(false)}>Mina behov</A>
@@ -189,12 +195,6 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
               <span class="nav-badge" aria-label={`${unreadChatCount()} olästa`}>
                 {unreadChatCount()}
               </span>
-            </Show>
-          </A>
-          <A href="/app/matches" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
-            Matchningar
-            <Show when={badgeCount() > 0}>
-              <span class="nav-badge" aria-label={`${badgeCount()} nya`}>{badgeCount()}</span>
             </Show>
           </A>
           <button type="button" class="btn btn-secondary" onClick={() => { setMenuOpen(false); logout(); }}>

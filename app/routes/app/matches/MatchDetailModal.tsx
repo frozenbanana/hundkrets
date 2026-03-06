@@ -119,7 +119,7 @@ export function MatchDetailModal(props: {
           </button>
         </div>
         <section class="modal-detail-scroll">
-          {connFromThem() && (
+          {connFromThem() && !mutual() && (
             <div class="modal-detail-connection-banner">
               <strong>{listing.user.name || "De"} vill ha kontakt med dig</strong>
               {connFromThem()!.message && (

@@ -136,7 +136,7 @@ export default function Chats() {
             <p style="margin: 0; color: var(--color-text-muted);">
               Inga chattar ännu. Gå till matchningar och öppna en chatt med en matchad användare.
             </p>
-            <A href="/app/matches?match=true" class="btn" style="margin-top: 1rem;">Till matchningar</A>
+            <A href="/app/matches?match=true" class="btn" style="margin-top: 1rem;">Till Utforska</A>
           </div>
         </Show>
 

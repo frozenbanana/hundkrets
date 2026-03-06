@@ -339,7 +339,7 @@ export default function UserProfile() {
                   </A>
                 </Show>
                 <Show when={!fromChat() && !fromApp() && fromMatches()}>
-                  <A href="/app/matches" class="profile-back-btn" aria-label="Tillbaka till matchningar">
+                  <A href="/app/matches" class="profile-back-btn" aria-label="Tillbaka till Utforska">
                     ← Tillbaka
                   </A>
                 </Show>
@@ -415,7 +415,7 @@ export default function UserProfile() {
                 </Show>
 
                 <div class="profile-hero card">
-                  <Show when={connFromThem()}>
+                  <Show when={connFromThem() && !mutual()}>
                     <div class="modal-detail-connection-banner" style="margin-bottom: 1rem;">
                       <strong>{u.name || "De"} vill ha kontakt med dig</strong>
                       {connFromThem()!.message && (
@@ -781,7 +781,7 @@ export default function UserProfile() {
                 </Show>
 
                 <div class="profile-hero card">
-                  <Show when={connFromThem()}>
+                  <Show when={connFromThem() && !mutual()}>
                     <div class="modal-detail-connection-banner" style="margin-bottom: 1rem;">
                       <strong>{u.name || "De"} vill ha kontakt med dig</strong>
                       {connFromThem()!.message && (
