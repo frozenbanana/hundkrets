@@ -49,7 +49,7 @@ export default function Matches() {
   );
   const [excludeRowVisible, setExcludeRowVisible] = createSignal(
     typeof window !== "undefined"
-      ? (localStorage.getItem("matches-exclude-visible") ?? "true") === "true"
+      ? (localStorage.getItem("matches-include-visible") ?? "true") === "true"
       : true
   );
   const [filterRowVisible, setFilterRowVisible] = createSignal(
@@ -800,11 +800,11 @@ export default function Matches() {
                       </div>
                     </div>
                     <div class="matches-mobile-filter-group">
-                      <span class="matches-mobile-filter-label">Exkludera</span>
+                      <span class="matches-mobile-filter-label">Inkludera</span>
                       <div class="matches-exclude-tabs" role="group">
-                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": excludeGive() }} onClick={() => handleExcludeToggle("give")} title="Exkludera de som bara vill passa hundar">Bara vill passa</button>
-                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": excludeMutual() }} onClick={() => handleExcludeToggle("mutual")} title="Exkludera utbytare">Utbytare</button>
-                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": excludeReceive() }} onClick={() => handleExcludeToggle("receive")} title="Exkludera de som bara vill få passning">Bara vill få passning</button>
+                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": !excludeGive() }} onClick={() => handleExcludeToggle("give")} title="Inkludera de som vill bara passa hundar">Vill bara passa</button>
+                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": !excludeMutual() }} onClick={() => handleExcludeToggle("mutual")} title="Inkludera utbytare">Utbytare</button>
+                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": !excludeReceive() }} onClick={() => handleExcludeToggle("receive")} title="Inkludera de som vill bara få passning">Vill bara få passning</button>
                       </div>
                     </div>
                     <div class="matches-mobile-filter-group">
@@ -911,21 +911,21 @@ export default function Matches() {
                     const next = !excludeRowVisible();
                     setExcludeRowVisible(next);
                     if (typeof localStorage !== "undefined") {
-                      localStorage.setItem("matches-exclude-visible", String(next));
+                      localStorage.setItem("matches-include-visible", String(next));
                     }
                   }}
-                  title={excludeRowVisible() ? "Dölj exkludera" : "Visa exkludera"}
+                  title={excludeRowVisible() ? "Dölj inkludera" : "Visa inkludera"}
                   aria-expanded={excludeRowVisible()}
                 >
                   <span class="matches-sort-toggle-label">
-                    Exkludera:{" "}
+                    Inkludera:{" "}
                     {[
-                      excludeGive() && "Bara vill passa",
-                      excludeMutual() && "Utbytare",
-                      excludeReceive() && "Bara vill få passning",
+                      !excludeGive() && "Vill bara passa",
+                      !excludeMutual() && "Utbytare",
+                      !excludeReceive() && "Vill bara få passning",
                     ]
                       .filter(Boolean)
-                      .join(", ") || "Inga"}
+                      .join(", ") || "Alla"}
                   </span>
                   <span class="matches-sort-toggle-icon" aria-hidden="true">
                     {excludeRowVisible() ? "▲" : "▼"}
@@ -936,29 +936,29 @@ export default function Matches() {
                     <button
                       type="button"
                       class="matches-exclude-tab"
-                      classList={{ "matches-exclude-tab-active": excludeGive() }}
+                      classList={{ "matches-exclude-tab-active": !excludeGive() }}
                       onClick={() => handleExcludeToggle("give")}
-                      title="Exkludera de som bara vill passa hundar"
+                      title="Inkludera de som vill bara passa hundar"
                     >
-                      Bara vill passa
+                      Vill bara passa
                     </button>
                     <button
                       type="button"
                       class="matches-exclude-tab"
-                      classList={{ "matches-exclude-tab-active": excludeMutual() }}
+                      classList={{ "matches-exclude-tab-active": !excludeMutual() }}
                       onClick={() => handleExcludeToggle("mutual")}
-                      title="Exkludera utbytare (behov + kapacitet)"
+                      title="Inkludera utbytare (behov + kapacitet)"
                     >
                       Utbytare
                     </button>
                     <button
                       type="button"
                       class="matches-exclude-tab"
-                      classList={{ "matches-exclude-tab-active": excludeReceive() }}
+                      classList={{ "matches-exclude-tab-active": !excludeReceive() }}
                       onClick={() => handleExcludeToggle("receive")}
-                      title="Exkludera de som bara vill få passning"
+                      title="Inkludera de som vill bara få passning"
                     >
-                      Bara vill få passning
+                      Vill bara få passning
                     </button>
                   </div>
                 </Show>
