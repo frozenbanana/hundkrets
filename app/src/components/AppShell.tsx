@@ -96,6 +96,20 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
       nav("/onboarding/choice", { replace: true });
       return;
     }
+    // Throttled ping to update last_login_at (for "Senast aktiv" sort on matches)
+    const userId = pb.authStore.model?.id;
+    if (userId && typeof sessionStorage !== "undefined") {
+      const key = "last_login_ping";
+      const last = sessionStorage.getItem(key);
+      const now = Date.now();
+      const fiveMin = 5 * 60 * 1000;
+      if (!last || now - parseInt(last, 10) > fiveMin) {
+        sessionStorage.setItem(key, String(now));
+        pb.collection("users")
+          .update(userId, { last_login_at: new Date().toISOString() })
+          .catch(() => {});
+      }
+    }
   });
 
   function logout() {
@@ -148,6 +162,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
           ref={hamburgerRef}
           type="button"
           class="app-nav-hamburger"
+          classList={{ "app-nav-hamburger-open": menuOpen() }}
           aria-label={menuOpen() ? "Stäng meny" : "Öppna meny"}
           aria-expanded={menuOpen()}
           onClick={() => setMenuOpen((o) => !o)}

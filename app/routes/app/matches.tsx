@@ -758,13 +758,22 @@ export default function Matches() {
                   aria-label={mobileFilterOpen() ? "Dölj filter" : "Visa filter"}
                   aria-expanded={mobileFilterOpen()}
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" role="img">
-                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                  </svg>
+                  <Show when={mobileFilterOpen()} fallback={
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" role="img">
+                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                    </svg>
+                  }>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" role="img">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </Show>
                 </button>
               </div>
-              <Show when={mobileFilterOpen()}>
-                <div class="matches-mobile-filter-section">
+              <div
+                class="matches-mobile-filter-section"
+                classList={{ "matches-mobile-filter-section-open": mobileFilterOpen() }}
+              >
                   <div class="matches-mobile-filter-header">
                     <span class="matches-mobile-filter-title">Filter</span>
                     <button
@@ -808,7 +817,6 @@ export default function Matches() {
                     </div>
                   </div>
                 </div>
-              </Show>
             </Show>
             {/* Desktop: original toolbar */}
             <Show when={!isMobileViewport()}>
