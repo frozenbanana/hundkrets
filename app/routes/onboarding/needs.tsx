@@ -17,7 +17,7 @@ export default function OnboardingNeeds() {
     const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
     const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
     if (done) {
-      nav("/app/matches", { replace: true });
+      nav("/app/explore", { replace: true });
       return;
     }
     if (isSitterOnly()) {
@@ -89,7 +89,7 @@ export default function OnboardingNeeds() {
       if (isReceiverOnly()) {
         await setOnboardingComplete();
         showToast("Klart! Du kan nu se dina matchningar.");
-        nav("/app/matches");
+        nav("/app/explore");
       } else {
         showToast("Behov tillagt");
         nav("/onboarding/capacity");
@@ -105,7 +105,7 @@ export default function OnboardingNeeds() {
     if (isReceiverOnly()) {
       await setOnboardingComplete();
       showToast("Klart! Du kan nu se dina matchningar.");
-      nav("/app/matches");
+      nav("/app/explore");
     } else {
       nav("/onboarding/capacity");
     }

@@ -25,7 +25,7 @@ export default function OnboardingChoice() {
     const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
     const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
     if (done) {
-      nav("/app/matches", { replace: true });
+      nav("/app/explore", { replace: true });
       return;
     }
     const user = pb.authStore.model;

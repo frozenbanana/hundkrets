@@ -130,7 +130,7 @@ export function MatchesMap(props: Props) {
             : `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || "User")}&size=48&background=d4a574&color=ffffff`;
         const bio = (u.bio || "").trim();
         const bioTruncated = bio.length > 100 ? bio.slice(0, 97) + "..." : bio;
-        const profileUrl = `/users/${u.id}?from=matches`;
+        const profileUrl = `/users/${u.id}?from=explore`;
         const esc = (s: string) => s.replace(/</g, "&lt;").replace(/"/g, "&quot;");
         const dogs = (listing.dogs ?? []) as { id?: string; image?: string; name?: string; breed?: string; age?: number }[];
         const dogsHtml =

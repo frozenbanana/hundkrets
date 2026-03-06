@@ -2,7 +2,7 @@ import { createEffect, createMemo, createResource, createSignal, onCleanup, Show
 import { pb } from "~/lib/pocketbase";
 
 type MessageType = "news" | "warning";
-type RouteKey = "app_home" | "overview" | "profile" | "dogs" | "needs" | "capacity" | "chats" | "matches";
+type RouteKey = "app_home" | "overview" | "profile" | "dogs" | "needs" | "capacity" | "chats" | "explore";
 
 type AdminMessage = {
   id: string;
@@ -23,7 +23,7 @@ function getRouteKey(pathname: string): RouteKey | null {
   if (pathname.startsWith("/app/needs")) return "needs";
   if (pathname.startsWith("/app/capacity")) return "capacity";
   if (pathname.startsWith("/app/chats")) return "chats";
-  if (pathname === "/app/matches") return "matches";
+  if (pathname === "/app/explore") return "explore";
   return null;
 }
 
@@ -107,7 +107,11 @@ export function AdminMessageBanner() {
 
       const pages = normalizePages(message.pages);
       if (pages.length > 0 && !pages.includes("all")) {
-        if (!routeKey || !pages.includes(routeKey)) continue;
+        if (!routeKey) continue;
+        // "matches" is legacy alias for "explore"
+        const matchesRoute = routeKey === "explore";
+        const pageMatches = pages.includes(routeKey) || (matchesRoute && pages.includes("matches"));
+        if (!pageMatches) continue;
       }
 
       return message;

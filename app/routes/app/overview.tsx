@@ -262,7 +262,7 @@ export default function AppOverview() {
         reason: "Du behöver tillgänglighet för att matcha med andra",
       });
     }
-    actions.push({ href: "/app/matches", label: "Utforska" });
+    actions.push({ href: "/app/explore", label: "Utforska" });
     return actions;
   });
 
@@ -470,7 +470,7 @@ export default function AppOverview() {
                 <A href={me() ? `/users/${me()}?from=app` : "/app/profile"}>Se din profil</A>
                 {" · "}
               </Show>
-              <A href="/app/matches">Utforska</A>.
+              <A href="/app/explore">Utforska</A>.
             </p>
           </Show>
         </div>
@@ -523,7 +523,7 @@ export default function AppOverview() {
                               </details>
                             </Show>
                             <p style="margin: 0.25rem 0 0; font-size: 0.85rem;">
-                              <A href={`/app/matches?match=true&user=${m.id}`} style="color: var(--color-paw); text-decoration: underline;">
+                              <A href={`/app/explore?match=true&user=${m.id}`} style="color: var(--color-paw); text-decoration: underline;">
                                 Klicka för att se på kartan →
                               </A>
                             </p>
@@ -577,7 +577,7 @@ export default function AppOverview() {
                     const dogs = dogsByOwner()?.get(req.from_user) ?? [];
                     return (
                       <li class="connection-item">
-                        <A href={`/app/matches?request=true&user=${req.from_user}`} class="connection-item-link">
+                        <A href={`/app/explore?request=true&user=${req.from_user}`} class="connection-item-link">
                           <Avatar
                             name={from?.name}
                             area={from?.area}
@@ -641,7 +641,7 @@ export default function AppOverview() {
                     const dogs = dogsByOwner()?.get(req.to_user) ?? [];
                     return (
                       <li class="connection-item">
-                        <A href={`/app/matches?user=${req.to_user}`} class="connection-item-link">
+                        <A href={`/app/explore?user=${req.to_user}`} class="connection-item-link">
                           <Avatar
                             name={to?.name}
                             area={to?.area}

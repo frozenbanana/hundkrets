@@ -3,6 +3,31 @@
 
 $app.logger().info("Hundkrets pb_hooks loaded");
 
+// Set last_login_at = created when a new user is created (registration)
+onRecordCreateRequest((e) => {
+  try {
+    if (e.record) {
+      e.record.set("last_login_at", new Date());
+    }
+  } catch (err) {
+    $app.logger().warn("last_login_at init failed", "error", err && (err.message || String(err)));
+  }
+  e.next();
+}, "users");
+
+// Update last_login_at when user authenticates (login, OAuth, refresh)
+onRecordAuthRequest((e) => {
+  try {
+    if (e.record && e.record.id) {
+      e.record.set("last_login_at", new Date());
+      $app.save(e.record);
+    }
+  } catch (err) {
+    $app.logger().warn("last_login_at update failed", "error", err && (err.message || String(err)));
+  }
+  e.next();
+});
+
 // Log all sent emails to email_log collection
 onMailerSend((e) => {
   try {
@@ -491,8 +516,8 @@ onRecordAfterCreateSuccess((e) => {
 
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
-  var matchesLink = baseUrl + "/app/matches";
-  var matchesMatchedLink = baseUrl + "/app/matches?match=true";
+  var matchesLink = baseUrl + "/app/explore";
+  var matchesMatchedLink = baseUrl + "/app/explore?match=true";
 
   if (isMatch) {
     // Deduplicate: only send match email for the first request in this direction.
@@ -613,7 +638,7 @@ onRecordAfterUpdateSuccess((e) => {
   var name = record.get("name") || "där";
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
-  var html = "<p>Välkommen till Hundkrets, " + name + "!</p><p>Du har slutfört din profil. Nu kan du hitta hundägare i ditt område som vill byta hundpassning.</p><p><a href=\"" + baseUrl + "/app/matches\">Se matchningar</a></p>";
+  var html = "<p>Välkommen till Hundkrets, " + name + "!</p><p>Du har slutfört din profil. Nu kan du hitta hundägare i ditt område som vill byta hundpassning.</p><p><a href=\"" + baseUrl + "/app/explore\">Se matchningar</a></p>";
   try {
     var msg = new MailerMessage({ from: from, to: [{ address: email }], subject: "Välkommen till Hundkrets!", html: html });
     $app.newMailClient().send(msg);

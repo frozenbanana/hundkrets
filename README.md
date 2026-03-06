@@ -95,7 +95,7 @@ hundkrets/
 ├── app/                    # SolidJS-frontend (SolidStart)
 │   ├── routes/             # Filbaserad routing
 │   │   ├── index.tsx       # Landningssida
-│   │   ├── app/            # Inloggade routes (matches, profile, chats, …)
+│   │   ├── app/            # Inloggade routes (explore, profile, chats, …)
 │   │   ├── onboarding/     # Onboarding-flöde
 │   │   └── api/            # API-routes
 │   ├── src/

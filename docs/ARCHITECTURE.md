@@ -51,8 +51,8 @@ hundkrets/
 ├── app/                    # SolidJS-frontend (SolidStart)
 │   ├── routes/             # Filbaserad routing
 │   │   ├── index.tsx       # Landningssida
-│   │   ├── app/            # Inloggade routes (/app/matches, /app/profile, …)
-│   │   │   └── matches/    # Matchningssida – uppdelad i moduler
+│   │   ├── app/            # Inloggade routes (/app/explore, /app/profile, …)
+│   │   │   └── explore/    # Utforska-sidan – uppdelad i moduler
 │   │   ├── onboarding/     # Onboarding-flöde
 │   │   └── api/            # API-routes (t.ex. dog-gallery)
 │   ├── src/
@@ -67,19 +67,19 @@ hundkrets/
 └── docs/                   # Dokumentation
 ```
 
-### Matchningssidan (`routes/app/matches`)
+### Utforska-sidan (`routes/app/explore`)
 
 Sidan är uppdelad för underhållbarhet:
 
 | Fil | Ansvar |
 |-----|--------|
-| `matches.tsx` | Route, datahämtning, state, handlers |
-| `matches/helpers.ts` | formatDate, dateStr, labels, filter-logik |
-| `matches/types.ts` | Conn, DogRecord |
-| `matches/MatchCard.tsx` | Match-kort och lista |
-| `matches/MatchDetailModal.tsx` | Detaljvy med behov/kapacitet |
-| `matches/InterestModal.tsx` | Modal för intresseförfrågan |
-| `matches/RespondModal.tsx` | Modal för svar på förfrågan |
+| `explore.tsx` | Route, datahämtning, state, handlers |
+| `explore/helpers.ts` | formatDate, dateStr, labels, filter-logik |
+| `explore/types.ts` | Conn, DogRecord |
+| `explore/MatchCard.tsx` | Match-kort och lista |
+| `explore/MatchDetailModal.tsx` | Detaljvy med behov/kapacitet |
+| `explore/InterestModal.tsx` | Modal för intresseförfrågan |
+| `explore/RespondModal.tsx` | Modal för svar på förfrågan |
 
 ---
 

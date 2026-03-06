@@ -17,7 +17,7 @@ export default function OnboardingCapacity() {
     const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
     const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
     if (done) {
-      nav("/app/matches", { replace: true });
+      nav("/app/explore", { replace: true });
       return;
     }
     if (isReceiverOnly()) {
@@ -77,7 +77,7 @@ export default function OnboardingCapacity() {
       await pb.collection("watch_capacity").create(data);
       await setOnboardingComplete();
       showToast("Klart! Du kan nu se dina matchningar.");
-      nav("/app/matches");
+      nav("/app/explore");
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -87,7 +87,7 @@ export default function OnboardingCapacity() {
 
   async function handleSkip() {
     await setOnboardingComplete();
-    nav("/app/matches");
+    nav("/app/explore");
   }
 
   async function setOnboardingComplete() {

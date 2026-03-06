@@ -77,17 +77,58 @@ export function sizesStr(s: string | string[] | undefined): string {
 
 export type MatchFilter = "all" | "matched" | "not_matched" | "requested_me" | "outgoing";
 
+export type MatchSort = "distance" | "recent" | "active";
+
+export function canPassMyDog(listing: ListingItem): boolean {
+  return listing.capacities.length > 0;
+}
+
+/** Returns "Inloggad senast X minuter/timmar/dagar sedan" or "" if null/undefined */
+export function formatLastLoginAgo(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const now = Date.now();
+  const ms = now - d.getTime();
+  const min = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const days = Math.floor(ms / 86400000);
+  if (min < 1) return "Inloggad nyligen";
+  if (min < 60) return `Inloggad senast ${min} ${min === 1 ? "minut" : "minuter"} sedan`;
+  if (hours < 24) return `Inloggad senast ${hours} ${hours === 1 ? "timme" : "timmar"} sedan`;
+  if (days < 7) return `Inloggad senast ${days} ${days === 1 ? "dag" : "dagar"} sedan`;
+  return `Inloggad senast ${days} dagar sedan`;
+}
+
+export type ExcludeType = "give" | "mutual" | "receive";
+
 export function filterFromParams(params: {
   match?: string;
   not_matched?: string;
   request?: string;
   outgoing?: string;
-}): MatchFilter {
-  if (params.request === "true" || params.request === "1") return "requested_me";
-  if (params.outgoing === "true" || params.outgoing === "1") return "outgoing";
-  if (params.match === "true" || params.match === "1") return "matched";
-  if (params.not_matched === "true" || params.not_matched === "1") return "not_matched";
-  return "all";
+  pass?: string;
+  exclude_give?: string;
+  exclude_mutual?: string;
+  exclude_receive?: string;
+  sort?: string;
+}): { filter: MatchFilter; excludeGive: boolean; excludeMutual: boolean; excludeReceive: boolean; sort: MatchSort } {
+  let filter: MatchFilter = "all";
+  if (params.request === "true" || params.request === "1") filter = "requested_me";
+  else if (params.outgoing === "true" || params.outgoing === "1") filter = "outgoing";
+  else if (params.match === "true" || params.match === "1") filter = "matched";
+  else if (params.not_matched === "true" || params.not_matched === "1") filter = "not_matched";
+
+  const excludeGive = params.exclude_give === "true" || params.exclude_give === "1";
+  const excludeMutual = params.exclude_mutual === "true" || params.exclude_mutual === "1";
+  const excludeReceive = params.exclude_receive === "true" || params.exclude_receive === "1" || params.pass === "true" || params.pass === "1";
+
+  let sort: MatchSort = "active";
+  if (params.sort === "distance") sort = "distance";
+  else if (params.sort === "recent") sort = "recent";
+  else if (params.sort === "active") sort = "active";
+
+  return { filter, excludeGive, excludeMutual, excludeReceive, sort };
 }
 
 export function filterToParams(filter: MatchFilter): Record<string, string> {
@@ -99,15 +140,38 @@ export function filterToParams(filter: MatchFilter): Record<string, string> {
   return next;
 }
 
-export function buildMatchesUrl(filter: MatchFilter, user?: string): string {
-  const params = new URLSearchParams();
-  const fp = filterToParams(filter);
+export function buildMatchesParams(opts: {
+  filter: MatchFilter;
+  excludeGive?: boolean;
+  excludeMutual?: boolean;
+  excludeReceive?: boolean;
+  sort?: MatchSort;
+  user?: string;
+}): Record<string, string> {
+  const params: Record<string, string> = {};
+  const fp = filterToParams(opts.filter);
   for (const [k, v] of Object.entries(fp)) {
-    if (v) params.set(k, v);
+    if (v) params[k] = v;
   }
-  if (user) params.set("user", user);
-  const qs = params.toString();
-  return `/app/matches${qs ? "?" + qs : ""}`;
+  if (opts.excludeGive) params.exclude_give = "true";
+  if (opts.excludeMutual) params.exclude_mutual = "true";
+  if (opts.excludeReceive) params.exclude_receive = "true";
+  if (opts.sort && opts.sort !== "active") params.sort = opts.sort;
+  if (opts.user) params.user = opts.user;
+  return params;
+}
+
+export function buildMatchesUrl(opts: {
+  filter: MatchFilter;
+  excludeGive?: boolean;
+  excludeMutual?: boolean;
+  excludeReceive?: boolean;
+  sort?: MatchSort;
+  user?: string;
+}): string {
+  const params = buildMatchesParams(opts);
+  const qs = new URLSearchParams(params).toString();
+  return `/app/explore${qs ? "?" + qs : ""}`;
 }
 
 export type ListingItem = ReturnType<typeof findListings>[number];

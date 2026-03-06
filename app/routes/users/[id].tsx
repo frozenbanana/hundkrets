@@ -10,17 +10,17 @@ import { pb } from "~/lib/pocketbase";
 import { isUserVerified } from "~/lib/auth";
 import { Avatar } from "~/components/Avatar";
 import { DogImage } from "~/components/DogImage";
-import { InterestModal } from "../app/matches/InterestModal";
-import { RespondModal } from "../app/matches/RespondModal";
-import type { Conn } from "../app/matches/types";
-import type { DogRecord } from "../app/matches/types";
+import { InterestModal } from "../app/explore/InterestModal";
+import { RespondModal } from "../app/explore/RespondModal";
+import type { Conn } from "../app/explore/types";
+import type { DogRecord } from "../app/explore/types";
 import {
   dateStr,
   sizesStr,
   genderLabel,
   sizeLabel,
   temperamentLabel,
-} from "../app/matches/helpers";
+} from "../app/explore/helpers";
 import { parseApiError } from "~/lib/errors";
 import { showToast } from "~/lib/toast";
 import { AppShell } from "~/components/AppShell";
@@ -41,8 +41,8 @@ export default function UserProfile() {
   const userId = () => params.id;
 
   const fromMatches = () =>
-    searchParams.from === "matches" ||
-    (typeof document !== "undefined" && document.referrer?.includes("/app/matches"));
+    searchParams.from === "explore" ||
+    (typeof document !== "undefined" && document.referrer?.includes("/app/explore"));
 
   const fromChat = () => searchParams.from === "chat";
   const fromApp = () => searchParams.from === "app";
@@ -339,7 +339,7 @@ export default function UserProfile() {
                   </A>
                 </Show>
                 <Show when={!fromChat() && !fromApp() && fromMatches()}>
-                  <A href="/app/matches" class="profile-back-btn" aria-label="Tillbaka till Utforska">
+                  <A href="/app/explore" class="profile-back-btn" aria-label="Tillbaka till Utforska">
                     ← Tillbaka
                   </A>
                 </Show>

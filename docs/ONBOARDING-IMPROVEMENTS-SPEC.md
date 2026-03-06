@@ -7,7 +7,7 @@ Specifikation för fyra onboarding-förbättringar som minskar friction och öka
 ## 1. Tvinga onboarding i AppShell
 
 ### Syfte
-Förhindra att användare når `/app`-routes utan att ha slutfört onboarding. Idag kan användare skriva `/app/matches` direkt i adressfältet och komma åt appen trots att de saknar `area` och `onboarding_complete`.
+Förhindra att användare når `/app`-routes utan att ha slutfört onboarding. Idag kan användare skriva `/app/explore` direkt i adressfältet och komma åt appen trots att de saknar `area` och `onboarding_complete`.
 
 ### Nuvarande beteende
 - `AppShell` kontrollerar endast `pb.authStore.isValid`
@@ -44,7 +44,7 @@ onMount(() => {
 
 **Edge cases:**
 - Användare som loggar in och redirectas till `/onboarding/choice` från login – OK, de når aldrig AppShell
-- Användare som bokmärkar `/app/matches` och öppnar när inloggade – de redirectas till `/onboarding/choice`
+- Användare som bokmärkar `/app/explore` och öppnar när inloggade – de redirectas till `/onboarding/choice`
 
 ### Filer som påverkas
 - `app/src/components/AppShell.tsx`
