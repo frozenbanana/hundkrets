@@ -926,6 +926,13 @@ nav a {
   color: var(--color-paw-dark);
 }
 
+.landing-gallery-heading {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  margin: 0 0 0.5rem;
+}
+
 /* Dog gallery - floating/gliding animation */
 .dog-gallery {
   position: relative;
@@ -1039,6 +1046,7 @@ nav a {
 
 .landing-hero {
   padding-top: 2rem;
+  text-align: center;
 }
 
 .landing-map-wrapper {
@@ -1076,6 +1084,7 @@ nav a {
 .landing-cta {
   text-align: center;
   margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
   padding: 1.5rem;
   background: rgba(255, 255, 255, 0.7);
   border-radius: var(--radius-dog);
@@ -1086,7 +1095,8 @@ nav a {
 .landing-cta-text {
   margin: 0 0 1.25rem;
   color: var(--color-text-muted);
-  font-size: 0.95rem;
+  font-size: 1.35rem;
+  font-weight: 600;
 }
 
 .landing-cta-buttons {

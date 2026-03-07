@@ -1,8 +1,8 @@
 import { createResource, For, Show } from "solid-js";
-import { fetchMultipleRandomDogs } from "~/lib/dog-ceo";
+import { fetchGalleryDogImages } from "~/lib/dog-ceo";
 
 export function DogGallery() {
-  const [dogs] = createResource(() => fetchMultipleRandomDogs(12));
+  const [dogs] = createResource(() => fetchGalleryDogImages(12));
 
   return (
     <div class="dog-gallery">

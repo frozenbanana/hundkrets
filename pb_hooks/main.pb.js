@@ -384,6 +384,25 @@ routerAdd("GET", "/api/hundkrets/user-locations", (e) => {
   return e.json(200, items);
 });
 
+// Public route: dog images for landing gallery (id, image – no auth needed)
+routerAdd("GET", "/api/hundkrets/dog-gallery", (e) => {
+  var records = [];
+  try {
+    records = $app.findRecordsByFilter("dogs", "image != ''", "-created", 50, 0);
+  } catch (err) {
+    return e.json(500, []);
+  }
+  var items = [];
+  for (var i = 0; i < records.length; i++) {
+    var r = records[i];
+    var img = r.getString("image");
+    if (img) {
+      items.push({ id: r.id, image: img });
+    }
+  }
+  return e.json(200, items);
+});
+
 // 0. Block unverified users from creating connection requests
 // Use onRecordCreateRequest (API-level) so BadRequestError message reaches the client
 onRecordCreateRequest((e) => {

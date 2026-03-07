@@ -93,3 +93,32 @@ export async function fetchMultipleRandomDogs(count: number = 12): Promise<strin
   }
   return [];
 }
+
+const PB_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_POCKETBASE_URL
+  ? import.meta.env.VITE_POCKETBASE_URL
+  : "http://localhost:8090";
+
+/** Fetch dog image URLs from database (dogs with images). Returns full file URLs. */
+export async function fetchDogImagesFromDb(): Promise<string[]> {
+  try {
+    const res = await fetch(`${PB_URL}/api/hundkrets/dog-gallery`);
+    const data = (await res.json()) as Array<{ id?: string; image?: string }>;
+    if (!Array.isArray(data)) return [];
+    return data
+      .filter((d) => d?.id && d?.image)
+      .map((d) => `${PB_URL}/api/files/dogs/${d.id}/${d.image}`);
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch gallery images: DB first, dog.ceo API as fallback. Pads with API if DB has fewer than count. */
+export async function fetchGalleryDogImages(count: number = 12): Promise<string[]> {
+  const fromDb = await fetchDogImagesFromDb();
+  if (fromDb.length >= count) return fromDb.slice(0, count);
+  if (fromDb.length > 0) {
+    const pad = await fetchMultipleRandomDogs(count - fromDb.length);
+    return [...fromDb, ...pad];
+  }
+  return fetchMultipleRandomDogs(count);
+}
