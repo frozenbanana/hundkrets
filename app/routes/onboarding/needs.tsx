@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createEffect, createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { clearOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { clearOnboardingUserType, getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -114,10 +114,13 @@ export default function OnboardingNeeds() {
   async function setOnboardingComplete() {
     const userId = pb.authStore.model?.id;
     if (!userId) return;
-    await pb.collection("users").update(userId, { onboarding_complete: true });
+    const userType = getOnboardingUserType();
+    const update: Record<string, unknown> = { onboarding_complete: true };
+    if (userType) update.user_type = userType;
+    await pb.collection("users").update(userId, update);
     pb.authStore.save(pb.authStore.token!, {
       ...pb.authStore.model,
-      onboarding_complete: true,
+      ...update,
     });
     clearOnboardingUserType();
   }

@@ -425,43 +425,111 @@ a.btn-secondary:focus {
   color: var(--color-paw-dark);
 }
 
-.quick-actions-list {
+/* Snabbåtgärder – checklista */
+.quick-actions-card {
+  position: relative;
+}
+.quick-actions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.quick-actions-dismiss-btn {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  border-radius: var(--radius-dog);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.quick-actions-dismiss-btn:hover {
+  color: var(--color-text);
+  background: rgba(139, 90, 43, 0.08);
+}
+.quick-actions-motivation {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  margin: 0 0 1rem;
+}
+.quick-actions-checklist {
   list-style: none;
   padding: 0;
   margin: 0;
 }
-
-.quick-actions-list li {
-  margin-bottom: 0.75rem;
+.quick-actions-checklist-item {
+  margin-bottom: 0.6rem;
+  transition: opacity 0.3s ease;
 }
-
-.quick-actions-list li:last-child {
+.quick-actions-checklist-item:last-child {
   margin-bottom: 0;
 }
-
-.quick-action-link {
-  display: block;
+.quick-actions-checklist-item.is-completed .quick-actions-label-text {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+  transition: text-decoration 0.3s ease, color 0.3s ease;
+}
+.quick-actions-checklist-label,
+.quick-actions-checklist-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.quick-actions-checklist-link {
   text-decoration: none;
   color: var(--color-paw-dark);
-  padding: 0.5rem 0;
+  padding: 0.35rem 0;
   border-radius: var(--radius-dog);
   transition: background 0.15s ease;
 }
-
-.quick-action-link:hover {
+.quick-actions-checklist-link:hover {
   background: rgba(139, 90, 43, 0.06);
 }
-
-.quick-action-label {
-  display: block;
+.quick-actions-checkbox {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-paw);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  background: transparent;
+}
+.quick-actions-checklist-item.is-completed .quick-actions-checkbox {
+  background: var(--color-paw);
+  border-color: var(--color-paw);
+}
+.quick-actions-label-text {
   font-weight: 600;
 }
-
-.quick-action-reason {
-  display: block;
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  margin-top: 0.15rem;
+.quick-actions-complete-message {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-paw-dark);
+  margin: 0 0 0.75rem;
+}
+.quick-actions-complete-links {
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+}
+.quick-actions-complete-links a {
+  color: var(--color-paw);
+  font-weight: 600;
+}
+.quick-actions-complete-links a:hover {
+  text-decoration: underline;
 }
 
 nav {

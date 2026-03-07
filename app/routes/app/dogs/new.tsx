@@ -66,6 +66,11 @@ export default function NewDog() {
         });
       }
       showToast("Hund tillagd");
+      const userType = (pb.authStore.model as { user_type?: string })?.user_type;
+      if (userType === "sitter_only") {
+        await pb.collection("users").update(userId, { user_type: "has_dogs" });
+        pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, user_type: "has_dogs" });
+      }
       nav("/app/dogs");
     } catch (err: unknown) {
       setError(parseApiError(err));

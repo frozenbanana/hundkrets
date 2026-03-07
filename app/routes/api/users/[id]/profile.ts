@@ -29,7 +29,7 @@ async function getAdminPb(): Promise<PocketBase> {
 }
 
 function pickPublicUser(u: Record<string, unknown>): Record<string, unknown> {
-  const allowed = ["id", "name", "avatar", "area", "city", "neighborhood", "bio", "breeds_owned_before", "verified"];
+  const allowed = ["id", "name", "avatar", "area", "city", "neighborhood", "bio", "breeds_owned_before", "verified", "user_type"];
   const out: Record<string, unknown> = {};
   for (const k of allowed) {
     if (k in u && u[k] !== undefined) out[k] = u[k];

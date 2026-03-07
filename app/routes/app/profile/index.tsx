@@ -1,14 +1,23 @@
 import { A, useNavigate } from "@solidjs/router";
-import { createMemo, createResource, For, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from "solid-js";
+import confetti from "canvas-confetti";
 import { pb } from "~/lib/pocketbase";
-import { isUserVerified } from "~/lib/auth";
 import { Avatar } from "~/components/Avatar";
 import { DogImage } from "~/components/DogImage";
 import { ProfileSettingsSection } from "~/components/ProfileSettingsSection";
 import { dateStr, genderLabel, sizeLabel } from "../explore/helpers";
 
+type TodoItem = {
+  id: string;
+  label: string;
+  href: string;
+  completed: boolean;
+};
+
+const DISMISS_STORAGE_KEY = "profile-quick-actions-dismissed";
+
 type ProfileData = {
-  user: { id: string; name?: string; avatar?: string; area?: string; city?: string; neighborhood?: string; bio?: string; breeds_owned_before?: string };
+  user: { id: string; name?: string; avatar?: string; area?: string; city?: string; neighborhood?: string; bio?: string; breeds_owned_before?: string; user_type?: "has_dogs" | "sitter_only" | "receiver_only" };
   needs: Array<{ id?: string; dog?: string; notes?: string } & Record<string, unknown>>;
   capacities: Array<{ id?: string; dog_sizes?: string | string[]; dog_genders?: string; max_dogs?: number; notes?: string } & Record<string, unknown>>;
   dogs: Array<{ id?: string; name?: string; breed?: string; size?: string; gender?: string; age?: number; image?: string; notes?: string }>;
@@ -48,52 +57,107 @@ export default function ProfileIndex() {
     }
   );
 
-  const quickActions = createMemo(() => {
+  const userTypeInfo = createMemo(() => {
+    const data = profile();
+    if (!data) return { isSitterOnly: false, isReceiverOnly: false };
+    const { user, dogs, needs, capacities } = data;
+    const userType = user?.user_type;
+    const isSitterOnly = userType === "sitter_only" || (userType == null && dogs.length === 0);
+    const isReceiverOnly =
+      userType === "receiver_only" ||
+      (userType == null && dogs.length > 0 && needs.length > 0 && capacities.length === 0);
+    return { isSitterOnly, isReceiverOnly };
+  });
+
+  const profileTodos = createMemo(() => {
     const data = profile();
     if (!data) return [];
-    const actions: { href: string; label: string; reason?: string }[] = [];
+    const todos: TodoItem[] = [];
     const { user, dogs, needs, capacities } = data;
+    const { isSitterOnly, isReceiverOnly } = userTypeInfo();
 
-    if (!user?.avatar?.trim()) {
-      actions.push({ href: "/app/profile/edit", label: "Lägg till profilbild", reason: "Profiler med bild får fler matchningar" });
-    }
-    if (!user?.bio?.trim()) {
-      actions.push({ href: "/app/profile/edit", label: "Lägg till en bio", reason: "Användare med bio får mer matchningar" });
-    }
-    const profileIncomplete = !user?.name?.trim() || !user?.area?.trim();
-    if (profileIncomplete) {
-      const missing: string[] = [];
-      if (!user?.name?.trim()) missing.push("namn");
-      if (!user?.area?.trim()) missing.push("område");
-      actions.push({ href: "/app/profile/edit", label: `Fyll i din profil (${missing.join(", ")})`, reason: "En komplett profil ökar chansen att matcha" });
-    }
-    if (dogs.length === 0) {
-      actions.push({ href: "/app/dogs", label: "Lägg till dina hundar", reason: "Du behöver minst en hund för att matcha med andra" });
-    } else {
-      const dogsWithoutImage = dogs.filter((d) => !(d.image as string)?.trim());
-      if (dogsWithoutImage.length > 0) {
-        const names = dogsWithoutImage.map((d) => d.name || "Hund").join(", ");
-        actions.push({ href: "/app/dogs", label: `Lägg till bild på ${names}`, reason: "Hundar med bild får fler matchningar" });
-      }
+    const hasBio = !!user?.bio?.trim();
+    todos.push({ id: "bio", label: "Fyll i din bio", href: "/app/profile/edit", completed: hasBio });
+
+    const hasAvatar = !!user?.avatar?.trim();
+    todos.push({ id: "avatar", label: "Lägg till en profilbild", href: "/app/profile/edit", completed: hasAvatar });
+
+    if (!isSitterOnly) {
       const dogsWithoutNotes = dogs.filter((d) => !(d.notes as string)?.trim());
-      if (dogsWithoutNotes.length > 0) {
-        const names = dogsWithoutNotes.map((d) => d.name || "Hund").join(", ");
-        const reason =
+      const hasDogNotes = dogs.length > 0 && dogsWithoutNotes.length === 0;
+      if (dogs.length > 0) {
+        const dogNotesLabel =
           dogsWithoutNotes.length === 1
-            ? `Din hund ${names} har inte några anteckningar`
-            : `Dina hundar ${names} har inte några anteckningar`;
-        actions.push({ href: "/app/dogs", label: "Lägg till anteckningar", reason });
+            ? `Lägg till anteckning om ${dogsWithoutNotes[0].name || "din hund"}`
+            : dogsWithoutNotes.length > 1
+              ? "Lägg till anteckningar om dina hundar"
+              : "Lägg till en anteckning om din hund";
+        todos.push({ id: "dog-notes", label: dogNotesLabel, href: "/app/dogs", completed: hasDogNotes });
       }
+
+      const hasDogs = dogs.length > 0;
+      todos.push({ id: "dogs", label: "Lägg till dina hundar", href: "/app/dogs", completed: hasDogs });
+
+      const dogsWithoutImage = dogs.filter((d) => !(d.image as string)?.trim());
+      const hasDogImages = dogs.length === 0 || dogsWithoutImage.length === 0;
+      if (dogs.length > 0) {
+        const dogImagesLabel =
+          dogsWithoutImage.length > 0
+            ? `Lägg till bild på ${dogsWithoutImage.map((d) => d.name || "Hund").join(", ")}`
+            : "Lägg till bild på dina hundar";
+        todos.push({ id: "dog-images", label: dogImagesLabel, href: "/app/dogs", completed: hasDogImages });
+      }
+
+      const hasNeeds = needs.length > 0;
+      todos.push({ id: "needs", label: "Lägg till när du behöver hundpassning", href: "/app/needs", completed: hasNeeds });
     }
-    if (needs.length === 0) {
-      actions.push({ href: "/app/needs", label: "Lägg till när du behöver hundpassning", reason: "Vi matchar dig med andra som kan passa din hund" });
+
+    if (!isReceiverOnly) {
+      const hasCapacities = capacities.length > 0;
+      todos.push({ id: "capacities", label: "Lägg till när du kan passa hundar", href: "/app/capacity", completed: hasCapacities });
     }
-    if (capacities.length === 0) {
-      actions.push({ href: "/app/capacity", label: "Lägg till när du kan passa hundar", reason: "Du behöver tillgänglighet för att matcha med andra" });
-    }
-    actions.push({ href: "/app/explore", label: "Utforska" });
-    return actions;
+
+    const hasNameAndArea = !!user?.name?.trim() && !!user?.area?.trim();
+    const missing: string[] = [];
+    if (!user?.name?.trim()) missing.push("namn");
+    if (!user?.area?.trim()) missing.push("område");
+    const profileLabel = missing.length > 0 ? `Fyll i din profil (${missing.join(", ")})` : "Fyll i namn och område";
+    todos.push({ id: "profile", label: profileLabel, href: "/app/profile/edit", completed: hasNameAndArea });
+
+    return todos;
   });
+
+  const allComplete = createMemo(() => {
+    const todos = profileTodos();
+    return todos.length > 0 && todos.every((t) => t.completed);
+  });
+
+  const [dismissed, setDismissed] = createSignal(false);
+  const [hasCelebrated, setHasCelebrated] = createSignal(false);
+
+  onMount(() => {
+    const id = myId();
+    if (id && typeof localStorage !== "undefined") {
+      const key = `${DISMISS_STORAGE_KEY}-${id}`;
+      setDismissed(localStorage.getItem(key) === "true");
+    }
+  });
+
+  createEffect(() => {
+    if (!allComplete() || hasCelebrated()) return;
+    const id = myId();
+    if (id && typeof localStorage !== "undefined" && localStorage.getItem(`${DISMISS_STORAGE_KEY}-${id}`) === "true") return;
+    setHasCelebrated(true);
+    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+  });
+
+  function handleDismiss() {
+    const id = myId();
+    if (id && typeof localStorage !== "undefined") {
+      localStorage.setItem(`${DISMISS_STORAGE_KEY}-${id}`, "true");
+      setDismissed(true);
+    }
+  }
 
   if (!myId()) {
     nav("/login", { replace: true });
@@ -126,35 +190,57 @@ export default function ProfileIndex() {
 
           return (
             <>
-              {/* Snabbåtgärder - just under header */}
-              <div class="profile-card card" style="margin-bottom: 1rem;">
-                <h2 class="profile-card-title" style="margin-bottom: 1rem;">Snabbåtgärder</h2>
-                <Show when={quickActions().length > 0}>
-                  <ul class="quick-actions-list">
-                    <For each={quickActions()}>
-                      {(action) => (
-                        <li>
-                          <A href={action.href} class="quick-action-link">
-                            <span class="quick-action-label">{action.label}</span>
-                            {action.reason && <span class="quick-action-reason">{action.reason}</span>}
-                          </A>
-                        </li>
-                      )}
-                    </For>
-                  </ul>
-                </Show>
-                <Show when={quickActions().length === 0}>
-                  <p class="profile-card-muted">
-                    Din profil är komplett. Nu är du redo för matchningar.
-                    <Show when={isUserVerified()}>
-                      {" "}
+              {/* Snabbåtgärder - dismissable when complete */}
+              <Show when={!dismissed()}>
+                <div class="profile-card card quick-actions-card" style="margin-bottom: 1rem;">
+                  <div class="quick-actions-header">
+                    <h2 class="profile-card-title">Snabbåtgärder</h2>
+                    <Show when={allComplete()}>
+                      <button
+                        type="button"
+                        class="quick-actions-dismiss-btn"
+                        onClick={handleDismiss}
+                        aria-label="Stäng"
+                        title="Stäng"
+                      >
+                        ✕
+                      </button>
+                    </Show>
+                  </div>
+                  <p class="quick-actions-motivation">Användare med komplett profil får bättre matchningar</p>
+                  <Show when={!allComplete()}>
+                    <ul class="quick-actions-checklist">
+                      <For each={profileTodos()}>
+                        {(item) => (
+                          <li class="quick-actions-checklist-item" classList={{ "is-completed": item.completed }}>
+                            {item.completed ? (
+                              <span class="quick-actions-checklist-label">
+                                <span class="quick-actions-checkbox" aria-hidden="true">✓</span>
+                                <span class="quick-actions-label-text">{item.label}</span>
+                              </span>
+                            ) : (
+                              <A href={item.href} class="quick-actions-checklist-link">
+                                <span class="quick-actions-checkbox" aria-hidden="true"> </span>
+                                <span class="quick-actions-label-text">{item.label}</span>
+                              </A>
+                            )}
+                          </li>
+                        )}
+                      </For>
+                    </ul>
+                  </Show>
+                  <Show when={allComplete()}>
+                    <p class="quick-actions-complete-message">
+                      Din profil är komplett! Nu är det bara att tuta och köra!
+                    </p>
+                    <p class="quick-actions-complete-links">
                       <A href={myId() ? `/users/${myId()}?from=profile` : "/app/profile"}>Se din profil</A>
                       {" · "}
-                    </Show>
-                    <A href="/app/explore">Utforska</A>.
-                  </p>
-                </Show>
-              </div>
+                      <A href="/app/explore">Utforska</A>
+                    </p>
+                  </Show>
+                </div>
+              </Show>
 
               <div class="profile-cards">
                 {/* Min profil */}
@@ -191,15 +277,29 @@ export default function ProfileIndex() {
                 <div class="profile-card card">
                   <div class="profile-card-header">
                     <h2 class="profile-card-title">Mina hundar</h2>
-                    <A href="/app/dogs" class="profile-card-edit-btn" aria-label="Redigera hundar">
-                      Redigera
-                    </A>
+                    <Show when={!userTypeInfo().isSitterOnly}>
+                      <A href="/app/dogs" class="profile-card-edit-btn" aria-label="Redigera hundar">
+                        Redigera
+                      </A>
+                    </Show>
+                    <Show when={userTypeInfo().isSitterOnly}>
+                      <A href="/app/dogs/new" class="profile-card-edit-btn" aria-label="Lägg till hund">
+                        Lägg till
+                      </A>
+                    </Show>
                   </div>
                   <div class="profile-card-content">
-                    <Show when={dogsList.length === 0}>
-                      <p class="profile-card-muted">Inga hundar ännu. Lägg till för att komma igång.</p>
+                    <Show when={userTypeInfo().isSitterOnly}>
+                      <p class="profile-card-muted">
+                        Du är registrerad som hundpassare. Vill du ändra på det så lägg till din egen hund.
+                      </p>
+                      <A href="/app/dogs/new" class="btn" style="margin-top: 0.75rem;">Lägg till hund</A>
                     </Show>
-                    <Show when={dogsList.length > 0}>
+                    <Show when={!userTypeInfo().isSitterOnly && dogsList.length === 0}>
+                      <p class="profile-card-muted">Inga hundar ännu. Lägg till för att komma igång.</p>
+                      <A href="/app/dogs/new" class="btn" style="margin-top: 0.75rem;">Lägg till hund</A>
+                    </Show>
+                    <Show when={!userTypeInfo().isSitterOnly && dogsList.length > 0}>
                       <div class="profile-card-dogs-list">
                         <For each={dogsList}>
                           {(dog) => (
@@ -262,15 +362,29 @@ export default function ProfileIndex() {
                 <div class="profile-card card">
                   <div class="profile-card-header">
                     <h2 class="profile-card-title">Min tillgänglighet</h2>
-                    <A href="/app/capacity" class="profile-card-edit-btn" aria-label="Redigera tillgänglighet">
-                      Redigera
-                    </A>
+                    <Show when={!userTypeInfo().isReceiverOnly}>
+                      <A href="/app/capacity" class="profile-card-edit-btn" aria-label="Redigera tillgänglighet">
+                        Redigera
+                      </A>
+                    </Show>
+                    <Show when={userTypeInfo().isReceiverOnly}>
+                      <A href="/app/capacity/new" class="profile-card-edit-btn" aria-label="Lägg till tillgänglighet">
+                        Lägg till
+                      </A>
+                    </Show>
                   </div>
                   <div class="profile-card-content">
-                    <Show when={capacities.length === 0}>
-                      <p class="profile-card-muted">Ingen kapacitet ännu. Lägg till när du kan passa hundar.</p>
+                    <Show when={userTypeInfo().isReceiverOnly}>
+                      <p class="profile-card-muted">
+                        Du är registrerad som endast behov av hundpassning. Vill du ändra på det så lägg till tillgänglighet för passning.
+                      </p>
+                      <A href="/app/capacity/new" class="btn" style="margin-top: 0.75rem;">Lägg till tillgänglighet</A>
                     </Show>
-                    <Show when={capacities.length > 0}>
+                    <Show when={!userTypeInfo().isReceiverOnly && capacities.length === 0}>
+                      <p class="profile-card-muted">Ingen kapacitet ännu. Lägg till när du kan passa hundar.</p>
+                      <A href="/app/capacity/new" class="btn" style="margin-top: 0.75rem;">Lägg till kapacitet</A>
+                    </Show>
+                    <Show when={!userTypeInfo().isReceiverOnly && capacities.length > 0}>
                       <div class="profile-card-list profile-card-capacity-list">
                         <For each={capacities}>
                           {(cap) => (

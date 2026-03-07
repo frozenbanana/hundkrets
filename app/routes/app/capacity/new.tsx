@@ -58,6 +58,11 @@ export default function NewWatchCapacity() {
       }
       await pb.collection("watch_capacity").create(data);
       showToast("Kapacitet tillagd");
+      const userType = (pb.authStore.model as { user_type?: string })?.user_type;
+      if (userType === "receiver_only") {
+        await pb.collection("users").update(userId, { user_type: "has_dogs" });
+        pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, user_type: "has_dogs" });
+      }
       nav("/app/capacity");
     } catch (err: unknown) {
       setError(parseApiError(err));
