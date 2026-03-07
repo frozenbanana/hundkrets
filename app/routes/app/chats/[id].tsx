@@ -1,5 +1,5 @@
 import { A, useNavigate, useParams, useSearchParams } from "@solidjs/router";
-import { createEffect, createResource, createSignal, For, onCleanup, Show } from "solid-js";
+import { createEffect, createResource, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
 import { pb } from "~/lib/pocketbase";
@@ -55,7 +55,33 @@ export default function ChatThread() {
   let messagesContainerRef: HTMLDivElement | undefined;
   let composeFormRef: HTMLFormElement | undefined;
   let textareaRef: HTMLTextAreaElement | undefined;
+  let chatPageRef: HTMLDivElement | undefined;
   let sendInProgress = false;
+
+  function updateChatHeight() {
+    const el = chatPageRef;
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!el || !vv) return;
+    const rect = el.getBoundingClientRect();
+    const available = Math.max(200, vv.height - rect.top);
+    document.documentElement.style.setProperty("--chat-available-height", `${available}px`);
+  }
+
+  onMount(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const run = () => queueMicrotask(updateChatHeight);
+    run();
+    vv.addEventListener("resize", run);
+    vv.addEventListener("scroll", run);
+    window.addEventListener("resize", run);
+    return () => {
+      vv.removeEventListener("resize", run);
+      vv.removeEventListener("scroll", run);
+      window.removeEventListener("resize", run);
+      document.documentElement.style.removeProperty("--chat-available-height");
+    };
+  });
 
   function resizeTextarea() {
     const el = textareaRef;
@@ -212,7 +238,7 @@ export default function ChatThread() {
 
   return (
     <AppShell>
-      <div class="chat-page">
+      <div ref={chatPageRef} class="chat-page">
         <Show when={data.loading && !data()}>
           <p style="color: var(--color-text-muted);">Laddar chatt...</p>
         </Show>

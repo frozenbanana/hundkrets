@@ -6,7 +6,7 @@ export default createHandler(() => (
       <html lang="sv">
         <head>
           <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
           <title>Hundkrets</title>
           <meta name="description" content="Hundkrets – byt hundpassning med grannar. Res bekymmersfritt." />
           <link rel="canonical" href={import.meta.env.VITE_SITE_URL || "https://hundkrets.se"} />

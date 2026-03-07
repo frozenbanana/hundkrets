@@ -183,7 +183,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   }
 
   return (
-    <div>
+    <div class="app-shell">
       <nav class="app-nav">
         <div class="app-nav-inner">
           <div class="app-nav-brand">
@@ -263,7 +263,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
       </nav>
       <AdminMessageBanner />
       <UnverifiedBanner />
-      {props.children}
+      <main class="app-main">{props.children}</main>
     </div>
   );
 }

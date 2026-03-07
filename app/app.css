@@ -549,6 +549,21 @@ nav a {
   margin-right: 1rem;
 }
 
+/* App shell layout – flex column so chat page can fill remaining height */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
 /* Mobile navigation */
 .app-nav {
   display: flex;
@@ -3018,16 +3033,18 @@ nav a {
   }
 }
 
-/* Chat thread layout */
+/* Chat thread layout – uses --chat-available-height from visualViewport when keyboard opens */
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 6rem);
-  max-height: calc(100dvh - 6rem);
+  height: var(--chat-available-height, 100%);
+  min-height: 0;
   max-width: 640px;
   margin: 0 auto;
   padding: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
+  flex: 1;
 }
 
 .chat-page .chat-header {
