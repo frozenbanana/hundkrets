@@ -8,6 +8,7 @@ import {
   createResource,
   createSignal,
   For,
+  onCleanup,
   onMount,
   Show,
 } from "solid-js";
@@ -95,8 +96,15 @@ export default function Matches() {
 
   createEffect(() => {
     if (!isMobileMapView()) return;
+    if (typeof document === "undefined") return;
     document.body.classList.add("matches-map-view-no-scroll");
     return () => document.body.classList.remove("matches-map-view-no-scroll");
+  });
+
+  onCleanup(() => {
+    if (typeof document !== "undefined") {
+      document.body.classList.remove("matches-map-view-no-scroll");
+    }
   });
   let listContainerRef: HTMLDivElement | undefined;
 
