@@ -192,6 +192,19 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
               Hundkrets
             </A>
           </div>
+          <A href="/app/profile" class="app-nav-avatar-mobile" aria-label="Profil" onClick={() => setMenuOpen(false)}>
+            <Avatar
+              name={user()?.name}
+              city={user()?.city}
+              neighborhood={user()?.neighborhood}
+              size="sm"
+              class="avatar-sm app-nav-avatar"
+              verified={(user() as { verified?: boolean } | null)?.verified}
+              id={user()?.id}
+              avatar={(user() as { avatar?: string } | null)?.avatar}
+              baseUrl={baseUrl}
+            />
+          </A>
           <button
             ref={hamburgerRef}
             type="button"
@@ -213,19 +226,17 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
             onKeyDown={handleMenuKeyDown}
           >
             <div class="app-nav-links">
-              <A href="/app/explore" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
+              <A href="/app/explore" class="nav-link-with-badge" onClick={() => setMenuOpen(false)}>
                 Utforska
                 <Show when={badgeCount() > 0}>
-                  <span class="nav-badge" aria-label={`${badgeCount()} nya`}>{badgeCount()}</span>
+                  <span class="nav-badge-inline" aria-label={`${badgeCount()} nya`}> ({badgeCount()})</span>
                 </Show>
               </A>
               <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
-              <A href="/app/chats" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
+              <A href="/app/chats" class="nav-link-with-badge" onClick={() => setMenuOpen(false)}>
                 Chattar
                 <Show when={(chatBadgeCount() ?? 0) > 0}>
-                  <span class="nav-badge" aria-label={`${chatBadgeCount()} nya`}>
-                    {chatBadgeCount()}
-                  </span>
+                  <span class="nav-badge-inline" aria-label={`${chatBadgeCount()} nya`}> ({chatBadgeCount()})</span>
                 </Show>
               </A>
             </div>

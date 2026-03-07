@@ -723,6 +723,10 @@ nav a {
 }
 
 
+.app-nav-avatar-mobile {
+  display: none;
+}
+
 .app-nav-hamburger {
   display: none;
   flex-direction: column;
@@ -773,8 +777,20 @@ nav a {
     flex-wrap: nowrap;
   }
 
+  .app-nav-avatar-mobile {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 0.5rem;
+  }
+
   .app-nav-hamburger {
     display: flex;
+    margin-left: 0;
+  }
+
+  .app-nav-menu .app-nav-avatar-link {
+    display: none;
   }
 
   .app-nav-menu {
@@ -818,10 +834,6 @@ nav a {
     align-items: stretch;
   }
 
-  .app-nav-menu .app-nav-avatar-link {
-    display: flex;
-  }
-
   .app-nav-menu .app-nav-logout {
     margin-left: 0;
   }
@@ -854,6 +866,11 @@ nav a {
   background: #e65100;
   border-radius: 9px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.nav-badge-inline {
+  font-weight: 600;
+  color: #e65100;
 }
 
 
