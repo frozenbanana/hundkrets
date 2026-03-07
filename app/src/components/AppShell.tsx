@@ -141,65 +141,70 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   return (
     <div>
       <nav class="app-nav">
-        <div class="app-nav-brand">
-          <A href="/app/explore" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;">
-            <img src="/logo-icon.png" alt="" width="28" height="28" style="border-radius: 6px;" />
-            Hundkrets
-          </A>
-          <Avatar
-            name={user()?.name}
-            city={user()?.city}
-            neighborhood={user()?.neighborhood}
-            size="sm"
-            class="avatar-sm app-nav-avatar"
-            verified={(user() as { verified?: boolean } | null)?.verified}
-            id={user()?.id}
-            avatar={(user() as { avatar?: string } | null)?.avatar}
-            baseUrl={baseUrl}
-          />
-        </div>
-        <button
-          ref={hamburgerRef}
-          type="button"
-          class="app-nav-hamburger"
-          classList={{ "app-nav-hamburger-open": menuOpen() }}
-          aria-label={menuOpen() ? "Stäng meny" : "Öppna meny"}
-          aria-expanded={menuOpen()}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          <span class="app-nav-hamburger-bar" />
-          <span class="app-nav-hamburger-bar" />
-          <span class="app-nav-hamburger-bar" />
-        </button>
-        <div
-          class="app-nav-links"
-          classList={{ "app-nav-links-open": menuOpen() }}
-          ref={menuLinksRef}
-          tabIndex={-1}
-          onKeyDown={handleMenuKeyDown}
-        >
-          <A href="/app/explore" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
-            Utforska
-            <Show when={badgeCount() > 0}>
-              <span class="nav-badge" aria-label={`${badgeCount()} nya`}>{badgeCount()}</span>
-            </Show>
-          </A>
-          <A href="/app/overview" onClick={() => setMenuOpen(false)}>Översikt</A>
-          <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
-          <A href="/app/dogs" onClick={() => setMenuOpen(false)}>Mina hundar</A>
-          <A href="/app/needs" onClick={() => setMenuOpen(false)}>Mina behov</A>
-          <A href="/app/capacity" onClick={() => setMenuOpen(false)}>Min kapacitet</A>
-          <A href="/app/chats" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
-            Chattar
-            <Show when={(unreadChatCount() ?? 0) > 0}>
-              <span class="nav-badge" aria-label={`${unreadChatCount()} olästa`}>
-                {unreadChatCount()}
-              </span>
-            </Show>
-          </A>
-          <button type="button" class="btn btn-secondary" onClick={() => { setMenuOpen(false); logout(); }}>
-            Logga ut
+        <div class="app-nav-inner">
+          <div class="app-nav-brand">
+            <A href="/app/explore" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;">
+              <img src="/logo-icon.png" alt="" width="28" height="28" style="border-radius: 6px;" />
+              Hundkrets
+            </A>
+          </div>
+          <button
+            ref={hamburgerRef}
+            type="button"
+            class="app-nav-hamburger"
+            classList={{ "app-nav-hamburger-open": menuOpen() }}
+            aria-label={menuOpen() ? "Stäng meny" : "Öppna meny"}
+            aria-expanded={menuOpen()}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            <span class="app-nav-hamburger-bar" />
+            <span class="app-nav-hamburger-bar" />
+            <span class="app-nav-hamburger-bar" />
           </button>
+          <div
+            class="app-nav-menu"
+            classList={{ "app-nav-links-open": menuOpen() }}
+            ref={menuLinksRef}
+            tabIndex={-1}
+            onKeyDown={handleMenuKeyDown}
+          >
+            <div class="app-nav-links">
+              <A href="/app/explore" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
+                Utforska
+                <Show when={badgeCount() > 0}>
+                  <span class="nav-badge" aria-label={`${badgeCount()} nya`}>{badgeCount()}</span>
+                </Show>
+              </A>
+              <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
+              <A href="/app/overview" onClick={() => setMenuOpen(false)}>Översikt</A>
+              <A href="/app/chats" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
+                Chattar
+                <Show when={(unreadChatCount() ?? 0) > 0}>
+                  <span class="nav-badge" aria-label={`${unreadChatCount()} olästa`}>
+                    {unreadChatCount()}
+                  </span>
+                </Show>
+              </A>
+            </div>
+            <div class="app-nav-right">
+              <A href="/app/profile" class="app-nav-avatar-link" onClick={() => setMenuOpen(false)} aria-label="Profil">
+                <Avatar
+                  name={user()?.name}
+                  city={user()?.city}
+                  neighborhood={user()?.neighborhood}
+                  size="sm"
+                  class="avatar-sm app-nav-avatar"
+                  verified={(user() as { verified?: boolean } | null)?.verified}
+                  id={user()?.id}
+                  avatar={(user() as { avatar?: string } | null)?.avatar}
+                  baseUrl={baseUrl}
+                />
+              </A>
+              <button type="button" class="btn btn-secondary app-nav-logout" onClick={() => { setMenuOpen(false); logout(); }}>
+                Logga ut
+              </button>
+            </div>
+          </div>
         </div>
       </nav>
       <AdminMessageBanner />

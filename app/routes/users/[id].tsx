@@ -46,6 +46,7 @@ export default function UserProfile() {
 
   const fromChat = () => searchParams.from === "chat";
   const fromApp = () => searchParams.from === "app";
+  const fromProfile = () => searchParams.from === "profile";
   const chatId = () => (searchParams as { chat?: string }).chat;
   const backToChatUrl = () => {
     const id = chatId();
@@ -338,12 +339,17 @@ export default function UserProfile() {
                     ← Tillbaka till översikt
                   </A>
                 </Show>
-                <Show when={!fromChat() && !fromApp() && fromMatches()}>
+                <Show when={!fromChat() && !fromApp() && fromProfile()}>
+                  <A href="/app/profile" class="profile-back-btn" aria-label="Tillbaka till Min profil">
+                    ← Tillbaka till Min profil
+                  </A>
+                </Show>
+                <Show when={!fromChat() && !fromApp() && !fromProfile() && fromMatches()}>
                   <A href="/app/explore" class="profile-back-btn" aria-label="Tillbaka till Utforska">
                     ← Tillbaka
                   </A>
                 </Show>
-                <Show when={!fromChat() && !fromApp() && !fromMatches()}>
+                <Show when={!fromChat() && !fromApp() && !fromProfile() && !fromMatches()}>
                   <A href="/" class="profile-back-btn" aria-label="Till Hundkrets">
                     ← Hundkrets
                   </A>

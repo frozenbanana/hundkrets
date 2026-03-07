@@ -68,6 +68,7 @@ export default function CapacityList() {
   return (
     <AppShell>
       <div class="container">
+        <A href="/app/profile" class="profile-back-link" style="display: inline-block; margin-bottom: 1rem;">← Tillbaka till Min profil</A>
         <div class="page-hero">
           <span class="paw-emoji">🏠</span>
           <h1>Min kapacitet</h1>

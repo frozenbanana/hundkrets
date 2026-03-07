@@ -467,7 +467,7 @@ export default function AppOverview() {
               Din profil är komplett. Nu är du redo för matchningar.
               <Show when={isUserVerified()}>
                 {" "}
-                <A href={me() ? `/users/${me()}?from=app` : "/app/profile"}>Se din profil</A>
+                <A href="/app/profile">Se din profil</A>
                 {" · "}
               </Show>
               <A href="/app/explore">Utforska</A>.

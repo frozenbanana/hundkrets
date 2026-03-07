@@ -773,18 +773,18 @@ export default function Matches() {
                 </div>
                 <div class="matches-filter-group">
                   <span class="matches-filter-label">Inkludera</span>
-                      <div class="matches-exclude-tabs" role="group">
-                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": !excludeGive() }} onClick={() => handleExcludeToggle("give")} title="Inkludera de som vill bara passa hundar">Vill bara passa</button>
-                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": !excludeMutual() }} onClick={() => handleExcludeToggle("mutual")} title="Inkludera utbytare">Utbytare</button>
-                        <button type="button" class="matches-exclude-tab" classList={{ "matches-exclude-tab-active": !excludeReceive() }} onClick={() => handleExcludeToggle("receive")} title="Inkludera de som vill bara få passning">Vill bara få passning</button>
+                      <div class="matches-filter-tabs" role="group">
+                        <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeGive() }} onClick={() => handleExcludeToggle("give")} title="Inkludera de som vill bara passa hundar">Vill bara passa</button>
+                        <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeMutual() }} onClick={() => handleExcludeToggle("mutual")} title="Inkludera utbytare">Utbytare</button>
+                        <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeReceive() }} onClick={() => handleExcludeToggle("receive")} title="Inkludera de som vill bara få passning">Vill bara få passning</button>
                       </div>
                 </div>
                 <div class="matches-filter-group">
                   <span class="matches-filter-label">Sortera</span>
-                      <div class="matches-sort-tabs" role="tablist">
-                        <button type="button" role="tab" class="matches-sort-tab" classList={{ "matches-sort-tab-active": matchSort() === "distance" }} onClick={() => handleSortChange("distance")}>Avstånd</button>
-                        <button type="button" role="tab" class="matches-sort-tab" classList={{ "matches-sort-tab-active": matchSort() === "recent" }} onClick={() => handleSortChange("recent")}>Senaste</button>
-                        <button type="button" role="tab" class="matches-sort-tab" classList={{ "matches-sort-tab-active": matchSort() === "active" }} onClick={() => handleSortChange("active")}>Senast aktiv</button>
+                      <div class="matches-filter-tabs" role="tablist">
+                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "distance" }} onClick={() => handleSortChange("distance")}>Avstånd</button>
+                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "recent" }} onClick={() => handleSortChange("recent")}>Senaste</button>
+                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "active" }} onClick={() => handleSortChange("active")}>Senast aktiv</button>
                   </div>
                 </div>
               </div>

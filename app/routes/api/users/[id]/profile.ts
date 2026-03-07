@@ -95,13 +95,7 @@ export async function GET(event: APIEvent) {
 
     const capacities = (capacitiesRaw as Record<string, unknown>[]).map((c) => pickPublicCapacity(c));
 
-    const dogIds = new Set<string>();
-    for (const n of needsRaw as { dog: string }[]) {
-      dogIds.add(n.dog);
-    }
-    const dogsList = dogIds.size > 0
-      ? await pb.collection("dogs").getFullList({ filter: Array.from(dogIds).map((d) => `id="${d}"`).join(" || ") })
-      : [];
+    const dogsList = await pb.collection("dogs").getFullList({ filter: `owner = "${id}"` });
     const dogs = (dogsList as Record<string, unknown>[]).map((d) => pickPublicDog(d));
 
     const payload = {

@@ -329,18 +329,30 @@ a:hover {
 
 .btn:hover {
   background: var(--color-paw-dark);
+  color: white;
 }
 
 .btn:active {
   transform: scale(0.98);
 }
 
+/* Override a:hover for button-styled links so text stays visible */
+a.btn:hover,
+a.btn:focus,
+a.btn-secondary:hover,
+a.btn-secondary:focus {
+  color: white;
+  text-decoration: none;
+}
+
 .btn-secondary {
   background: var(--color-text-muted);
+  color: white;
 }
 
 .btn-secondary:hover {
   background: var(--color-nose);
+  color: white;
 }
 
 .btn-receiver {
@@ -471,6 +483,67 @@ nav a {
   gap: 1rem;
   flex-wrap: wrap;
   position: relative;
+}
+
+/* Desktop: constrain to same max-width as explore page (container) */
+.app-nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: relative;
+  width: 100%;
+}
+
+@media (min-width: 769px) {
+  .app-nav-inner {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    width: 100%;
+  }
+
+  nav {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .app-nav-menu {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+  }
+
+  /* Nav links in the middle, aligned to the left (same horizontal level as explore "Utforska" title) */
+  .app-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    justify-content: flex-start;
+    margin-left: 1rem;
+    max-width: 640px;
+    padding: 0 2.5rem;
+    margin: 0 auto;
+
+  }
+
+  .app-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+
+  .app-nav-avatar-link {
+    display: flex;
+    align-items: center;
+  }
+
+  .app-nav-logout {
+    flex-shrink: 0;
+  }
 }
 
 .admin-message-banner {
@@ -628,7 +701,7 @@ nav a {
 }
 
 @media (max-width: 768px) {
-  .app-nav {
+  .app-nav-inner {
     flex-wrap: nowrap;
   }
 
@@ -636,7 +709,7 @@ nav a {
     display: flex;
   }
 
-  .app-nav-links {
+  .app-nav-menu {
     display: flex;
     position: absolute;
     top: 100%;
@@ -657,15 +730,36 @@ nav a {
     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
   }
 
-  .app-nav-links-open {
+  .app-nav-menu.app-nav-links-open {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
     visibility: visible;
   }
 
-  .app-nav-links a,
-  .app-nav-links button {
+  .app-nav-menu .app-nav-links {
+    flex-direction: column;
+    align-items: stretch;
+    flex: none;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .app-nav-menu .app-nav-right {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .app-nav-menu .app-nav-avatar-link {
+    display: flex;
+  }
+
+  .app-nav-menu .app-nav-logout {
+    margin-left: 0;
+  }
+
+  .app-nav-menu a,
+  .app-nav-menu button {
     margin: 0;
     padding: 0.75rem 1rem;
     text-align: left;
@@ -697,7 +791,7 @@ nav a {
 
 /* Dog-themed page headers */
 .page-hero {
-  text-align: center;
+  text-align: left;
   padding: 2rem 0;
 }
 
@@ -3124,6 +3218,162 @@ nav a {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* Min profil page – card layout */
+.profile-page-header {
+  text-align: left;
+  padding: 1.5rem 0 1rem;
+}
+.profile-page-title {
+  font-size: 1.75rem;
+  color: var(--color-paw-dark);
+  margin: 0 0 0.35rem;
+}
+.profile-page-preview-link {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+}
+.profile-page-preview-link:hover {
+  color: var(--color-paw);
+}
+.profile-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 2rem;
+}
+.profile-card {
+  padding: 1.25rem;
+}
+.profile-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+.profile-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+}
+.profile-card-edit-btn {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-dog);
+  background: var(--color-paw);
+  color: white;
+  font-weight: 600;
+}
+.profile-card-edit-btn:hover {
+  background: var(--color-paw-dark);
+  color: white;
+  text-decoration: none;
+}
+.profile-card-content {
+  color: var(--color-text);
+}
+.profile-card-muted {
+  color: var(--color-text-muted);
+  margin: 0;
+  font-size: 0.95rem;
+}
+.profile-card-profile {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.profile-card-profile .avatar-wrapper {
+  flex-shrink: 0;
+}
+.profile-card-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+.profile-card-name {
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+.profile-card-area {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+.profile-card-bio {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.profile-card-dogs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.profile-card-dog-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.profile-card-dog-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid var(--color-paw);
+}
+.profile-card-dog-item img.profile-card-dog-img {
+  object-fit: cover;
+}
+.profile-card-dog-item div.profile-card-dog-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-fur-light);
+}
+.profile-card-dog-name {
+  font-weight: 600;
+  margin: 0 0 0.15rem;
+}
+.profile-card-dog-meta {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+.profile-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.profile-card-list-item {
+  font-size: 0.95rem;
+}
+.profile-card-list-label {
+  font-weight: 600;
+}
+.profile-card-list-notes {
+  color: var(--color-text-muted);
+}
+.profile-back-link {
+  color: var(--color-paw);
+  font-size: 0.95rem;
+}
+.profile-back-link:hover {
+  text-decoration: underline;
+}
+
+.profile-settings-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.profile-section-title {
+  font-size: 1.25rem;
+  color: var(--color-paw-dark);
+  margin: 0 0 1rem;
 }
 
 .sr-only {

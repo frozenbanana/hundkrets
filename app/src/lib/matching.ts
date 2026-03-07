@@ -14,6 +14,8 @@ export interface User extends RecordModel {
   onboarding_complete?: boolean;
   /** Email verification status from PocketBase auth */
   verified?: boolean;
+  /** Last login/activity timestamp for "Senast aktiv" sort */
+  last_login_at?: string;
 }
 
 export interface Dog extends RecordModel {

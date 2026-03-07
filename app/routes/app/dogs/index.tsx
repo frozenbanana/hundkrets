@@ -1,13 +1,15 @@
 import { A, useNavigate } from "@solidjs/router";
 import { createResource, For, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
+import { showToast } from "~/lib/toast";
+import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 import { DogImage } from "~/components/DogImage";
 
 export default function DogsList() {
   const nav = useNavigate();
 
-  const [dogs] = createResource(
+  const [dogs, { refetch }] = createResource(
     () => pb.authStore.model?.id,
     async (userId) => {
       if (!userId) return [];
@@ -26,9 +28,21 @@ export default function DogsList() {
 
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
+  async function handleDelete(dog: { id: string; name?: string }) {
+    if (!confirm(`Är du säker på att du vill ta bort ${dog.name || "hunden"}?`)) return;
+    try {
+      await pb.collection("dogs").delete(dog.id);
+      showToast("Hunden har tagits bort");
+      refetch();
+    } catch (err) {
+      showToast(parseApiError(err), "error");
+    }
+  }
+
   return (
     <AppShell>
     <div class="container">
+      <A href="/app/profile" class="profile-back-link" style="display: inline-block; margin-bottom: 1rem;">← Tillbaka till Min profil</A>
       <div class="page-hero">
         <span class="paw-emoji">🐕</span>
         <h1>Mina hundar</h1>
@@ -59,7 +73,12 @@ export default function DogsList() {
                         Nya människor: {dog.temperament_new_people || "—"} • Nya hundar (Tik): {dog.temperament_new_dogs_female || "—"} • Nya hundar (Hane): {dog.temperament_new_dogs_male || "—"}
                       </p>
                     )}
-                    <A href={`/app/dogs/edit/${dog.id}`} class="btn btn-secondary" style="margin-right: 0.5rem;">Redigera</A>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                      <A href={`/app/dogs/edit/${dog.id}`} class="btn btn-secondary">Redigera</A>
+                      <button type="button" class="btn btn-danger" onClick={() => handleDelete(dog)}>
+                        Ta bort
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
