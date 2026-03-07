@@ -29,6 +29,11 @@ function capSizesStr(s: string | string[] | undefined): string {
   return arr.map((x) => sizeLabel[x] ?? x).join(", ");
 }
 
+function maxDogsStr(n: number | undefined): string {
+  if (n == null) return "—";
+  return n === 1 ? "1 hund" : `${n} hundar`;
+}
+
 export default function ProfileIndex() {
   const nav = useNavigate();
   const myId = () => pb.authStore.model?.id;
@@ -203,7 +208,10 @@ export default function ProfileIndex() {
                               <div>
                                 <p class="profile-card-dog-name">{dog.name || "Hund"}</p>
                                 <p class="profile-card-dog-meta">
-                                  {dog.breed || "—"} • {dog.size ? sizeLabel[dog.size] ?? dog.size : "—"} • {dog.gender ? genderLabel[dog.gender] ?? dog.gender : "—"}
+                                  {(dog.breed || "—") +
+                                    ", " +
+                                    (dog.age != null ? `${dog.age} årig ` : "") +
+                                    (dog.gender ? genderLabel[dog.gender] ?? dog.gender : "—")}
                                 </p>
                               </div>
                             </div>
@@ -227,15 +235,20 @@ export default function ProfileIndex() {
                       <p class="profile-card-muted">Inga behov ännu. Lägg till när du behöver hundpassning.</p>
                     </Show>
                     <Show when={needs.length > 0}>
-                      <div class="profile-card-list">
+                      <div class="profile-card-dogs-list">
                         <For each={needs}>
                           {(need) => {
                             const dog = need.dog ? data().dogs.find((d) => d.id === need.dog) : undefined;
                             return (
-                              <div class="profile-card-list-item">
-                                <span class="profile-card-list-label">{dog?.name ?? "Hund"}:</span>{" "}
-                                {needDateStr(need)}
-                                {need.notes && <span class="profile-card-list-notes"> • {need.notes}</span>}
+                              <div class="profile-card-dog-item">
+                                <DogImage dog={dog ?? { name: "Hund" }} baseUrl={baseUrl} class="profile-card-dog-img" />
+                                <div>
+                                  <p class="profile-card-dog-name">{dog?.name ?? "Hund"}</p>
+                                  <p class="profile-card-dog-meta">
+                                    {needDateStr(need)}
+                                    {need.notes && <span class="profile-card-list-notes"> • {need.notes}</span>}
+                                  </p>
+                                </div>
                               </div>
                             );
                           }}
@@ -258,12 +271,32 @@ export default function ProfileIndex() {
                       <p class="profile-card-muted">Ingen kapacitet ännu. Lägg till när du kan passa hundar.</p>
                     </Show>
                     <Show when={capacities.length > 0}>
-                      <div class="profile-card-list">
+                      <div class="profile-card-list profile-card-capacity-list">
                         <For each={capacities}>
                           {(cap) => (
-                            <div class="profile-card-list-item">
-                              {capDateStr(cap)} • {capSizesStr(cap.dog_sizes)} • {genderLabel[cap.dog_genders as string] ?? cap.dog_genders ?? "—"} • max {cap.max_dogs ?? "—"} hundar
-                              {cap.notes && <span class="profile-card-list-notes"> • {cap.notes}</span>}
+                            <div class="profile-card-capacity-item">
+                              <div class="profile-card-capacity-row">
+                                <span class="profile-card-capacity-label">När:</span>
+                                <span>{capDateStr(cap)}</span>
+                              </div>
+                              <div class="profile-card-capacity-row">
+                                <span class="profile-card-capacity-label">Storlekar:</span>
+                                <span>{capSizesStr(cap.dog_sizes)}</span>
+                              </div>
+                              <div class="profile-card-capacity-row">
+                                <span class="profile-card-capacity-label">Kön:</span>
+                                <span>{genderLabel[cap.dog_genders as string] ?? cap.dog_genders ?? "—"}</span>
+                              </div>
+                              <div class="profile-card-capacity-row">
+                                <span class="profile-card-capacity-label">Max antal:</span>
+                                <span>{maxDogsStr(cap.max_dogs as number)}</span>
+                              </div>
+                              {cap.notes && (
+                                <div class="profile-card-capacity-row">
+                                  <span class="profile-card-capacity-label">Anteckning:</span>
+                                  <span class="profile-card-list-notes">{cap.notes}</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </For>

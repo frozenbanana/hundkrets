@@ -330,28 +330,28 @@ export default function UserProfile() {
             <div class="profile-header-inner container">
               <div class="profile-header-left">
                 <Show when={fromChat()}>
-                  <A href={backToChatUrl()} class="profile-back-btn" aria-label="Tillbaka till chatt">
-                    ← Tillbaka till chatt
+                  <A href={backToChatUrl()} class="profile-back-btn" aria-label="Tillbaka till chattar">
+                    <span class="profile-back-btn-arrow" aria-hidden>←</span> Chattar
                   </A>
                 </Show>
                 <Show when={!fromChat() && fromApp()}>
-                  <A href="/app" class="profile-back-btn" aria-label="Tillbaka till översikt">
-                    ← Tillbaka till översikt
+                  <A href="/app" class="profile-back-btn" aria-label="Tillbaka till appen">
+                    <span class="profile-back-btn-arrow" aria-hidden>←</span> Appen
                   </A>
                 </Show>
                 <Show when={!fromChat() && !fromApp() && fromProfile()}>
                   <A href="/app/profile" class="profile-back-btn" aria-label="Tillbaka till Min profil">
-                    ← Tillbaka till Min profil
+                    <span class="profile-back-btn-arrow" aria-hidden>←</span> Min profil
                   </A>
                 </Show>
                 <Show when={!fromChat() && !fromApp() && !fromProfile() && fromMatches()}>
                   <A href="/app/explore" class="profile-back-btn" aria-label="Tillbaka till Utforska">
-                    ← Tillbaka
+                    <span class="profile-back-btn-arrow" aria-hidden>←</span> Utforska
                   </A>
                 </Show>
                 <Show when={!fromChat() && !fromApp() && !fromProfile() && !fromMatches()}>
                   <A href="/" class="profile-back-btn" aria-label="Till Hundkrets">
-                    ← Hundkrets
+                    <span class="profile-back-btn-arrow" aria-hidden>←</span> Hundkrets
                   </A>
                 </Show>
               </div>
@@ -383,43 +383,6 @@ export default function UserProfile() {
 
             return (
               <>
-                <Show when={isOwnProfile()}>
-                  <div class="card profile-owner-toolbar" style="margin-bottom: 1rem;">
-                    <Show when={publicPreview()} fallback={
-                      <>
-                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;">
-                          <A href="/app/settings" class="btn">
-                            Inställningar
-                          </A>
-                          <button
-                            type="button"
-                            class="btn btn-secondary"
-                            onClick={() => setPublicPreview(true)}
-                          >
-                            Se hur profilen ser ut publikt
-                          </button>
-                        </div>
-                        <p style="margin: 0.75rem 0 0; color: var(--color-text-muted);">
-                          Du ser nu din fulla profil med telefon och adress.
-                        </p>
-                      </>
-                    }>
-                      <strong>Så här ser din profil ut för andra</strong>
-                      <p style="margin: 0.35rem 0 0; color: var(--color-text-muted);">
-                        Telefon och adress visas inte. Besökare som inte är inloggade ser nedan.
-                      </p>
-                      <button
-                        type="button"
-                        class="btn btn-secondary"
-                        style="margin-top: 0.75rem;"
-                        onClick={() => setPublicPreview(false)}
-                      >
-                        Visa hela profilen
-                      </button>
-                    </Show>
-                  </div>
-                </Show>
-
                 <div class="profile-hero card">
                   <Show when={connFromThem() && !mutual()}>
                     <div class="modal-detail-connection-banner" style="margin-bottom: 1rem;">
@@ -749,43 +712,6 @@ export default function UserProfile() {
 
             return (
               <>
-                <Show when={isOwnProfile()}>
-                  <div class="card profile-owner-toolbar" style="margin-bottom: 1rem;">
-                    <Show when={publicPreview()} fallback={
-                      <>
-                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;">
-                          <A href="/app/settings" class="btn">
-                            Inställningar
-                          </A>
-                          <button
-                            type="button"
-                            class="btn btn-secondary"
-                            onClick={() => setPublicPreview(true)}
-                          >
-                            Se hur profilen ser ut publikt
-                          </button>
-                        </div>
-                        <p style="margin: 0.75rem 0 0; color: var(--color-text-muted);">
-                          Du ser nu din fulla profil med telefon och adress.
-                        </p>
-                      </>
-                    }>
-                      <strong>Så här ser din profil ut för andra</strong>
-                      <p style="margin: 0.35rem 0 0; color: var(--color-text-muted);">
-                        Telefon och adress visas inte. Besökare som inte är inloggade ser nedan.
-                      </p>
-                      <button
-                        type="button"
-                        class="btn btn-secondary"
-                        style="margin-top: 0.75rem;"
-                        onClick={() => setPublicPreview(false)}
-                      >
-                        Visa hela profilen
-                      </button>
-                    </Show>
-                  </div>
-                </Show>
-
                 <div class="profile-hero card">
                   <Show when={connFromThem() && !mutual()}>
                     <div class="modal-detail-connection-banner" style="margin-bottom: 1rem;">
