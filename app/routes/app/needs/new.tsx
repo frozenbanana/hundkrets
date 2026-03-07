@@ -74,7 +74,6 @@ export default function NewWatchNeed() {
     <AppShell>
     <div class="container">
       <div class="page-hero">
-        <span class="paw-emoji">🐕</span>
         <h1>Lägg till behov</h1>
         <p style="color: var(--color-text-muted);">När behöver du hundpassning? Exakta tider bestäms privat med matchningen.</p>
       </div>

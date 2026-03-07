@@ -94,7 +94,6 @@ export default function EditWatchNeed() {
     <AppShell>
       <div class="container">
         <div class="page-hero">
-          <span class="paw-emoji">🐕</span>
           <h1>Redigera behov</h1>
           <p style="color: var(--color-text-muted);">
             När behöver du hundpassning? Exakta tider bestäms privat med matchningen.

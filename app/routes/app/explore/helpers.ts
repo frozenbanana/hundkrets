@@ -2,6 +2,9 @@ import type { findListings } from "~/lib/matching";
 
 export const DEFAULT_MAX_DISTANCE_KM = 100;
 
+/** Distance steps for "Öka distansen" when no matches in range */
+export const DISTANCE_STEPS_KM = [100, 150, 200, 300, 500, 1000];
+
 export function formatDate(s: string | undefined): string {
   if (!s) return "—";
   const d = new Date(s);

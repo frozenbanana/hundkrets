@@ -328,7 +328,6 @@ export default function Chats() {
     <AppShell>
       <div class="container">
         <div class="page-hero">
-          <span class="paw-emoji">💬</span>
           <h1>Chattar</h1>
           <p style="color: var(--color-text-muted);">Skriv med personer du har matchat med.</p>
         </div>

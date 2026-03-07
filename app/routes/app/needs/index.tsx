@@ -61,7 +61,6 @@ export default function NeedsList() {
       <div class="container">
         <A href="/app/profile" class="profile-back-link" style="display: inline-block; margin-bottom: 1rem;">← Tillbaka till Min profil</A>
         <div class="page-hero">
-          <span class="paw-emoji">🐕</span>
           <h1>Mina behov</h1>
           <p style="color: var(--color-text-muted);">
             När behöver du hundpassning? Exakta tider bestäms privat med matchningen.

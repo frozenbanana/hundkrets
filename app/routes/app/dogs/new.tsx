@@ -83,7 +83,6 @@ export default function NewDog() {
     <AppShell>
     <div class="container">
       <div class="page-hero">
-        <span class="paw-emoji">🐕</span>
         <h1>Lägg till hund</h1>
       </div>
       <div class="card">

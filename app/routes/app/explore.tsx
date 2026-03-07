@@ -24,6 +24,7 @@ import { RespondModal } from "./explore/RespondModal";
 import type { Conn } from "./explore/types";
 import {
   DEFAULT_MAX_DISTANCE_KM,
+  DISTANCE_STEPS_KM,
   dateStr,
   sizesStr,
   filterFromParams,
@@ -54,6 +55,8 @@ export default function Matches() {
   const [mapFooterDismissed, setMapFooterDismissed] = createSignal(
     typeof window !== "undefined" && localStorage.getItem("matches-map-footer-dismissed") === "true"
   );
+
+  const [maxDistanceKm, setMaxDistanceKm] = createSignal(DEFAULT_MAX_DISTANCE_KM);
 
   createEffect(() => {
     const p = searchParams as Record<string, string | undefined>;
@@ -92,7 +95,7 @@ export default function Matches() {
     return () => mq.removeEventListener("change", handler);
   });
 
-  const isMobileMapView = () => isMobileViewport() && mobileViewMode() === "map" && (data()?.listings?.length ?? 0) > 0;
+  const isMobileMapView = () => isMobileViewport() && mobileViewMode() === "map" && (listings().length ?? 0) > 0;
 
   createEffect(() => {
     if (!isMobileMapView()) return;
@@ -139,23 +142,6 @@ export default function Matches() {
         const connTo = (c: unknown) => extractId((c as { to_user?: unknown }).to_user);
         const connId = (c: unknown) =>
           typeof (c as { id?: string }).id === "string" ? (c as { id: string }).id : "";
-        const baseListings = findListings(
-          needs as Parameters<typeof findListings>[0],
-          capacities as Parameters<typeof findListings>[1],
-          userId,
-          users as Parameters<typeof findListings>[3],
-          dogs as Parameters<typeof findListings>[4],
-          DEFAULT_MAX_DISTANCE_KM
-        );
-        const listingUserIds = new Set(baseListings.map((l) => l.user.id));
-        const requestedMeIds = connections.filter((c) => connTo(c) === userId).map((c) => connFrom(c));
-        const outgoingIds = connections
-          .filter(
-            (c) =>
-              connFrom(c) === userId &&
-              !connections.some((r) => connFrom(r) === connTo(c) && connTo(r) === userId)
-          )
-          .map((c) => connTo(c));
         const usersArr = users as {
           id: string;
           latitude?: number;
@@ -165,43 +151,6 @@ export default function Matches() {
         const needsArr = needs as { user: string; dog: string; [k: string]: unknown }[];
         const capacitiesArr = capacities as { user: string; [k: string]: unknown }[];
         const dogsArr = dogs as { id: string; owner: string; [k: string]: unknown }[];
-        const needsByUser = new Map<string, typeof needsArr>();
-        for (const n of needsArr) {
-          if (!needsByUser.has(n.user)) needsByUser.set(n.user, []);
-          needsByUser.get(n.user)!.push(n);
-        }
-        const capacitiesByUser = new Map<string, typeof capacitiesArr>();
-        for (const c of capacitiesArr) {
-          if (!capacitiesByUser.has(c.user)) capacitiesByUser.set(c.user, []);
-          capacitiesByUser.get(c.user)!.push(c);
-        }
-        const dogMap = new Map(dogsArr.map((d) => [d.id, d]));
-        const extraListings: typeof baseListings = [];
-        const addExtraListing = (uid: string) => {
-          if (listingUserIds.has(uid)) return;
-          const user = usersArr.find((u) => u.id === uid);
-          if (!user) return;
-          const userNeeds = needsByUser.get(uid) ?? [];
-          const userCapacities = capacitiesByUser.get(uid) ?? [];
-          const userDogIds = new Set(userNeeds.map((n) => n.dog));
-          const userDogs = [...userDogIds]
-            .map((id) => dogMap.get(id))
-            .filter(Boolean) as typeof dogsArr;
-          extraListings.push({
-            user: user as (typeof baseListings)[0]["user"],
-            needs: userNeeds as (typeof baseListings)[0]["needs"],
-            capacities: userCapacities as (typeof baseListings)[0]["capacities"],
-            dogs: userDogs,
-          });
-          listingUserIds.add(uid);
-        };
-        for (const uid of requestedMeIds) addExtraListing(uid);
-        for (const uid of outgoingIds) addExtraListing(uid);
-        const listings = [...baseListings, ...extraListings].sort(
-          (a, b) =>
-            ((a as { distanceKm?: number }).distanceKm ?? 999) -
-            ((b as { distanceKm?: number }).distanceKm ?? 999)
-        );
         const normalizedConnections = connections.map((c) => ({
           id: connId(c),
           from_user: connFrom(c),
@@ -224,7 +173,15 @@ export default function Matches() {
             flexible_dates?: boolean;
           }[]
         ).filter((c) => c.user === userId);
-        return { listings, connections: normalizedConnections, myNeeds, myCapacities };
+        return {
+          needs: needsArr,
+          capacities: capacitiesArr,
+          users: usersArr,
+          dogs: dogsArr,
+          connections: normalizedConnections,
+          myNeeds,
+          myCapacities,
+        };
       } catch (err) {
         const e = err as { status?: number; message?: string; url?: string };
         console.error("Matches fetch failed:", e?.status, e?.message, e?.url);
@@ -232,6 +189,85 @@ export default function Matches() {
       }
     }
   );
+
+  const listings = createMemo(() => {
+    const d = data();
+    const userId = pb.authStore.model?.id;
+    if (!d || !userId) return [];
+    const { needs, capacities, users, dogs, connections } = d;
+    const dist = maxDistanceKm();
+    const baseListings = findListings(
+      needs as Parameters<typeof findListings>[0],
+      capacities as Parameters<typeof findListings>[1],
+      userId,
+      users as Parameters<typeof findListings>[3],
+      dogs as Parameters<typeof findListings>[4],
+      dist
+    );
+    const connFrom = (c: { from_user?: unknown }) =>
+      typeof (c.from_user as { id?: string })?.id === "string"
+        ? (c.from_user as { id: string }).id
+        : typeof c.from_user === "string"
+          ? c.from_user
+          : "";
+    const connTo = (c: { to_user?: unknown }) =>
+      typeof (c.to_user as { id?: string })?.id === "string"
+        ? (c.to_user as { id: string }).id
+        : typeof c.to_user === "string"
+          ? c.to_user
+          : "";
+    const listingUserIds = new Set(baseListings.map((l) => l.user.id));
+    const requestedMeIds = connections
+      .filter((c: { to_user?: unknown }) => connTo(c) === userId)
+      .map((c: { from_user?: unknown }) => connFrom(c));
+    const outgoingIds = connections
+      .filter(
+        (c: { from_user?: unknown; to_user?: unknown }) =>
+          connFrom(c) === userId &&
+          !connections.some(
+            (r: { from_user?: unknown; to_user?: unknown }) =>
+              connFrom(r) === connTo(c) && connTo(r) === userId
+          )
+      )
+      .map((c: { to_user?: unknown }) => connTo(c));
+    const needsByUser = new Map<string, typeof needs>();
+    for (const n of needs) {
+      if (!needsByUser.has(n.user)) needsByUser.set(n.user, []);
+      needsByUser.get(n.user)!.push(n);
+    }
+    const capacitiesByUser = new Map<string, typeof capacities>();
+    for (const c of capacities) {
+      if (!capacitiesByUser.has(c.user)) capacitiesByUser.set(c.user, []);
+      capacitiesByUser.get(c.user)!.push(c);
+    }
+    const dogMap = new Map(dogs.map((d) => [d.id, d]));
+    const extraListings: typeof baseListings = [];
+    const addExtraListing = (uid: string) => {
+      if (listingUserIds.has(uid)) return;
+      const user = users.find((u) => u.id === uid);
+      if (!user) return;
+      const userNeeds = needsByUser.get(uid) ?? [];
+      const userCapacities = capacitiesByUser.get(uid) ?? [];
+      const userDogIds = new Set(userNeeds.map((n) => n.dog));
+      const userDogs = [...userDogIds]
+        .map((id) => dogMap.get(id))
+        .filter(Boolean) as typeof dogs;
+      extraListings.push({
+        user: user as (typeof baseListings)[0]["user"],
+        needs: userNeeds as (typeof baseListings)[0]["needs"],
+        capacities: userCapacities as (typeof baseListings)[0]["capacities"],
+        dogs: userDogs,
+      });
+      listingUserIds.add(uid);
+    };
+    for (const uid of requestedMeIds) addExtraListing(uid);
+    for (const uid of outgoingIds) addExtraListing(uid);
+    return [...baseListings, ...extraListings].sort(
+      (a, b) =>
+        ((a as { distanceKm?: number }).distanceKm ?? 999) -
+        ((b as { distanceKm?: number }).distanceKm ?? 999)
+    );
+  });
 
   async function handleInterested(toUserId: string, message?: string) {
     const fromUserId = pb.authStore.model?.id;
@@ -511,6 +547,42 @@ export default function Matches() {
     );
   }
 
+  const hasNeedsAndCapacity = createMemo(() => {
+    const d = data();
+    if (!d) return false;
+    return d.myNeeds.length > 0 || d.myCapacities.length > 0;
+  });
+
+  const hasCoordinates = () =>
+    typeof pb.authStore.model?.latitude === "number" && typeof pb.authStore.model?.longitude === "number";
+
+  const nextDistanceStep = createMemo(() => {
+    const current = maxDistanceKm();
+    const idx = DISTANCE_STEPS_KM.indexOf(current);
+    if (idx < 0 || idx >= DISTANCE_STEPS_KM.length - 1) return null;
+    return DISTANCE_STEPS_KM[idx + 1];
+  });
+
+  function handleIncreaseDistance() {
+    const next = nextDistanceStep();
+    if (next) setMaxDistanceKm(next);
+  }
+
+  async function handleShareProfile() {
+    const userId = pb.authStore.model?.id;
+    if (!userId) return;
+    const base = import.meta.env.VITE_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "https://hundkrets.se");
+    const url = `${base}/users/${userId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Länken till din profil har kopierats. Redo att dela.");
+      navigate(`/users/${userId}?from=explore`);
+    } catch {
+      showToast("Kunde inte kopiera länken.", "error");
+      navigate(`/users/${userId}?from=explore`);
+    }
+  }
+
   function handleClearFilters() {
     setMatchFilter("all");
     setExcludeGive(false);
@@ -581,41 +653,41 @@ export default function Matches() {
   });
 
   const tabCounts = createMemo(() => {
-    const listings = data()?.listings ?? [];
+    const list = listings();
     const requestedMe = requestedMeUserIds();
     const outgoing = outgoingUserIds();
     return {
-      all: listings.length,
-      matched: listings.filter((l) => isMutual(l.user.id)).length,
-      not_matched: listings.filter((l) => !isMutual(l.user.id)).length,
-      outgoing: listings.filter((l) => outgoing.has(l.user.id)).length,
-      requested_me: listings.filter((l) => requestedMe.has(l.user.id)).length,
+      all: list.length,
+      matched: list.filter((l) => isMutual(l.user.id)).length,
+      not_matched: list.filter((l) => !isMutual(l.user.id)).length,
+      outgoing: list.filter((l) => outgoing.has(l.user.id)).length,
+      requested_me: list.filter((l) => requestedMe.has(l.user.id)).length,
     };
   });
 
   const matchFilteredListings = createMemo(() => {
-    let listings = data()?.listings ?? [];
+    let list = listings();
     const filter = matchFilter();
-    if (filter === "matched") listings = listings.filter((l) => isMutual(l.user.id));
-    else if (filter === "not_matched") listings = listings.filter((l) => !isMutual(l.user.id));
+    if (filter === "matched") list = list.filter((l) => isMutual(l.user.id));
+    else if (filter === "not_matched") list = list.filter((l) => !isMutual(l.user.id));
     else if (filter === "requested_me")
-      listings = listings.filter((l) => requestedMeUserIds().has(l.user.id));
+      list = list.filter((l) => requestedMeUserIds().has(l.user.id));
     else if (filter === "outgoing")
-      listings = listings.filter((l) => outgoingUserIds().has(l.user.id));
+      list = list.filter((l) => outgoingUserIds().has(l.user.id));
 
-    if (excludeGive()) listings = listings.filter((l) => getExchangeType(l) !== "give");
-    if (excludeMutual()) listings = listings.filter((l) => getExchangeType(l) !== "mutual");
-    if (excludeReceive()) listings = listings.filter((l) => getExchangeType(l) !== "receive");
+    if (excludeGive()) list = list.filter((l) => getExchangeType(l) !== "give");
+    if (excludeMutual()) list = list.filter((l) => getExchangeType(l) !== "mutual");
+    if (excludeReceive()) list = list.filter((l) => getExchangeType(l) !== "receive");
 
     const sort = matchSort();
     if (sort === "recent") {
-      listings = [...listings].sort((a, b) => {
+      list = [...list].sort((a, b) => {
         const aC = (a.user as { created?: string }).created ?? "";
         const bC = (b.user as { created?: string }).created ?? "";
         return bC.localeCompare(aC);
       });
     } else if (sort === "active") {
-      listings = [...listings].sort((a, b) => {
+      list = [...list].sort((a, b) => {
         const aL = (a.user as { last_login_at?: string }).last_login_at;
         const bL = (b.user as { last_login_at?: string }).last_login_at;
         if (!aL && !bL) return 0;
@@ -624,13 +696,13 @@ export default function Matches() {
         return bL.localeCompare(aL);
       });
     } else {
-      listings = [...listings].sort(
+      list = [...list].sort(
         (a, b) =>
           ((a as { distanceKm?: number }).distanceKm ?? 999) -
           ((b as { distanceKm?: number }).distanceKm ?? 999)
       );
     }
-    return listings;
+    return list;
   });
 
   const filteredListings = createMemo(() => {
@@ -654,10 +726,9 @@ export default function Matches() {
       >
         <div class="matches-sticky-header">
         <div class="container matches-header-container">
-          <Show when={!introDismissed() && (!isMobileViewport() || !(data()?.listings && data()!.listings.length > 0))}>
+          <Show when={!introDismissed() && (!isMobileViewport() || listings().length === 0)}>
             <div class="page-hero">
               <div class="matches-intro-box">
-                <span class="paw-emoji">🐾</span>
                 <h1>Utforska</h1>
                 <p style="color: var(--color-text-muted); margin: 0;">
                   Hundägare i ditt område som vill byta hundpassning. Klicka "Jag är intresserad" för
@@ -729,7 +800,7 @@ export default function Matches() {
               Försök igen
             </button>
           </Show>
-          <Show when={data()?.listings.length === 0 && !data.loading && pb.authStore.model?.area}>
+          <Show when={listings().length === 0 && !data.loading && pb.authStore.model?.area && !hasNeedsAndCapacity()}>
             <p>
               Ingen i ditt område än. Lägg till dina behov och kapacitet så att andra kan hitta dig.
             </p>
@@ -740,7 +811,24 @@ export default function Matches() {
               Lägg till kapacitet
             </A>
           </Show>
-          <Show when={data()?.listings && data()!.listings.length > 0}>
+          <Show when={listings().length === 0 && !data.loading && pb.authStore.model?.area && hasNeedsAndCapacity()}>
+            <div class="matches-too-far-empty">
+              <p>
+                Det finns ingen att matcha med inom {maxDistanceKm()} km. Du kan:
+              </p>
+              <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+                <Show when={hasCoordinates() && nextDistanceStep()} fallback={null}>
+                  <button type="button" class="btn" onClick={handleIncreaseDistance}>
+                    Öka distansen till {nextDistanceStep()} km
+                  </button>
+                </Show>
+                <button type="button" class="btn btn-secondary" onClick={handleShareProfile}>
+                  Dela din profil
+                </button>
+              </div>
+            </div>
+          </Show>
+          <Show when={listings().length > 0}>
             {/* Utforska header + filter (mobile & desktop) */}
             <div class="matches-explore-header">
                 <h1 class="matches-explore-title">Utforska</h1>
@@ -813,7 +901,7 @@ export default function Matches() {
             </div>
           </Show>
         </div>
-        <Show when={data()?.listings && data()!.listings.length > 0}>
+        <Show when={listings().length > 0}>
           <div class="matches-mobile-toggle" aria-hidden="true">
             <button
               type="button"
@@ -834,7 +922,7 @@ export default function Matches() {
           </div>
           </Show>
         </div>
-        <Show when={data()?.listings && data()!.listings.length > 0}>
+        <Show when={listings().length > 0}>
           <div class="matches-split-wrap">
             <div
               class="matches-split"

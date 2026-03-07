@@ -52,7 +52,6 @@ export function OnboardingShell(props: OnboardingShellProps) {
           )}
         </Show>
         <div class="page-hero">
-          <span class="paw-emoji">🐕</span>
           <h1>{props.title}</h1>
         </div>
         <div class="onboarding-progress">

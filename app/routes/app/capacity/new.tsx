@@ -75,7 +75,6 @@ export default function NewWatchCapacity() {
     <AppShell>
     <div class="container">
       <div class="page-hero">
-        <span class="paw-emoji">🏠</span>
         <h1>Lägg till kapacitet</h1>
         <p style="color: var(--color-text-muted);">När kan du passa andras hundar? Exakta tider bestäms privat med matchningen.</p>
       </div>

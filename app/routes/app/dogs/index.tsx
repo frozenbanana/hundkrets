@@ -44,7 +44,6 @@ export default function DogsList() {
     <div class="container">
       <A href="/app/profile" class="profile-back-link" style="display: inline-block; margin-bottom: 1rem;">← Tillbaka till Min profil</A>
       <div class="page-hero">
-        <span class="paw-emoji">🐕</span>
         <h1>Mina hundar</h1>
         <p style="color: var(--color-text-muted);">Lägg till hundar du vill ha passade när du reser.</p>
       </div>
