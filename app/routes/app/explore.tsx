@@ -50,6 +50,9 @@ export default function Matches() {
   const [introDismissed, setIntroDismissed] = createSignal(
     typeof window !== "undefined" && localStorage.getItem("matches-intro-dismissed") === "true"
   );
+  const [mapFooterDismissed, setMapFooterDismissed] = createSignal(
+    typeof window !== "undefined" && localStorage.getItem("matches-map-footer-dismissed") === "true"
+  );
 
   createEffect(() => {
     const p = searchParams as Record<string, string | undefined>;
@@ -86,6 +89,14 @@ export default function Matches() {
     const handler = () => setIsMobileViewport(mq.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
+  });
+
+  const isMobileMapView = () => isMobileViewport() && mobileViewMode() === "map" && (data()?.listings?.length ?? 0) > 0;
+
+  createEffect(() => {
+    if (!isMobileMapView()) return;
+    document.body.classList.add("matches-map-view-no-scroll");
+    return () => document.body.classList.remove("matches-map-view-no-scroll");
   });
   let listContainerRef: HTMLDivElement | undefined;
 
@@ -629,7 +640,10 @@ export default function Matches() {
 
   return (
     <AppShell>
-      <div class="matches-page">
+      <div
+        class="matches-page"
+        classList={{ "matches-page-map-view": isMobileMapView() }}
+      >
         <div class="matches-sticky-header">
         <div class="container matches-header-container">
           <Show when={!introDismissed() && (!isMobileViewport() || !(data()?.listings && data()!.listings.length > 0))}>
@@ -813,13 +827,14 @@ export default function Matches() {
           </Show>
         </div>
         <Show when={data()?.listings && data()!.listings.length > 0}>
-          <div
-            class="matches-split"
-            classList={{
-              "matches-split-list-only": mobileViewMode() === "list",
-              "matches-split-map-only": mobileViewMode() === "map",
-            }}
-          >
+          <div class="matches-split-wrap">
+            <div
+              class="matches-split"
+              classList={{
+                "matches-split-list-only": mobileViewMode() === "list",
+                "matches-split-map-only": mobileViewMode() === "map",
+              }}
+            >
             <div class="matches-map-panel">
               <Show when={!isMobileViewport() || mobileViewMode() === "map"}>
               <MatchesMap
@@ -864,10 +879,24 @@ export default function Matches() {
               </Show>
             </div>
           </div>
-          <div class="container matches-footer-note-container">
-            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 0;">
-              Zooma in för att filtrera. Klicka på ett kort eller en markör för att se detaljer.
-            </p>
+            <Show when={!isMobileViewport() || mobileViewMode() === "map"}>
+              <div class="matches-footer-note-container matches-footer-overlay">
+                <p class="matches-footer-note-text">Zooma in för att filtrera. Klicka på ett kort eller en markör för att se detaljer.</p>
+                <button
+                  type="button"
+                  class="matches-footer-dismiss"
+                  onClick={() => {
+                    localStorage.setItem("matches-map-footer-dismissed", "true");
+                    setMapFooterDismissed(true);
+                  }}
+                  aria-label="Stäng"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </Show>
           </div>
         </Show>
       </div>

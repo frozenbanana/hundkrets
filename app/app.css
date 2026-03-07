@@ -39,6 +39,10 @@ body {
   min-height: 100vh;
 }
 
+body.matches-map-view-no-scroll {
+  overflow: hidden;
+}
+
 .loading {
   padding: 2rem;
   text-align: center;
@@ -534,7 +538,7 @@ a.btn-secondary:focus {
 
 nav {
   position: relative;
-  z-index: 1000;
+  z-index: 1200;
   background: white;
   border-bottom: 3px solid var(--color-paw);
   padding: 0.75rem 1rem;
@@ -1508,6 +1512,13 @@ nav a {
   min-height: 100vh;
 }
 
+@media (max-width: 768px) {
+  .matches-page.matches-page-map-view {
+    overflow: hidden;
+    height: 100dvh;
+  }
+}
+
 .matches-sticky-header {
   /* Sticky on mobile only */
 }
@@ -2478,9 +2489,62 @@ nav a {
   padding: 0 1rem;
 }
 
+.matches-split-wrap {
+  position: relative;
+}
+
 .matches-footer-note-container {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.matches-footer-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.matches-footer-note-text {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.matches-footer-dismiss {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(139, 90, 43, 0.15);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.matches-footer-dismiss:hover {
+  background: rgba(139, 90, 43, 0.25);
+  color: var(--color-paw-dark);
+}
+
+@media (max-width: 768px) {
+  .matches-footer-overlay .matches-footer-note-text {
+    font-size: 0.8rem;
+  }
 }
 
 @media (max-width: 768px) {
