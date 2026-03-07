@@ -1,5 +1,5 @@
 import { A, useNavigate } from "@solidjs/router";
-import { createEffect, createMemo, createResource, createSignal, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { authVersion } from "~/lib/authStore";
 import { Avatar } from "~/components/Avatar";
@@ -31,7 +31,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
     return open;
   }, false);
 
-  const [connections] = createResource(
+  const [connections, { refetch: refetchConnections }] = createResource(
     () => me(),
     async (userId) => {
       if (!userId) return [];
@@ -46,7 +46,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
     }
   );
 
-  const [unreadChatCount] = createResource(
+  const [unreadChatCount, { refetch: refetchUnreadChat }] = createResource(
     () => me(),
     async (userId) => {
       if (!userId) return 0;
@@ -63,6 +63,50 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
       }
     }
   );
+
+  const incomingRequestsCount = createMemo(() => {
+    const conns = connections() ?? [];
+    const myId = me();
+    if (!myId) return 0;
+    const mutual = new Set<string>();
+    for (const c of conns) {
+      const other = c.from_user === myId ? c.to_user : c.to_user === myId ? c.from_user : null;
+      if (!other) continue;
+      const iReq = conns.some((x) => x.from_user === myId && x.to_user === other);
+      const theyReq = conns.some((x) => x.from_user === other && x.to_user === myId);
+      if (iReq && theyReq) mutual.add(other);
+    }
+    return conns.filter((c) => c.to_user === myId && !mutual.has(c.from_user)).length;
+  });
+
+  const chatBadgeCount = createMemo(
+    () => (unreadChatCount() ?? 0) + incomingRequestsCount()
+  );
+
+  createEffect(() => {
+    const meId = me();
+    if (!meId) return;
+    let closed = false;
+    let unsubConn: (() => void) | undefined;
+    let unsubMsg: (() => void) | undefined;
+    void Promise.all([
+      pb.collection("connection_requests").subscribe("*", () => void refetchConnections()),
+      pb.collection("messages").subscribe("*", () => void refetchUnreadChat()),
+    ]).then(([a, b]) => {
+      if (closed) {
+        a();
+        b();
+        return;
+      }
+      unsubConn = a;
+      unsubMsg = b;
+    }).catch(() => {});
+    onCleanup(() => {
+      closed = true;
+      unsubConn?.();
+      unsubMsg?.();
+    });
+  });
 
   const badgeCount = createMemo(() => {
     requestsSeenVersion();
@@ -176,12 +220,11 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
                 </Show>
               </A>
               <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
-              <A href="/app/overview" onClick={() => setMenuOpen(false)}>Översikt</A>
               <A href="/app/chats" class="nav-link-with-badge" style="position: relative;" onClick={() => setMenuOpen(false)}>
                 Chattar
-                <Show when={(unreadChatCount() ?? 0) > 0}>
-                  <span class="nav-badge" aria-label={`${unreadChatCount()} olästa`}>
-                    {unreadChatCount()}
+                <Show when={(chatBadgeCount() ?? 0) > 0}>
+                  <span class="nav-badge" aria-label={`${chatBadgeCount()} nya`}>
+                    {chatBadgeCount()}
                   </span>
                 </Show>
               </A>

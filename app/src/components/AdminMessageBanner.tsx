@@ -2,7 +2,7 @@ import { createEffect, createMemo, createResource, createSignal, onCleanup, Show
 import { pb } from "~/lib/pocketbase";
 
 type MessageType = "news" | "warning";
-type RouteKey = "app_home" | "overview" | "profile" | "dogs" | "needs" | "capacity" | "chats" | "explore";
+type RouteKey = "app_home" | "profile" | "dogs" | "needs" | "capacity" | "chats" | "explore";
 
 type AdminMessage = {
   id: string;
@@ -17,7 +17,6 @@ type AdminMessage = {
 
 function getRouteKey(pathname: string): RouteKey | null {
   if (pathname === "/app") return "app_home";
-  if (pathname === "/app/overview") return "overview";
   if (pathname === "/app/profile" || pathname === "/app/settings") return "profile";
   if (pathname.startsWith("/app/dogs")) return "dogs";
   if (pathname.startsWith("/app/needs")) return "needs";
