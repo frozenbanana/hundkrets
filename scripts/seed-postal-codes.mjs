@@ -44,7 +44,29 @@ const ADMIN_PASSWORD =
   process.env.PB_ADMIN_PASSWORD ||
   "adminpass123";
 const CSV_PATH = join(__dirname, "..", "sweden-zipcode.csv");
-const BATCH_SIZE = 200;
+const BATCH_SIZE = 50; // Smaller batches for remote servers (avoids EHOSTUNREACH)
+const DELAY_MS = 100; // Pause between batches to avoid overwhelming server
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function createWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return res;
+      if (res.status >= 500 && attempt < maxRetries) {
+        await sleep(1000 * attempt);
+        continue;
+      }
+      throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+      await sleep(1000 * attempt);
+    }
+  }
+}
 
 function formatCity(name) {
   if (!name || typeof name !== "string") return "";
@@ -99,29 +121,32 @@ async function main() {
   );
   if (!listRes.ok) throw new Error(`List failed: ${await listRes.text()}`);
   const listData = await listRes.json();
-  if (listData.totalItems > 0) {
-    console.log(`postal_codes already has ${listData.totalItems} records. Skipping seed.`);
+  const existingCount = listData.totalItems ?? 0;
+  if (existingCount >= rows.length) {
+    console.log(`postal_codes already has ${existingCount} records. Done.`);
     return;
   }
+  if (existingCount > 0) {
+    console.log(`Resuming from ${existingCount} existing records...`);
+  }
 
-  // Create in batches
-  let created = 0;
-  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+  // Create in batches (sequential within batch to avoid overwhelming remote server)
+  let created = existingCount;
+  for (let i = existingCount; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
-    await Promise.all(
-      batch.map((row) =>
-        fetch(`${PB_URL}/api/collections/postal_codes/records`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(row),
-        })
-      )
-    );
-    created += batch.length;
-    process.stdout.write(`\rCreated ${created}/${rows.length}`);
+    for (const row of batch) {
+      await createWithRetry(`${PB_URL}/api/collections/postal_codes/records`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(row),
+      });
+      created++;
+      process.stdout.write(`\rCreated ${created}/${rows.length}`);
+    }
+    if (i + BATCH_SIZE < rows.length) await sleep(DELAY_MS);
   }
   console.log(`\nDone. Created ${created} postal codes.`);
 }
