@@ -2164,6 +2164,13 @@ nav a {
   object-fit: cover;
 }
 
+.match-card-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
 .match-card-username {
   font-weight: 700;
   color: var(--color-paw-dark);
@@ -2269,7 +2276,7 @@ nav a {
 }
 
 .match-card-last-login {
-  margin-top: 0.25rem;
+  margin-top: 0.0rem;
   font-size: 0.7rem;
   color: var(--color-text-muted);
 }

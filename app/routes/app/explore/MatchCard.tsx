@@ -131,7 +131,14 @@ export function MatchCard(props: {
               class="match-card-avatar"
               verified={listing.user.verified}
             />
-            <span class="match-card-username">{listing.user.name || "Okänd"}</span>
+            <div class="match-card-header-text">
+              <span class="match-card-username">{listing.user.name || "Okänd"}</span>
+              <Show when={lastLoginStr()}>
+                <div class="match-card-last-login" aria-hidden="true">
+                  {lastLoginStr()}
+                </div>
+              </Show>
+            </div>
           </div>
           <div class="match-card-info-text">
             <div class="match-card-need-section">
@@ -182,11 +189,6 @@ export function MatchCard(props: {
               <span class="match-card-value">{locationStr()}</span>
             </div>
           )}
-          <Show when={lastLoginStr()}>
-            <div class="match-card-last-login" aria-hidden="true">
-              {lastLoginStr()}
-            </div>
-          </Show>
         </div>
         <div class="match-card-image">
           <Show
