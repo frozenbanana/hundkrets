@@ -19,6 +19,9 @@ sleep 6
 echo "Creating admin..."
 ./pocketbase superuser upsert admin@test.com adminpass123 2>/dev/null || true
 
+echo "Seeding postal codes from CSV..."
+node scripts/seed-postal-codes.mjs
+
 echo "Seeding 10 Malmö users via API..."
 cd app && node scripts/seed-malmo.mjs
 

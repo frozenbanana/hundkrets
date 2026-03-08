@@ -175,15 +175,23 @@ const SWEDISH_POSTAL = /^\d{3}\s?\d{2}$/;
 
 /**
  * Geocode a Swedish postal code to get coordinates and city/area.
- * Uses Photon with "XXX XX Sverige" query.
+ * Uses Photon. When city is provided (e.g. from postal_codes CSV), include it in the query
+ * so Photon returns the correct location instead of random Swedish places.
  */
-export async function geocodePostalCode(postalCode: string): Promise<GeocodeResult | null> {
+export async function geocodePostalCode(
+  postalCode: string,
+  options?: { city?: string }
+): Promise<GeocodeResult | null> {
   const normalized = postalCode.replace(/\s/g, "").trim();
   if (!SWEDISH_POSTAL.test(normalized)) return null;
   const formatted = `${normalized.slice(0, 3)} ${normalized.slice(3)}`;
 
+  const query = options?.city?.trim()
+    ? `${formatted} ${options.city.trim()} Sverige`
+    : `${formatted} Sverige`;
+
   const params = new URLSearchParams({
-    q: `${formatted} Sverige`,
+    q: query,
     limit: "10",
   });
   const res = await fetch(`${PHOTON_BASE}/api/?${params}`);

@@ -13,6 +13,7 @@
     "test:email": "node scripts/test-email-flows.mjs",
     "test:pb-login": "node scripts/test-pb-admin-login.mjs",
     "seed": "node scripts/seed-malmo.mjs",
+    "seed:postal": "cd .. && node scripts/seed-postal-codes.mjs",
     "favicon:transparent": "node scripts/make-favicon-transparent.mjs",
     "logo-icon:transparent": "node scripts/make-logo-icon-transparent.mjs"
   },

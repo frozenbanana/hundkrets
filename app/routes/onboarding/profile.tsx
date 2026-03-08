@@ -4,6 +4,7 @@ import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { geocodePostalCode } from "~/lib/geocode";
+import { lookupPostalCode } from "~/lib/postalCode";
 import { parseApiError } from "~/lib/errors";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
@@ -75,27 +76,50 @@ export default function OnboardingProfile() {
       const userId = pb.authStore.model?.id;
       if (!userId) throw new Error("Not authenticated");
 
+      const form = e.target as HTMLFormElement;
+      const postalInput = form.querySelector<HTMLInputElement>("#postal-code")?.value?.trim();
+      const cityInput = form.querySelector<HTMLInputElement>("#postal-city")?.value?.trim();
+      const areaInput = form.querySelector<HTMLInputElement>("#postal-area")?.value?.trim();
+
       let addr = address();
       if (!addr.latitude || !addr.longitude) {
-        const form = e.target as HTMLFormElement;
-        const postalInput = form.querySelector<HTMLInputElement>("#postal-code")?.value?.trim();
         if (postalInput) {
-          const geocoded = await geocodePostalCode(postalInput);
+          const lookup = await lookupPostalCode(postalInput);
+          const geocoded = await geocodePostalCode(postalInput, {
+            city: lookup?.city,
+          });
           if (geocoded) {
-            const area = geocoded.city || geocoded.neighborhood || geocoded.display_name || "";
+            const city = cityInput || (geocoded.city ?? "");
+            const area = areaInput || (geocoded.neighborhood ?? "");
+            const raw = postalInput.replace(/\s/g, "").trim();
+            const formatted = raw.length === 5 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : postalInput;
+            const parts = [city, area].filter(Boolean);
             addr = {
-              address_private: `Postnummer ${postalInput}, ${area}`.trim(),
+              address_private: `Postnummer ${formatted}, ${parts.join(", ")}`.trim(),
               latitude: geocoded.lat,
               longitude: geocoded.lon,
-              city: geocoded.city ?? "",
+              city,
               neighborhood: geocoded.neighborhood ?? "",
-              area,
+              area: area || undefined,
             };
           }
         }
+      } else {
+        addr = { ...addr, city: cityInput ?? addr.city, area: areaInput || addr.area };
+        const raw = (postalInput ?? "").replace(/\s/g, "").trim();
+        const formatted = raw.length === 5 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : postalInput ?? "";
+        addr = {
+          ...addr,
+          address_private: `Postnummer ${formatted}, ${[addr.city, addr.area].filter(Boolean).join(", ")}`.trim(),
+        };
       }
       if (!addr.latitude || !addr.longitude) {
         setError("Ange ett giltigt postnummer.");
+        setLoading(false);
+        return;
+      }
+      if (!addr.city?.trim()) {
+        setError("Fyll i stad.");
         setLoading(false);
         return;
       }
@@ -105,7 +129,7 @@ export default function OnboardingProfile() {
         return;
       }
 
-      const areaVal = addr.area ?? ([addr.city, addr.neighborhood].filter(Boolean).join(" - ") || "");
+      const areaVal = addr.area ?? addr.city ?? "";
       const file = avatarFile();
       if (file) {
         const fd = new FormData();

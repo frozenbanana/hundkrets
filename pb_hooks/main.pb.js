@@ -693,3 +693,79 @@ onRecordAfterCreateSuccess((e) => {
   }
   e.next();
 }, "users");
+
+// 4. When user saves profile with area, update postal_codes so future users get it as suggestion
+onRecordAfterUpdateSuccess((e) => {
+  if (!e || !e.record) {
+    e.next();
+    return;
+  }
+  var user = e.record;
+  var areaVal = String(user.get("area") || "").trim();
+  if (!areaVal) {
+    e.next();
+    return;
+  }
+  var addr = String(user.get("address_private") || "");
+  var match = addr.match(/Postnummer\s+(\d{3}\s?\d{2})/i) || addr.match(/(\d{3}\s?\d{2})/);
+  if (!match) {
+    e.next();
+    return;
+  }
+  var postalCode = String(match[1]).replace(/\s/g, "");
+  try {
+    var pcRecords = $app.findRecordsByFilter("postal_codes", "postal_code = {:pc}", "", 1, 0, { pc: postalCode });
+    if (pcRecords && pcRecords.length > 0) {
+      var rec = pcRecords[0];
+      var existingArea = String(rec.get("area") || "").trim();
+      if (!existingArea) {
+        rec.set("area", areaVal);
+        $app.save(rec);
+        $app.logger().info("postal_codes area updated", "postal_code", postalCode, "area", areaVal);
+      }
+    }
+  } catch (err) {
+    $app.logger().warn("postal_codes area update failed", "error", err);
+  }
+  e.next();
+}, "users");
+
+// 4. When user saves profile with area, update postal_codes so future users get it as suggestion
+onRecordAfterUpdateSuccess((e) => {
+  if (!e || !e.record) {
+    e.next();
+    return;
+  }
+  var user = e.record;
+  var areaVal = String(user.get("area") || "").trim();
+  if (!areaVal) {
+    e.next();
+    return;
+  }
+  var addr = String(user.get("address_private") || "");
+  var match = addr.match(/Postnummer\s+(\d{3}\s?\d{2})/i) || addr.match(/(\d{3}\s?\d{2})/);
+  if (!match) {
+    e.next();
+    return;
+  }
+  var postalCode = String(match[1]).replace(/\s/g, "");
+  if (postalCode.length !== 5) {
+    e.next();
+    return;
+  }
+  try {
+    var pcRecords = $app.findRecordsByFilter("postal_codes", "postal_code = {:pc}", "", 1, 0, { pc: postalCode });
+    if (pcRecords && pcRecords.length > 0) {
+      var pcRec = pcRecords[0];
+      var existingArea = String(pcRec.get("area") || "").trim();
+      if (!existingArea) {
+        pcRec.set("area", areaVal);
+        $app.save(pcRec);
+        $app.logger().info("postal_codes area updated", "postal_code", postalCode, "area", areaVal);
+      }
+    }
+  } catch (err) {
+    $app.logger().warn("postal_codes area update failed", "error", err);
+  }
+  e.next();
+}, "users");

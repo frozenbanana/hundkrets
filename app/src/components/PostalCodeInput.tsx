@@ -1,5 +1,6 @@
 import { createEffect, createSignal, untrack } from "solid-js";
 import { geocodePostalCode } from "~/lib/geocode";
+import { lookupPostalCode } from "~/lib/postalCode";
 
 export interface PostalCodeValue {
   address_private?: string;
@@ -26,9 +27,16 @@ function parsePostalFromAddress(addr: string | undefined): string {
   return match ? match[1].trim() : "";
 }
 
+function buildAddressPrivate(postalFormatted: string, city: string, area?: string): string {
+  const parts = [city];
+  if (area?.trim()) parts.push(area.trim());
+  return `Postnummer ${postalFormatted}, ${parts.join(", ")}`.trim();
+}
+
 export function PostalCodeInput(props: Props) {
   const [postalCode, setPostalCode] = createSignal("");
-  const [resolvedCity, setResolvedCity] = createSignal("");
+  const [city, setCity] = createSignal("");
+  const [area, setArea] = createSignal("");
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
 
@@ -38,7 +46,8 @@ export function PostalCodeInput(props: Props) {
     const current = untrack(() => postalCode());
     if (parsed && parsed !== current) {
       setPostalCode(parsed);
-      setResolvedCity(v?.area ?? v?.city ?? "");
+      setCity(v?.city ?? "");
+      setArea(v?.area ?? "");
     }
   });
 
@@ -46,6 +55,20 @@ export function PostalCodeInput(props: Props) {
     const digits = val.replace(/\D/g, "").slice(0, 5);
     if (digits.length <= 3) return digits;
     return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+  }
+
+  function notifyChange() {
+    const raw = postalCode().replace(/\s/g, "").trim();
+    const formatted = formatPostalCode(raw);
+    const cityVal = city().trim();
+    const areaVal = area().trim();
+    const addr = buildAddressPrivate(formatted, cityVal || "—", areaVal || undefined);
+    props.onSelect({
+      ...props.value,
+      address_private: addr,
+      city: cityVal,
+      area: areaVal || undefined,
+    });
   }
 
   async function resolvePostalCode() {
@@ -57,23 +80,33 @@ export function PostalCodeInput(props: Props) {
     setError("");
     setLoading(true);
     try {
-      const result = await geocodePostalCode(postalCode());
-      if (result) {
-        const formatted = formatPostalCode(raw);
-        const area = result.city || result.neighborhood || result.display_name || "";
-        setResolvedCity(area);
-        props.onSelect({
-          ...props.value,
-          address_private: `Postnummer ${formatted}, ${area}`.trim(),
-          latitude: result.lat,
-          longitude: result.lon,
-          city: result.city ?? "",
-          neighborhood: result.neighborhood ?? "",
-          area,
-        });
-      } else {
+      const lookup = await lookupPostalCode(postalCode());
+      const geocoded = await geocodePostalCode(postalCode(), {
+        city: lookup?.city,
+      });
+
+      if (!geocoded) {
         setError("Kunde inte hitta området för detta postnummer.");
+        setLoading(false);
+        return;
       }
+
+      const cityVal = lookup?.city ?? geocoded.city ?? "";
+      const areaVal = lookup?.area ?? "";
+      setCity(cityVal);
+      setArea(areaVal);
+
+      const formatted = formatPostalCode(raw);
+      const areaDisplay = areaVal || undefined;
+      props.onSelect({
+        ...props.value,
+        address_private: buildAddressPrivate(formatted, cityVal || "—", areaDisplay),
+        latitude: geocoded.lat,
+        longitude: geocoded.lon,
+        city: cityVal,
+        neighborhood: geocoded.neighborhood ?? "",
+        area: areaDisplay,
+      });
     } catch {
       setError("Kunde inte söka postnummer. Försök igen.");
     } finally {
@@ -84,43 +117,71 @@ export function PostalCodeInput(props: Props) {
   return (
     <div class="form-group">
       <label for={props.id ?? "postal-code"}>Postnummer *</label>
-      <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+      <input
+        id={props.id ?? "postal-code"}
+        type="text"
+        inputMode="numeric"
+        value={postalCode()}
+        onInput={(e) => {
+          const v = e.currentTarget.value;
+          const formatted = formatPostalCode(v);
+          setPostalCode(formatted);
+          if (!formatted) {
+            setCity("");
+            setArea("");
+            setError("");
+          }
+        }}
+        onBlur={() => resolvePostalCode()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            resolvePostalCode();
+          }
+        }}
+        placeholder="T.ex. 211 42"
+        autocomplete="postal-code"
+        required
+        aria-describedby={error() ? "postal-code-error" : undefined}
+        classList={{
+          "input-valid": !!city() && !loading(),
+          "input-invalid": !!error(),
+        }}
+      />
+      <div class="form-group" style="margin-top: 0.75rem;">
+        <label for="postal-city">Stad *</label>
         <input
-          id={props.id ?? "postal-code"}
+          id="postal-city"
           type="text"
-          inputMode="numeric"
-          value={postalCode()}
+          value={city()}
           onInput={(e) => {
-            const v = e.currentTarget.value;
-            const formatted = formatPostalCode(v);
-            setPostalCode(formatted);
-            if (!formatted) {
-              setResolvedCity("");
-              setError("");
-            }
+            setCity(e.currentTarget.value);
+            notifyChange();
           }}
-          onBlur={() => resolvePostalCode()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              resolvePostalCode();
-            }
-          }}
-          placeholder="T.ex. 211 42"
-          autocomplete="postal-code"
+          onBlur={() => notifyChange()}
+          placeholder="T.ex. Malmö"
+          autocomplete="address-level2"
           required
-          aria-describedby={error() ? "postal-code-error" : resolvedCity() ? "postal-code-city" : undefined}
-          classList={{
-            "input-valid": !!resolvedCity() && !loading(),
-            "input-invalid": !!error(),
-          }}
         />
       </div>
-      {resolvedCity() && (
-        <p id="postal-code-city" style="color: var(--color-text-muted); font-size: 0.875rem; margin: 0.25rem 0 0;">
-          {resolvedCity()}
+      <div class="form-group" style="margin-top: 0.75rem;">
+        <label for="postal-area">Område (valfritt)</label>
+        <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">
+          Främst stadsdel. Kan också användas för att beskriva mer exakt var du bor inom staden eller kommunen.
         </p>
-      )}
+        <input
+          id="postal-area"
+          type="text"
+          value={area()}
+          onInput={(e) => {
+            setArea(e.currentTarget.value);
+            notifyChange();
+          }}
+          onBlur={() => notifyChange()}
+          placeholder="T.ex. Västra Hamnen"
+          autocomplete="address-level3"
+        />
+      </div>
       {error() && (
         <p id="postal-code-error" class="form-error" role="alert" style="margin-top: 0.25rem;">
           {error()}
