@@ -1494,9 +1494,13 @@ nav a {
   font-weight: 500;
 }
 
-.checkbox-label input {
-  width: auto;
+.checkbox-label input,
+input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
   margin: 0;
+  cursor: pointer;
+  accent-color: var(--color-fur);
 }
 
 /* Profile incomplete - empty state on matches */

@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
     # Expose for direct access (optional - remove if using nginx only)
     ports:
-      - "8099:8090"
+      - "8090:8090"
 
   app:
     build:
@@ -31,12 +31,12 @@ services:
     env_file:
       - app/.env
     environment:
-      PORT: 3123
+      PORT: 3000
       # Server-side fetch to PocketBase: use internal Docker network (avoids hairpin NAT)
       POCKETBASE_SERVER_URL: http://pocketbase:8090
     restart: unless-stopped
     ports:
-      - "3123:3123"
+      - "3000:3000"
     depends_on:
       - pocketbase
 

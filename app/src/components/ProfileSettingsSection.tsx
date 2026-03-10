@@ -7,6 +7,8 @@ import { parseApiError } from "~/lib/errors";
 export function ProfileSettingsSection() {
   const nav = useNavigate();
   const [chatEmailFrequency, setChatEmailFrequency] = createSignal<"instant" | "daily" | "off">("daily");
+  const [retentionEmailEnabled, setRetentionEmailEnabled] = createSignal(true);
+  const [retentionRadius, setRetentionRadius] = createSignal(3);
 
   const [newEmail, setNewEmail] = createSignal("");
   const [emailChangeModalOpen, setEmailChangeModalOpen] = createSignal(false);
@@ -28,6 +30,10 @@ export function ProfileSettingsSection() {
     if (user) {
       const pref = (user.chat_email_frequency as "instant" | "daily" | "off" | undefined) ?? "daily";
       setChatEmailFrequency(pref === "daily" || pref === "off" ? pref : "instant");
+      const ret = user.retention_email_enabled as boolean | undefined;
+      setRetentionEmailEnabled(ret !== false);
+      const rad = user.retention_radius as number | undefined;
+      setRetentionRadius(rad ?? 3);
     }
   });
 
@@ -37,6 +43,30 @@ export function ProfileSettingsSection() {
     try {
       await pb.collection("users").update(userId, { chat_email_frequency: value });
       pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, chat_email_frequency: value });
+      showToast("Sparat");
+    } catch (err) {
+      showToast(parseApiError(err), "error");
+    }
+  }
+
+  async function saveRetentionEmailEnabled(value: boolean) {
+    const userId = pb.authStore.model?.id;
+    if (!userId) return;
+    try {
+      await pb.collection("users").update(userId, { retention_email_enabled: value });
+      pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, retention_email_enabled: value });
+      showToast("Sparat");
+    } catch (err) {
+      showToast(parseApiError(err), "error");
+    }
+  }
+
+  async function saveRetentionRadius(value: number) {
+    const userId = pb.authStore.model?.id;
+    if (!userId) return;
+    try {
+      await pb.collection("users").update(userId, { retention_radius: value });
+      pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, retention_radius: value });
       showToast("Sparat");
     } catch (err) {
       showToast(parseApiError(err), "error");
@@ -131,6 +161,45 @@ export function ProfileSettingsSection() {
               <option value="daily">Daglig sammanfattning</option>
               <option value="off">Av</option>
             </select>
+          </div>
+
+          <div class="form-group">
+            <label for="retention-email">E-post uppdatering för nya användare i ditt område</label>
+            <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem; flex-wrap: wrap;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; white-space: nowrap;">
+                <input
+                  type="checkbox"
+                  id="retention-email"
+                  checked={retentionEmailEnabled()}
+                  onChange={(e) => {
+                    const v = e.currentTarget.checked;
+                    setRetentionEmailEnabled(v);
+                    saveRetentionEmailEnabled(v);
+                  }}
+                />
+                <span>Få uppdateringar</span>
+              </label>
+              <select
+                value={retentionRadius() || 3}
+                onChange={(e) => {
+                  const v = parseInt(e.currentTarget.value, 10);
+                  setRetentionRadius(v);
+                  saveRetentionRadius(v);
+                }}
+                disabled={!retentionEmailEnabled()}
+                style="width: auto; min-width: 80px;"
+              >
+                <option value="1">1</option>
+                <option value="3">3</option>
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+              </select>
+              <span style="color: var(--color-text-muted); white-space: nowrap;">km från mig</span>
+            </div>
+            <p style="color: var(--color-text-muted); font-size: 0.9rem; margin: 0.5rem 0 0;">
+              E-post skickas max en gång i veckan och kan avregistreras i mailet eller här.
+            </p>
           </div>
 
           <div class="form-group">
