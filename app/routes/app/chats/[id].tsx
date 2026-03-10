@@ -365,6 +365,7 @@ export default function ChatThread() {
                       disabled={sending() || !message().trim()}
                       title={sending() ? "Skickar..." : "Skicka"}
                       aria-label={sending() ? "Skickar..." : "Skicka"}
+                      data-umami-event="Send message"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
                         <path d="m22 2-7 20-4-9-9-4Z" />

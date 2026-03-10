@@ -521,7 +521,7 @@ export default function UserProfile() {
                                 type="button"
                                 class="btn btn-secondary"
                                 disabled={refreshing()}
-                                onClick={() => handleWithdraw(u.id)}
+                                onClick={() => handleWithdraw(u.id)} data-umami-event="Withdraw interest"
                               >
                                 Ångra
                               </button>
@@ -559,7 +559,7 @@ export default function UserProfile() {
                             type="button"
                             class="btn"
                             disabled={refreshing()}
-                            onClick={() => handleOpenChat(u.id)}
+                            onClick={() => handleOpenChat(u.id)} data-umami-event="Open chat"}
                           >
                             Öppna chatt
                           </button>
@@ -850,7 +850,7 @@ export default function UserProfile() {
                                 type="button"
                                 class="btn btn-secondary"
                                 disabled={refreshing()}
-                                onClick={() => handleWithdraw(u.id)}
+                                onClick={() => handleWithdraw(u.id)} data-umami-event="Withdraw interest"
                               >
                                 Ångra
                               </button>
@@ -888,7 +888,7 @@ export default function UserProfile() {
                             type="button"
                             class="btn"
                             disabled={refreshing()}
-                            onClick={() => handleOpenChat(u.id)}
+                            onClick={() => handleOpenChat(u.id)} data-umami-event="Open chat"}
                           >
                             Öppna chatt
                           </button>

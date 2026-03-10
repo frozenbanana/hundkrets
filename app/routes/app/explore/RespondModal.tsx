@@ -44,7 +44,7 @@ export function RespondModal(props: {
           />
         </div>
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
-          <button type="button" class="btn btn-secondary" disabled={loading} onClick={onReject}>
+          <button type="button" class="btn btn-secondary" disabled={loading} onClick={onReject} data-umami-event="Reject request">
             Avvisa
           </button>
           <button
@@ -53,6 +53,7 @@ export function RespondModal(props: {
             disabled={loading || !isVerified}
             title={!isVerified ? "Verifiera din e-post för att svara på förfrågningar." : undefined}
             onClick={() => onAccept()}
+            data-umami-event="Accept match"
           >
             Acceptera
           </button>

@@ -326,6 +326,7 @@ export function MatchDetailModal(props: {
                   class="btn btn-secondary"
                   disabled={refreshing()}
                   onClick={() => onWithdraw?.(listing.user.id)}
+                  data-umami-event="Withdraw interest"
                 >
                   Ångra
                 </button>
@@ -359,6 +360,7 @@ export function MatchDetailModal(props: {
                 class="btn"
                 disabled={refreshing()}
                 onClick={() => onOpenChat?.(listing.user.id)}
+                data-umami-event="Open chat"
               >
                 Öppna chatt
               </button>

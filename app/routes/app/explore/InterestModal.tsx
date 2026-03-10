@@ -54,6 +54,7 @@ export function InterestModal(props: {
             disabled={loading || !isVerified}
             title={!isVerified ? "Verifiera din e-post för att skicka intresseanmälningar." : undefined}
             onClick={() => onSubmit()}
+            data-umami-event="Send interest"
           >
             Skicka
           </button>
