@@ -121,6 +121,23 @@ Se [docs/README.md](docs/README.md) för fullständig översikt.
 | [docs/ASSET_GENERATION_PROMPTS.md](docs/ASSET_GENERATION_PROMPTS.md) | Prompts för bildgenerering |
 | [TODO.md](TODO.md) | Prioriterad funktionslista |
 
+### Retention Emails (Veckouppdatering)
+
+Automatisk e-post till inaktiva användare som inte loggat in på 7-14 dagar:
+
+- **Trigger:** Cron-jobb körs varje måndag kl 9:00 (`cronAdd` i `pb_hooks/main.pb.js`)
+- **Målgrupp:** Användare som inte loggat in på 1-2 veckor, inte skickat intresseanmälningar
+- **Innehåll:** Antal nya användare inom valt avstånd (1/3/5/10/20 km), namn på nya användare
+- **Inställningar:** Användare kan toggle:a av/på och ändra radie i profilinställningar
+- **Avregistrering:** Länk i e-post + inställningssida
+
+**Databasfält:**
+- `retention_email_enabled` (bool, default true)
+- `retention_radius` (number, default 3 km)
+- `last_retention_email_sent` (date)
+
+**Testa:** `curl -X POST http://127.0.0.1:8090/api/test/retention-emails`
+
 ## Skript
 
 | Kommando | Beskrivning |
