@@ -225,6 +225,7 @@ onMailerSend((e) => {
     else if (subj.indexOf("password") >= 0 || subj.indexOf("lösenord") >= 0) type = "auth_password_reset";
     else if (subj.indexOf("verifiera") >= 0 || subj.indexOf("verify") >= 0) type = "auth_verification";
     else if (subj.indexOf("inloggning") >= 0 || subj.indexOf("login") >= 0) type = "auth_alert";
+    else if (subj.indexOf("nya hund") >= 0 || subj.indexOf("nya användare") >= 0) type = "retention";
     if (type) rec.set("type", type);
     $app.save(rec);
   } catch (err) {
