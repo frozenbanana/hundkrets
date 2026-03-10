@@ -3,6 +3,16 @@
 
 $app.logger().info("Hundkrets pb_hooks loaded");
 
+// Allow authenticated users to connect to realtime
+onRealtimeConnectRequest((e) => {
+  if (e.auth.isValid) {
+    e.next();
+  } else {
+    e.response.setStatus(401);
+    e.response.stop();
+  }
+});
+
 // Weekly retention email cron job - runs every Monday at 9am
 cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
   $app.logger().info("Cron: Starting weekly retention email job");
