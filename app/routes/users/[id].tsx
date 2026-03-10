@@ -284,10 +284,16 @@ export default function UserProfile() {
     }
   }
 
-  const facebookShareUrl = () =>
-    `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl())}`;
-  const twitterShareUrl = () =>
-    `https://twitter.com/intent/tweet?url=${encodeURIComponent(profileUrl())}&text=${encodeURIComponent(`${profile()?.user?.name || "Profil"} – Hundkrets`)}`;
+  const facebookShareUrl = () => {
+    const utm = "utm_source=facebook&utm_medium=social_share&utm_campaign=user_profile";
+    const urlWithUtm = profileUrl() + (profileUrl().includes("?") ? "&" : "?") + utm;
+    return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlWithUtm)}`;
+  };
+  const twitterShareUrl = () => {
+    const utm = "utm_source=twitter&utm_medium=social_share&utm_campaign=user_profile";
+    const urlWithUtm = profileUrl() + (profileUrl().includes("?") ? "&" : "?") + utm;
+    return `https://twitter.com/intent/tweet?url=${encodeURIComponent(urlWithUtm)}&text=${encodeURIComponent(`${profile()?.user?.name || "Profil"} – Hundkrets`)}`;
+  };
 
   const siteUrl = import.meta.env.VITE_SITE_URL || "https://hundkrets.se";
   const profileOgUrl = () => `${siteUrl}/users/${userId()}`;
@@ -516,6 +522,7 @@ export default function UserProfile() {
                                 class="btn btn-secondary"
                                 disabled={refreshing()}
                                 onClick={() => handleWithdraw(u.id)}
+                                data-umami-event="Withdraw interest"
                               >
                                 Ångra
                               </button>
@@ -554,6 +561,7 @@ export default function UserProfile() {
                             class="btn"
                             disabled={refreshing()}
                             onClick={() => handleOpenChat(u.id)}
+                            data-umami-event="Open chat"
                           >
                             Öppna chatt
                           </button>
@@ -845,6 +853,7 @@ export default function UserProfile() {
                                 class="btn btn-secondary"
                                 disabled={refreshing()}
                                 onClick={() => handleWithdraw(u.id)}
+                                data-umami-event="Withdraw interest"
                               >
                                 Ångra
                               </button>
@@ -883,6 +892,7 @@ export default function UserProfile() {
                             class="btn"
                             disabled={refreshing()}
                             onClick={() => handleOpenChat(u.id)}
+                            data-umami-event="Open chat"
                           >
                             Öppna chatt
                           </button>

@@ -515,7 +515,7 @@ export default function Chats() {
                           class="btn btn-secondary"
                           style="font-size: 0.85rem;"
                           disabled={actionLoading()}
-                          onClick={() => handleWithdrawOutgoing(req.id)}
+                          onClick={() => handleWithdrawOutgoing(req.id)} data-umami-event="Withdraw interest"
                         >
                           Ångra
                         </button>
@@ -552,7 +552,7 @@ export default function Chats() {
                 />
               </div>
               <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
-                <button type="button" class="btn btn-secondary" disabled={actionLoading()} onClick={handleRejectRequest}>
+                <button type="button" class="btn btn-secondary" disabled={actionLoading()} onClick={handleRejectRequest} data-umami-event="Reject request">
                   Avvisa
                 </button>
                 <button
@@ -561,6 +561,7 @@ export default function Chats() {
                   disabled={actionLoading() || !isUserVerified()}
                   title={!isUserVerified() ? "Verifiera din e-post för att svara på förfrågningar." : undefined}
                   onClick={() => handleAcceptWithReply()}
+                  data-umami-event="Accept match"
                 >
                   Acceptera
                 </button>

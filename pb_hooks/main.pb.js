@@ -133,8 +133,9 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
       
       var urlMeta = $app.settings() && $app.settings().meta;
       var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
-      var matchesLink = baseUrl + "/app/explore";
-      var settingsLink = baseUrl + "/app/profile";
+      var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
+      var matchesLink = baseUrl + "/app/explore?" + utmEmail;
+      var settingsLink = baseUrl + "/app/settings?" + utmEmail;
       var unsubLink = baseUrl + "/api/unsubscribe/" + userId + "/retention";
       
       var names = [];
@@ -525,7 +526,7 @@ onRecordAfterCreateSuccess((e) => {
   var safeSnippet = esc(snippet);
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
-  var chatLink = baseUrl + "/app/chats/" + conv.id;
+  var chatLink = baseUrl + "/app/chats/" + conv.id + "?utm_source=email&utm_medium=message&utm_campaign=new_message";
 
   var subject = isDaily ? "Daglig chattsammanfattning på Hundkrets" : (senderName + " skickade ett meddelande på Hundkrets");
   var html = isDaily
@@ -721,8 +722,8 @@ onRecordAfterCreateSuccess((e) => {
 
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
-  var matchesLink = baseUrl + "/app/explore";
-  var matchesMatchedLink = baseUrl + "/app/explore?match=true";
+  var matchesLink = baseUrl + "/app/explore?utm_source=email&utm_medium=notification&utm_campaign=interest";
+  var matchesMatchedLink = baseUrl + "/app/explore?match=true&utm_source=email&utm_medium=notification&utm_campaign=match";
 
   if (isMatch) {
     // Deduplicate: only send match email for the first request in this direction.
@@ -843,7 +844,7 @@ onRecordAfterUpdateSuccess((e) => {
   var name = record.get("name") || "där";
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
-  var html = "<p>Välkommen till Hundkrets, " + name + "!</p><p>Du har slutfört din profil. Nu kan du hitta hundägare i ditt område som vill byta hundpassning.</p><p><a href=\"" + baseUrl + "/app/explore\">Se matchningar</a></p>";
+  var html = "<p>Välkommen till Hundkrets, " + name + "!</p><p>Du har slutfört din profil. Nu kan du hitta hundägare i ditt område som vill byta hundpassning.</p><p><a href=\"" + baseUrl + "/app/explore?utm_source=email&utm_medium=transactional&utm_campaign=welcome\">Se matchningar</a></p>";
   try {
     var msg = new MailerMessage({ from: from, to: [{ address: email }], subject: "Välkommen till Hundkrets!", html: html });
     $app.newMailClient().send(msg);
@@ -1050,8 +1051,9 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
   
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
-  var matchesLink = baseUrl + "/app/explore";
-  var settingsLink = baseUrl + "/app/profile";
+  var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
+  var matchesLink = baseUrl + "/app/explore?" + utmEmail;
+  var settingsLink = baseUrl + "/app/settings?" + utmEmail;
   var unsubLink = baseUrl + "/api/unsubscribe/" + user.id + "/retention";
   
   var names = [];
