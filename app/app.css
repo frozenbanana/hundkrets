@@ -2553,8 +2553,9 @@ input[type="checkbox"] {
   padding-bottom: 0.5rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.5rem;
+  position: relative;
 }
 
 .matches-footer-overlay {
@@ -2576,6 +2577,10 @@ input[type="checkbox"] {
 }
 
 .matches-footer-dismiss {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
   flex-shrink: 0;
   width: 28px;
   height: 28px;

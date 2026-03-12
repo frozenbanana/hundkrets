@@ -98,10 +98,15 @@ export default function Matches() {
   const isMobileMapView = () => isMobileViewport() && mobileViewMode() === "map" && (listings().length ?? 0) > 0;
 
   createEffect(() => {
-    if (!isMobileMapView()) return;
-    if (typeof document === "undefined") return;
-    document.body.classList.add("matches-map-view-no-scroll");
-    return () => document.body.classList.remove("matches-map-view-no-scroll");
+    const shouldDisable = isMobileMapView();
+    if (shouldDisable && typeof document !== "undefined") {
+      document.body.classList.add("matches-map-view-no-scroll");
+    }
+    onCleanup(() => {
+      if (typeof document !== "undefined") {
+        document.body.classList.remove("matches-map-view-no-scroll");
+      }
+    });
   });
 
   onCleanup(() => {
@@ -998,7 +1003,7 @@ export default function Matches() {
               </Show>
             </div>
           </div>
-            <Show when={!isMobileViewport() || mobileViewMode() === "map"}>
+            <Show when={(!isMobileViewport() || mobileViewMode() === "map") && !mapFooterDismissed()}>
               <div class="matches-footer-note-container matches-footer-overlay">
                 <p class="matches-footer-note-text">Zooma in för att filtrera. Klicka på ett kort eller en markör för att se detaljer.</p>
                 <button

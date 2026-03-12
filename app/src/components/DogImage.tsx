@@ -25,7 +25,7 @@ export function DogImage(props: DogImageProps) {
         <Show
           when={placeholderUrl()}
           fallback={
-            <div class={className ?? "dog-card-img-placeholder"} style={styleValue}>
+            <div class="dog-card-img-placeholder" style={styleValue}>
               🐕
             </div>
           }
