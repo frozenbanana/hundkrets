@@ -115,7 +115,7 @@ Se [docs/README.md](docs/README.md) för fullständig översikt.
 
 | Dokument | Beskrivning |
 |----------|-------------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arkitektur, val och dataflöde |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **Starta här.** Arkitektur, datamodell, dataflöden, PocketBase SDK, frontend-mönster |
 | [docs/HOSTING-GUIDE.md](docs/HOSTING-GUIDE.md) | Cloudflare Tunnel, produktion |
 | [docs/EMAIL-DEBUG.md](docs/EMAIL-DEBUG.md) | Mailpit, e-postflöden, felsökning |
 | [docs/ASSET_GENERATION_PROMPTS.md](docs/ASSET_GENERATION_PROMPTS.md) | Prompts för bildgenerering |

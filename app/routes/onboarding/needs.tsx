@@ -5,6 +5,18 @@ import { pb } from "~/lib/pocketbase";
 import { clearOnboardingUserType, getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
+import { DogImage } from "~/components/DogImage";
+
+const SIZE_LABELS: Record<string, string> = {
+  small: "Liten",
+  medium: "Mellan",
+  large: "Stor",
+};
+
+const GENDER_LABELS: Record<string, string> = {
+  male: "Hane",
+  female: "Tik",
+};
 
 export default function OnboardingNeeds() {
   const nav = useNavigate();
@@ -25,7 +37,7 @@ export default function OnboardingNeeds() {
       return;
     }
   });
-  const [dogId, setDogId] = createSignal("");
+  const [selectedDogs, setSelectedDogs] = createSignal<string[]>([]);
   const [flexible, setFlexible] = createSignal(true);
   const [openAnyDuration, setOpenAnyDuration] = createSignal(true);
   const [durationSpecific, setDurationSpecific] = createSignal("");
@@ -45,8 +57,9 @@ export default function OnboardingNeeds() {
 
   createEffect(() => {
     const list = dogs();
-    if (list && list.length > 0 && !dogId()) {
-      setDogId(list[0].id);
+    if (list && list.length > 0 && selectedDogs().length === 0) {
+      // Select all dogs by default
+      setSelectedDogs(list.map((d) => d.id));
     }
   });
 
@@ -65,8 +78,8 @@ export default function OnboardingNeeds() {
         return;
       }
     }
-    if (dogs()?.length && !dogId()) {
-      setError("Välj en hund");
+    if (dogs()?.length && selectedDogs().length === 0) {
+      setError("Välj minst en hund");
       return;
     }
     setLoading(true);
@@ -80,7 +93,9 @@ export default function OnboardingNeeds() {
         duration_specific: durationSpecific() || undefined,
         notes: notes() || undefined,
       };
-      if (dogId()) data.dog = dogId();
+      if (selectedDogs().length > 0) {
+        data.dog = selectedDogs().length === 1 ? selectedDogs()[0] : selectedDogs();
+      }
       if (!flexible()) {
         data.start_date = startDate();
         data.end_date = endDate();
@@ -127,6 +142,16 @@ export default function OnboardingNeeds() {
 
   const hasDogs = () => dogs() && dogs()!.length > 0;
 
+  const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
+
+  const formatDogInfo = (dog: { name: string; size?: string; gender?: string; breed?: string; age?: number }) => {
+    const parts = [dog.name];
+    if (dog.age != null) parts.push(`${dog.age} år`);
+    if (dog.breed) parts.push(dog.breed);
+    if (dog.gender) parts.push(GENDER_LABELS[dog.gender] || dog.gender);
+    return parts.join(", ");
+  };
+
   return (
     <OnboardingShell step={3} totalSteps={isReceiverOnly() ? 3 : 4} title="När du behöver hundpassning" nextStepHint={isReceiverOnly() ? "Nästa: Se matchningar" : "Nästa: När du kan passa hundar"} backHref="/onboarding/dogs">
       <div class="card">
@@ -142,13 +167,34 @@ export default function OnboardingNeeds() {
           {error() && <p class="form-error" role="alert" style="margin-bottom: 1rem;">{error()}</p>}
           <Show when={dogs() && dogs()!.length > 0}>
             <div class="form-group">
-              <label for="dog">Vilken hund? *</label>
-              <select id="dog" value={dogId()} onInput={(e) => setDogId(e.currentTarget.value)}>
-                <option value="">Välj hund</option>
+              <label>Vilka hundar? *</label>
+              <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
                 <For each={dogs()}>
-                  {(d) => <option value={d.id}>{d.name}</option>}
+                  {(d) => (
+                    <label class="dog-card" style="cursor: pointer; display: flex; align-items: center; gap: 0.75rem;">
+                      <input
+                        type="checkbox"
+                        checked={selectedDogs().includes(d.id)}
+                        onChange={(e) => {
+                          if (e.currentTarget.checked) {
+                            setSelectedDogs([...selectedDogs(), d.id]);
+                          } else {
+                            setSelectedDogs(selectedDogs().filter((id) => id !== d.id));
+                          }
+                        }}
+                        style="flex-shrink: 0;"
+                      />
+                      <DogImage dog={d} baseUrl={baseUrl} class="dog-card-img" style="width: 48px; height: 48px; flex-shrink: 0;" />
+                      <div style="flex: 1; min-width: 0;">
+                        <strong>{d.name}</strong>
+                        <div style="font-size: 0.85rem; color: var(--color-text-muted);">
+                          {[d.age > 0 ? `${d.age} år` : null, d.breed, GENDER_LABELS[d.gender] || d.gender].filter(Boolean).join(", ")}
+                        </div>
+                      </div>
+                    </label>
+                  )}
                 </For>
-              </select>
+              </div>
             </div>
           </Show>
           <div class="flexible-toggle" onClick={() => setFlexible(!flexible())}>

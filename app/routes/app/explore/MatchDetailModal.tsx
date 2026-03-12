@@ -197,79 +197,85 @@ export function MatchDetailModal(props: {
               <div class="modal-detail-cards">
                 <For each={listing.needs}>
                   {(n) => {
-                    const dog = listing.dogs.find((d) => d.id === n.dog) as DogRecord | undefined;
-                    const d = dog ?? {};
+                    // Handle dog as either single ID or array of IDs
+                    const dogIds = Array.isArray(n.dog) ? n.dog : n.dog ? [n.dog] : [];
+                    const needDogs = dogIds.map((id) => listing.dogs.find((d) => d.id === id)).filter(Boolean) as DogRecord[];
                     const needWithNotes = n as { notes?: string };
                     return (
-                      <div class="need-card">
-                        <div class="need-card-image">
-                          <DogImage dog={d} baseUrl={baseUrl} class="dog-card-img" />
-                        </div>
-                        <div class="need-card-content">
-                          <strong class="need-card-title">{d.name ?? "Hund"}</strong>
-                          <div class="need-card-columns">
-                            <div class="need-card-col">
-                              {d.size && (
-                                <p class="need-card-line">
-                                  <span class="need-card-label">Storlek:</span>{" "}
-                                  {sizeLabel[d.size] ?? d.size}
-                                </p>
-                              )}
-                              {d.breed && (
-                                <p class="need-card-line">
-                                  <span class="need-card-label">Ras:</span> {d.breed}
-                                </p>
-                              )}
-                              {d.gender && (
-                                <p class="need-card-line">
-                                  <span class="need-card-label">Kön:</span>{" "}
-                                  {genderLabel[d.gender] ?? d.gender}
-                                </p>
-                              )}
-                              {d.age != null && (
-                                <p class="need-card-line">
-                                  <span class="need-card-label">Ålder:</span> {d.age} år
-                                </p>
-                              )}
+                      <For each={needDogs}>
+                        {(d) => (
+                          <div class="need-card">
+                            <div class="need-card-image">
+                              <DogImage dog={d} baseUrl={baseUrl} class="dog-card-img" />
                             </div>
-                            <div class="need-card-col">
-                              {(d.temperament_new_people ||
-                                d.temperament_new_dogs_female ||
-                                d.temperament_new_dogs_male) && (
-                                <p class="need-card-line">
-                                  <span class="need-card-label">Temperament:</span>
-                                  <br />
-                                  Nya människor:{" "}
-                                  {temperamentLabel[d.temperament_new_people ?? ""] ||
-                                    d.temperament_new_people ||
-                                    "—"}{" "}
-                                  · Nya hundar (Tik):{" "}
-                                  {temperamentLabel[d.temperament_new_dogs_female ?? ""] ||
+                            <div class="need-card-content">
+                              <strong class="need-card-title">{d.name ?? "Hund"}</strong>
+                              <div class="need-card-columns">
+                                <div class="need-card-col">
+                                  {d.size && (
+                                    <p class="need-card-line">
+                                      <span class="need-card-label">Storlek:</span>{" "}
+                                      {sizeLabel[d.size] ?? d.size}
+                                    </p>
+                                  )}
+                                  {d.breed && (
+                                    <p class="need-card-line">
+                                      <span class="need-card-label">Ras:</span> {d.breed}
+                                    </p>
+                                  )}
+                                  {d.gender && (
+                                    <p class="need-card-line">
+                                      <span class="need-card-label">Kön:</span>{" "}
+                                      {genderLabel[d.gender] ?? d.gender}
+                                    </p>
+                                  )}
+                                  {d.age != null && (
+                                    <p class="need-card-line">
+                                      <span class="need-card-label">Ålder:</span> {d.age} år
+                                    </p>
+                                  )}
+                                </div>
+                                <div class="need-card-col">
+                                  {(d.temperament_new_people ||
                                     d.temperament_new_dogs_female ||
-                                    "—"}{" "}
-                                  · Nya hundar (Hane):{" "}
-                                  {temperamentLabel[d.temperament_new_dogs_male ?? ""] ||
-                                    d.temperament_new_dogs_male ||
-                                    "—"}
+                                    d.temperament_new_dogs_male) && (
+                                    <p class="need-card-line">
+                                      <span class="need-card-label">Temperament:</span>
+                                      <br />
+                                      Nya människor:{" "}
+                                      {temperamentLabel[d.temperament_new_people ?? ""] ||
+                                        d.temperament_new_people ||
+                                        "—"}{" "}
+                                      · Nya hundar (Tik):{" "}
+                                      {temperamentLabel[d.temperament_new_dogs_female ?? ""] ||
+                                        d.temperament_new_dogs_female ||
+                                        "—"}{" "}
+                                      · Nya hundar (Hane):{" "}
+                                      {temperamentLabel[d.temperament_new_dogs_male ?? ""] ||
+                                        d.temperament_new_dogs_male ||
+                                        "—"}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {d.notes && (
+                                <p class="need-card-notes">
+                                  <span class="need-card-label">Anteckningar:</span> {d.notes}
                                 </p>
                               )}
+                              {needWithNotes.notes && (
+                                <p class="need-card-notes">
+                                  <span class="need-card-label">Behov:</span> {needWithNotes.notes}
+                                </p>
+                              )}
+                              <div class="need-card-footer">
+                                <span class="need-card-label">Datum:</span> {dateStr(n)}
+                              </div>
                             </div>
                           </div>
-                          {d.notes && (
-                            <p class="need-card-notes">
-                              <span class="need-card-label">Anteckningar:</span> {d.notes}
-                            </p>
-                          )}
-                          {needWithNotes.notes && (
-                            <p class="need-card-notes">
-                              <span class="need-card-label">Behov:</span> {needWithNotes.notes}
-                            </p>
-                          )}
-                          <div class="need-card-footer">
-                            <span class="need-card-label">Datum:</span> {dateStr(n)}
-                          </div>
-                        </div>
-                      </div>
+                        )
+                        }
+                      </For>
                     );
                   }}
                 </For>

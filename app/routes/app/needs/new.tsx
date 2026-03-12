@@ -4,10 +4,16 @@ import { pb } from "~/lib/pocketbase";
 import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
+import { DogImage } from "~/components/DogImage";
+
+const GENDER_LABELS: Record<string, string> = {
+  male: "Hane",
+  female: "Tik",
+};
 
 export default function NewWatchNeed() {
   const nav = useNavigate();
-  const [dogId, setDogId] = createSignal("");
+  const [selectedDogs, setSelectedDogs] = createSignal<string[]>([]);
   const [flexible, setFlexible] = createSignal(true);
   const [openAnyDuration, setOpenAnyDuration] = createSignal(true);
   const [durationSpecific, setDurationSpecific] = createSignal("");
@@ -25,11 +31,13 @@ export default function NewWatchNeed() {
     }
   );
 
+  const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
+
   async function handleSubmit(e: Event) {
     e.preventDefault();
     setError("");
-    if (!dogId()) {
-      setError("Välj en hund");
+    if (selectedDogs().length === 0) {
+      setError("Välj minst en hund");
       return;
     }
     if (!flexible() && (!startDate() || !endDate())) {
@@ -50,7 +58,7 @@ export default function NewWatchNeed() {
       if (!userId) throw new Error("Not authenticated");
       const data: Record<string, unknown> = {
         user: userId,
-        dog: dogId(),
+        dog: selectedDogs().length === 1 ? selectedDogs()[0] : selectedDogs(),
         flexible_dates: flexible(),
         open_any_duration: openAnyDuration(),
         duration_specific: durationSpecific() || undefined,
@@ -80,15 +88,36 @@ export default function NewWatchNeed() {
       <div class="card">
       <form onSubmit={handleSubmit}>
         <div class="form-group">
-          <label for="dog">Hund *</label>
-          <select id="dog" value={dogId()} onInput={(e) => setDogId(e.currentTarget.value)} required>
-            <option value="">Välj hund</option>
+          <label>Hundar *</label>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
             <Show when={dogs()}>
               <For each={dogs()}>
-                {(d) => <option value={d.id}>{d.name}</option>}
+                {(d) => (
+                  <label class="dog-card" style="cursor: pointer; display: flex; align-items: center; gap: 0.75rem;">
+                    <input
+                      type="checkbox"
+                      checked={selectedDogs().includes(d.id)}
+                      onChange={(e) => {
+                        if (e.currentTarget.checked) {
+                          setSelectedDogs([...selectedDogs(), d.id]);
+                        } else {
+                          setSelectedDogs(selectedDogs().filter((id) => id !== d.id));
+                        }
+                      }}
+                      style="flex-shrink: 0;"
+                    />
+                    <DogImage dog={d} baseUrl={baseUrl} class="dog-card-img" style="width: 48px; height: 48px; flex-shrink: 0;" />
+                    <div style="flex: 1; min-width: 0;">
+                      <strong>{d.name}</strong>
+                      <div style="font-size: 0.85rem; color: var(--color-text-muted);">
+                        {[d.age > 0 ? `${d.age} år` : null, d.breed, GENDER_LABELS[d.gender] || d.gender].filter(Boolean).join(", ")}
+                      </div>
+                    </div>
+                  </label>
+                )}
               </For>
             </Show>
-          </select>
+          </div>
         </div>
         <div class="flexible-toggle" onClick={() => setFlexible(!flexible())}>
           <input type="checkbox" id="flexible" checked={flexible()} onInput={(e) => setFlexible(e.currentTarget.checked)} />

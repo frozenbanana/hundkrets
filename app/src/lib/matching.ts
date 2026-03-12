@@ -27,12 +27,12 @@ export interface Dog extends RecordModel {
 
 export interface WatchNeed extends RecordModel {
   user: string;
-  dog: string;
+  dog: string | string[]; // Can be single or multiple dogs
   start_date?: string;
   end_date?: string;
   flexible_dates?: boolean;
   duration_weeks?: number;
-  expand?: { user?: User; dog?: Dog };
+  expand?: { user?: User; dog?: Dog | Dog[] }; // Dog or array of Dogs when expanded
 }
 
 export interface WatchCapacity extends RecordModel {
@@ -140,7 +140,11 @@ export function findListings(
       if (userNeeds.length === 0 && userCapacities.length === 0) continue;
 
       const userDogIds = new Set<string>();
-      for (const n of userNeeds) userDogIds.add(n.dog);
+      for (const n of userNeeds) {
+        // dog can be a single ID or array of IDs
+        const dogIds = Array.isArray(n.dog) ? n.dog : [n.dog];
+        for (const id of dogIds) userDogIds.add(id);
+      }
       const userDogs = [...userDogIds].map((id) => dogMap.get(id)).filter(Boolean) as Dog[];
 
       listings.push({
@@ -158,7 +162,11 @@ export function findListings(
       if (userNeeds.length === 0 && userCapacities.length === 0) continue;
 
       const userDogIds = new Set<string>();
-      for (const n of userNeeds) userDogIds.add(n.dog);
+      for (const n of userNeeds) {
+        // dog can be a single ID or array of IDs
+        const dogIds = Array.isArray(n.dog) ? n.dog : [n.dog];
+        for (const id of dogIds) userDogIds.add(id);
+      }
       const userDogs = [...userDogIds].map((id) => dogMap.get(id)).filter(Boolean) as Dog[];
 
       listings.push({
