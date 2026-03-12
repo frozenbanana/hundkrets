@@ -85,12 +85,15 @@ export default function NeedsList() {
           <div style="display: flex; flex-direction: column; gap: 1rem;">
             <For each={needs()}>
               {(need) => {
-                const dog = need.expand?.dog as { name?: string } | undefined;
+                // Handle dog as either single object or array
+                const dogExpand = need.expand?.dog;
+                const dogs = Array.isArray(dogExpand) ? dogExpand : dogExpand ? [dogExpand] : [];
+                const dogNames = dogs.map((d) => d.name).filter(Boolean).join(", ") || "Hund";
                 return (
                   <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                       <div>
-                        <h3 style="margin: 0 0 0.5rem;">{dog?.name ?? "Hund"}</h3>
+                        <h3 style="margin: 0 0 0.5rem;">{dogNames}</h3>
                         <p style="margin: 0; color: var(--color-text-muted); font-size: 0.95rem;">
                           {dateStr(need)}
                         </p>

@@ -119,30 +119,8 @@ export default function OnboardingCapacity() {
               checked={flexible()}
               onInput={(e) => setFlexible(e.currentTarget.checked)}
             />
-            <label for="flexible">Flexibel—öppen när som helst</label>
+            <label for="flexible">{flexible() ? "Datum: Flexibel" : "Datum: Specifik"}</label>
           </div>
-          <Show when={flexible()}>
-            <div class="flexible-toggle" onClick={() => setOpenAnyDuration(!openAnyDuration())}>
-              <input
-                type="checkbox"
-                id="openAnyDuration"
-                checked={openAnyDuration()}
-                onInput={(e) => setOpenAnyDuration(e.currentTarget.checked)}
-              />
-              <label for="openAnyDuration">Öppen för valfri längd</label>
-            </div>
-            <Show when={!openAnyDuration()}>
-              <div class="form-group">
-                <label for="durationSpecific">Beskriv exakt när du kan hjälpa till</label>
-                <textarea
-                  id="durationSpecific"
-                  value={durationSpecific()}
-                  onInput={(e) => setDurationSpecific(e.currentTarget.value)}
-                  placeholder="T.ex. under lunch på onsdagar, eller vardagsmorgnar"
-                />
-              </div>
-            </Show>
-          </Show>
           <Show when={!flexible()}>
             <div class="form-group">
               <label for="startDate">Startdatum</label>
@@ -151,6 +129,26 @@ export default function OnboardingCapacity() {
             <div class="form-group">
               <label for="endDate">Slutdatum</label>
               <input id="endDate" type="date" value={endDate()} onInput={(e) => setEndDate(e.currentTarget.value)} />
+            </div>
+          </Show>
+          <div class="flexible-toggle" onClick={() => setOpenAnyDuration(!openAnyDuration())}>
+            <input
+              type="checkbox"
+              id="openAnyDuration"
+              checked={openAnyDuration()}
+              onInput={(e) => setOpenAnyDuration(e.currentTarget.checked)}
+            />
+            <label for="openAnyDuration">{openAnyDuration() ? "Tid: Flexibel" : "Tid: Specifik"}</label>
+          </div>
+          <Show when={!openAnyDuration()}>
+            <div class="form-group">
+              <label for="durationSpecific">Beskriv exakt när du kan hjälpa till</label>
+              <textarea
+                id="durationSpecific"
+                value={durationSpecific()}
+                onInput={(e) => setDurationSpecific(e.currentTarget.value)}
+                placeholder="T.ex. under lunch på onsdagar, eller vardagsmorgnar"
+              />
             </div>
           </Show>
           <div class="form-group">

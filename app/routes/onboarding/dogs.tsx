@@ -5,6 +5,7 @@ import { pb } from "~/lib/pocketbase";
 import { isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { DogImage } from "~/components/DogImage";
+import { DogInfo } from "~/components/DogInfo";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 import { ValidatedInput } from "~/components/ValidatedInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
@@ -166,7 +167,7 @@ export default function OnboardingDogs() {
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
   return (
-    <OnboardingShell step={2} totalSteps={isReceiverOnly() ? 3 : 4} title="Dina hundar" nextStepHint="Nästa: När du behöver hundpassning" backHref="/onboarding/choice">
+    <OnboardingShell step={2} totalSteps={isReceiverOnly() ? 3 : 4} title="Dina hundar" nextStepHint="Nästa: När du behöver hundpassning" backHref="/onboarding/profile">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           Lägg till hundar om du har (valfritt). Du kan lägga till fler senare från översikten.
@@ -252,7 +253,7 @@ export default function OnboardingDogs() {
                 <div class="dog-card" style="margin-bottom: 0.75rem;">
                   <DogImage dog={dog} baseUrl={baseUrl} class="dog-card-img" />
                   <div>
-                    <strong>{dog.name}</strong> • {dog.size} • {dog.gender}
+                    <DogInfo name={dog.name} age={dog.age} breed={dog.breed} gender={dog.gender} />
                   </div>
                 </div>
               )}

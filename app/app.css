@@ -1478,6 +1478,21 @@ nav a {
   flex: 1;
 }
 
+/* Animated reveal for toggle content */
+.flexible-content {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.25s ease-out, opacity 0.2s ease-out, margin 0.2s ease-out;
+  margin-top: 0;
+}
+
+.flexible-content.flexible-content-open {
+  max-height: 500px;
+  opacity: 1;
+  margin-top: 0.5rem;
+}
+
 /* Checkbox group for multi-select */
 .checkbox-group {
   display: flex;
