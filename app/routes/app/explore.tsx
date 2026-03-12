@@ -553,6 +553,19 @@ export default function Matches() {
     return d.myNeeds.length > 0 || d.myCapacities.length > 0;
   });
 
+  const userTypeInfo = createMemo(() => {
+    const d = data();
+    const userModel = pb.authStore.model as { user_type?: string } | null;
+    if (!d) return { isSitterOnly: false, isReceiverOnly: false };
+    const myDogs = d.dogs.filter((dog) => dog.owner === pb.authStore.model?.id);
+    const userType = userModel?.user_type;
+    const isSitterOnly = userType === "sitter_only" || (userType == null && myDogs.length === 0);
+    const isReceiverOnly =
+      userType === "receiver_only" ||
+      (userType == null && myDogs.length > 0 && d.myNeeds.length > 0 && d.myCapacities.length === 0);
+    return { isSitterOnly, isReceiverOnly };
+  });
+
   const hasCoordinates = () =>
     typeof pb.authStore.model?.latitude === "number" && typeof pb.authStore.model?.longitude === "number";
 
@@ -802,14 +815,24 @@ export default function Matches() {
           </Show>
           <Show when={listings().length === 0 && !data.loading && pb.authStore.model?.area && !hasNeedsAndCapacity()}>
             <p>
-              Ingen i ditt område än. Lägg till dina behov och kapacitet så att andra kan hitta dig.
+              {userTypeInfo().isSitterOnly
+                ? "Ingen i ditt område än. Lägg till din tillgänglighet så att hundägare kan hitta dig."
+                : userTypeInfo().isReceiverOnly
+                  ? "Ingen i ditt område än. Lägg till dina behov så att hundpassare kan hitta dig."
+                  : "Ingen i ditt område än. Lägg till dina behov och kapacitet så att andra kan hitta dig."}
             </p>
-            <A href="/app/needs" class="btn">
-              Lägg till behov
-            </A>
-            <A href="/app/capacity" class="btn btn-secondary" style="margin-left: 0.5rem;">
-              Lägg till kapacitet
-            </A>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+              <Show when={!userTypeInfo().isSitterOnly}>
+                <A href="/app/needs" class="btn">
+                  Lägg till behov
+                </A>
+              </Show>
+              <Show when={!userTypeInfo().isReceiverOnly}>
+                <A href="/app/capacity" class="btn btn-secondary">
+                  Lägg till kapacitet
+                </A>
+              </Show>
+            </div>
           </Show>
           <Show when={listings().length === 0 && !data.loading && pb.authStore.model?.area && hasNeedsAndCapacity()}>
             <div class="matches-too-far-empty">

@@ -6,17 +6,7 @@ import { clearOnboardingUserType, getOnboardingUserType, isReceiverOnly, isSitte
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { DogImage } from "~/components/DogImage";
-
-const SIZE_LABELS: Record<string, string> = {
-  small: "Liten",
-  medium: "Mellan",
-  large: "Stor",
-};
-
-const GENDER_LABELS: Record<string, string> = {
-  male: "Hane",
-  female: "Tik",
-};
+import { DogInfo } from "~/components/DogInfo";
 
 export default function OnboardingNeeds() {
   const nav = useNavigate();
@@ -144,14 +134,6 @@ export default function OnboardingNeeds() {
 
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
-  const formatDogInfo = (dog: { name: string; size?: string; gender?: string; breed?: string; age?: number }) => {
-    const parts = [dog.name];
-    if (dog.age != null) parts.push(`${dog.age} år`);
-    if (dog.breed) parts.push(dog.breed);
-    if (dog.gender) parts.push(GENDER_LABELS[dog.gender] || dog.gender);
-    return parts.join(", ");
-  };
-
   return (
     <OnboardingShell step={3} totalSteps={isReceiverOnly() ? 3 : 4} title="När du behöver hundpassning" nextStepHint={isReceiverOnly() ? "Nästa: Se matchningar" : "Nästa: När du kan passa hundar"} backHref="/onboarding/dogs">
       <div class="card">
@@ -186,10 +168,7 @@ export default function OnboardingNeeds() {
                       />
                       <DogImage dog={d} baseUrl={baseUrl} class="dog-card-img" style="width: 48px; height: 48px; flex-shrink: 0;" />
                       <div style="flex: 1; min-width: 0;">
-                        <strong>{d.name}</strong>
-                        <div style="font-size: 0.85rem; color: var(--color-text-muted);">
-                          {[d.age > 0 ? `${d.age} år` : null, d.breed, GENDER_LABELS[d.gender] || d.gender].filter(Boolean).join(", ")}
-                        </div>
+                        <DogInfo name={d.name} age={d.age} breed={d.breed} gender={d.gender} />
                       </div>
                     </label>
                   )}
@@ -204,30 +183,8 @@ export default function OnboardingNeeds() {
               checked={flexible()}
               onInput={(e) => setFlexible(e.currentTarget.checked)}
             />
-            <label for="flexible">Flexibel—öppen när som helst</label>
+            <label for="flexible">{flexible() ? "Datum: Flexibel" : "Datum: Specifik"}</label>
           </div>
-          <Show when={flexible()}>
-            <div class="flexible-toggle" onClick={() => setOpenAnyDuration(!openAnyDuration())}>
-              <input
-                type="checkbox"
-                id="openAnyDuration"
-                checked={openAnyDuration()}
-                onInput={(e) => setOpenAnyDuration(e.currentTarget.checked)}
-              />
-              <label for="openAnyDuration">Öppen för valfri längd</label>
-            </div>
-            <Show when={!openAnyDuration()}>
-              <div class="form-group">
-                <label for="durationSpecific">Beskriv exakt vad du behöver</label>
-                <textarea
-                  id="durationSpecific"
-                  value={durationSpecific()}
-                  onInput={(e) => setDurationSpecific(e.currentTarget.value)}
-                  placeholder="T.ex. under lunch på onsdagar, eller vardagsmorgnar"
-                />
-              </div>
-            </Show>
-          </Show>
           <Show when={!flexible()}>
             <div class="form-group">
               <label for="startDate">Startdatum</label>
@@ -236,6 +193,26 @@ export default function OnboardingNeeds() {
             <div class="form-group">
               <label for="endDate">Slutdatum</label>
               <input id="endDate" type="date" value={endDate()} onInput={(e) => setEndDate(e.currentTarget.value)} />
+            </div>
+          </Show>
+          <div class="flexible-toggle" onClick={() => setOpenAnyDuration(!openAnyDuration())}>
+            <input
+              type="checkbox"
+              id="openAnyDuration"
+              checked={openAnyDuration()}
+              onInput={(e) => setOpenAnyDuration(e.currentTarget.checked)}
+            />
+            <label for="openAnyDuration">{openAnyDuration() ? "Tid: Flexibel" : "Tid: Specifik"}</label>
+          </div>
+          <Show when={!openAnyDuration()}>
+            <div class="form-group">
+              <label for="durationSpecific">Beskriv exakt vad du behöver</label>
+              <textarea
+                id="durationSpecific"
+                value={durationSpecific()}
+                onInput={(e) => setDurationSpecific(e.currentTarget.value)}
+                placeholder="T.ex. under lunch på onsdagar, eller vardagsmorgnar"
+              />
             </div>
           </Show>
           <div class="form-group">

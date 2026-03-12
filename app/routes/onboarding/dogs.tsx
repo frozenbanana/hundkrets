@@ -5,6 +5,7 @@ import { pb } from "~/lib/pocketbase";
 import { isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { DogImage } from "~/components/DogImage";
+import { DogInfo } from "~/components/DogInfo";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
 import { ValidatedInput } from "~/components/ValidatedInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
@@ -252,7 +253,7 @@ export default function OnboardingDogs() {
                 <div class="dog-card" style="margin-bottom: 0.75rem;">
                   <DogImage dog={dog} baseUrl={baseUrl} class="dog-card-img" />
                   <div>
-                    <strong>{dog.name}</strong> • {dog.size} • {dog.gender}
+                    <DogInfo name={dog.name} age={dog.age} breed={dog.breed} gender={dog.gender} />
                   </div>
                 </div>
               )}
