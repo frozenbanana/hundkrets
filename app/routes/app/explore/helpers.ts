@@ -182,7 +182,9 @@ export type ListingItem = ReturnType<typeof findListings>[number];
 export function getFirstDog(listing: ListingItem) {
   const firstNeed = listing.needs[0];
   if (firstNeed) {
-    const dog = listing.dogs.find((d) => d.id === firstNeed.dog);
+    // Handle dog as either single ID or array of IDs
+    const dogIds = Array.isArray(firstNeed.dog) ? firstNeed.dog : firstNeed.dog ? [firstNeed.dog] : [];
+    const dog = listing.dogs.find((d) => dogIds.includes(d.id));
     return dog;
   }
   return listing.dogs[0];

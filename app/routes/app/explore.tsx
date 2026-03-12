@@ -248,7 +248,7 @@ export default function Matches() {
       if (!user) return;
       const userNeeds = needsByUser.get(uid) ?? [];
       const userCapacities = capacitiesByUser.get(uid) ?? [];
-      const userDogIds = new Set(userNeeds.map((n) => n.dog));
+      const userDogIds = new Set(userNeeds.flatMap((n) => Array.isArray(n.dog) ? n.dog : n.dog ? [n.dog] : []));
       const userDogs = [...userDogIds]
         .map((id) => dogMap.get(id))
         .filter(Boolean) as typeof dogs;

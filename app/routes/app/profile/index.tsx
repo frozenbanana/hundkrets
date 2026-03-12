@@ -338,12 +338,16 @@ export default function ProfileIndex() {
                       <div class="profile-card-dogs-list">
                         <For each={needs}>
                           {(need) => {
-                            const dog = need.dog ? data().dogs.find((d) => d.id === need.dog) : undefined;
+                            // Handle dog as either single ID or array of IDs
+                            const dogIds = Array.isArray(need.dog) ? need.dog : need.dog ? [need.dog] : [];
+                            const needDogs = dogIds.map((id) => data().dogs.find((d) => d.id === id)).filter(Boolean) as typeof data()["dogs"];
+                            const dogNames = needDogs.map((d) => d.name).join(", ") || "Hund";
+                            const firstDog = needDogs[0] ?? { name: "Hund" };
                             return (
                               <div class="profile-card-dog-item">
-                                <DogImage dog={dog ?? { name: "Hund" }} baseUrl={baseUrl} class="profile-card-dog-img" />
+                                <DogImage dog={firstDog} baseUrl={baseUrl} class="profile-card-dog-img" />
                                 <div>
-                                  <p class="profile-card-dog-name">{dog?.name ?? "Hund"}</p>
+                                  <p class="profile-card-dog-name">{dogNames}</p>
                                   <p class="profile-card-dog-meta">
                                     {needDateStr(need)}
                                     {need.notes && <span class="profile-card-list-notes"> • {need.notes}</span>}
