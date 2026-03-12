@@ -52,9 +52,6 @@ export default function Matches() {
   const [introDismissed, setIntroDismissed] = createSignal(
     typeof window !== "undefined" && localStorage.getItem("matches-intro-dismissed") === "true"
   );
-  const [mapFooterDismissed, setMapFooterDismissed] = createSignal(
-    typeof window !== "undefined" && localStorage.getItem("matches-map-footer-dismissed") === "true"
-  );
 
   const [maxDistanceKm, setMaxDistanceKm] = createSignal(DEFAULT_MAX_DISTANCE_KM);
 
@@ -1003,24 +1000,7 @@ export default function Matches() {
               </Show>
             </div>
           </div>
-            <Show when={(!isMobileViewport() || mobileViewMode() === "map") && !mapFooterDismissed()}>
-              <div class="matches-footer-note-container matches-footer-overlay">
-                <p class="matches-footer-note-text">Zooma in för att filtrera. Klicka på ett kort eller en markör för att se detaljer.</p>
-                <button
-                  type="button"
-                  class="matches-footer-dismiss"
-                  onClick={() => {
-                    localStorage.setItem("matches-map-footer-dismissed", "true");
-                    setMapFooterDismissed(true);
-                  }}
-                  aria-label="Stäng"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </Show>
+            
           </div>
         </Show>
       </div>
