@@ -970,6 +970,27 @@ nav a {
   margin: 0 0 0.5rem;
 }
 
+.landing-footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.landing-footer p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.landing-footer a {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.landing-footer a:hover {
+  color: var(--color-paw);
+}
+
 /* Dog gallery - floating/gliding animation */
 .dog-gallery {
   position: relative;

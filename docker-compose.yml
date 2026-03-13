@@ -60,3 +60,4 @@ services:
 
 volumes:
   pb_data:
+

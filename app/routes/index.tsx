@@ -34,6 +34,13 @@ export default function Home() {
         <p class="landing-gallery-heading">Hundar som finns på Hundkrets</p>
         <DogGallery />
         <LandingMap style={{ height: "280px" }} />
+        <footer class="landing-footer">
+          <p>
+            <A href="/integritetspolicy">Integritetspolicy</A>
+            <span style="margin: 0 0.5rem; color: var(--color-text-muted);">•</span>
+            <A href="/anvandarvillkor">Användarvillkor</A>
+          </p>
+        </footer>
       </div>
     </div>
   );
