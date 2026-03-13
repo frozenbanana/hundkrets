@@ -15,8 +15,12 @@ function translateToSwedish(msg: string): string {
   if (lower.includes("invalid") && lower.includes("token")) {
     return "Ogiltig eller utgången länk.";
   }
-  // OAuth errors
-  if (lower.includes("something went wrong") || lower.includes("oauth")) {
+  // Generic error from backend
+  if (lower.includes("something went wrong")) {
+    return "Något gick fel. Försök igen senare.";
+  }
+  // OAuth-specific errors
+  if (lower.includes("oauth")) {
     return "Inloggning via Google är för närvarande inte tillgänglig. Försök igen senare eller använd e-post och lösenord.";
   }
   return msg;
