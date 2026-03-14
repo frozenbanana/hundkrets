@@ -14,9 +14,9 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   const nav = useNavigate();
   const user = () => {
     authVersion(); // Re-render when auth data changes (e.g. avatar upload)
-    return pb.authStore.model;
+    return pb?.authStore?.model;
   };
-  const me = () => (pb.authStore.isValid ? pb.authStore.model?.id : undefined);
+  const me = () => (pb?.authStore?.isValid ? pb.authStore.model?.id : undefined);
   const [menuOpen, setMenuOpen] = createSignal(false);
   let menuLinksRef: HTMLDivElement | undefined;
   let hamburgerRef: HTMLButtonElement | undefined;
@@ -130,7 +130,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   });
 
   onMount(() => {
-    if (!pb.authStore.isValid) {
+    if (!pb?.authStore?.isValid) {
       nav("/login", { replace: true });
       return;
     }
@@ -157,7 +157,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   });
 
   function logout() {
-    pb.authStore.clear();
+    pb?.authStore?.clear();
     nav("/", { replace: true });
   }
 

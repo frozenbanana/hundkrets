@@ -62,7 +62,7 @@ function persistDismissed(userId: string, dismissed: Set<string>): void {
 
 export function AdminMessageBanner() {
   const [dismissed, setDismissed] = createSignal<Set<string>>(new Set());
-  const userId = () => (pb.authStore.isValid ? pb.authStore.model?.id ?? null : null);
+  const userId = () => (pb?.authStore?.isValid ? pb.authStore.model?.id ?? null : null);
   const pathname = () => (typeof window === "undefined" ? "" : window.location.pathname);
 
   createEffect(() => {

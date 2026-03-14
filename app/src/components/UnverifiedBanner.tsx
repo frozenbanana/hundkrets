@@ -7,7 +7,7 @@ import { showToast } from "~/lib/toast";
 export function UnverifiedBanner() {
   authVersion(); // Re-render when auth is refreshed
   const show = () => {
-    if (!pb.authStore.isValid) return false;
+    if (!pb?.authStore?.isValid) return false;
     const m = pb.authStore.model as { verified?: boolean; onboarding_complete?: boolean; area?: string } | null;
     if (m?.verified === true) return false;
     // Visa bara när användaren har slutfört hela onboarding och loggat in igen. Inte under onboarding (steg 1–4).
@@ -17,7 +17,7 @@ export function UnverifiedBanner() {
   const [resendLoading, setResendLoading] = createSignal(false);
 
   async function handleResendVerification() {
-    const email = (pb.authStore.model?.email as string) ?? "";
+    const email = (pb?.authStore?.model?.email as string) ?? "";
     if (!email) return;
     setResendLoading(true);
     try {
