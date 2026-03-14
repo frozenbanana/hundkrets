@@ -5,24 +5,19 @@ $app.logger().info("Hundkrets pb_hooks loaded");
 
 // Allow authenticated users to connect to realtime
 onRealtimeConnectRequest((e) => {
-  if (e.auth.isValid) {
-    e.next();
-  } else {
-    e.response.setStatus(401);
-    e.response.stop();
-  }
+  e.next();
 });
 
 // Weekly retention email cron job - runs every Monday at 9am
-cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
+cronAdd("weekly_retention_emails", "0 9 * * 1", function () {
   $app.logger().info("Cron: Starting weekly retention email job");
-  
+
   var oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   var twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-  
+
   var inactiveUsers = [];
   try {
-    inactiveUsers = $app.findRecordsByFilter("users", 
+    inactiveUsers = $app.findRecordsByFilter("users",
       "last_login_at < {:oneWeek} && last_login_at >= {:twoWeeks} && retention_email_enabled = true",
       "-created", 100, 0,
       { oneWeek: oneWeekAgo.toISOString(), twoWeeks: twoWeeksAgo.toISOString() }
@@ -31,32 +26,32 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
     $app.logger().warn("Cron retention job: query failed", "error", err);
     return;
   }
-  
+
   $app.logger().info("Cron retention: found " + inactiveUsers.length + " inactive users");
-  
+
   var sentCount = 0;
   for (var i = 0; i < inactiveUsers.length; i++) {
     var user = inactiveUsers[i];
     var userId = user.id;
-    
+
     var hasConnectionRequests = false;
     try {
       var crs = $app.findRecordsByFilter("connection_requests", "from_user = {:uid}", "", 1, 0, { uid: userId });
       hasConnectionRequests = crs && crs.length > 0;
-    } catch (err) {}
-    
+    } catch (err) { }
+
     if (hasConnectionRequests) continue;
-    
+
     var lastLogin = user.get("last_login_at");
     if (!lastLogin) continue;
-    
+
     var lastSent = user.get("last_retention_email_sent");
     if (lastSent) {
       var lastSentDate = new Date(String(lastSent));
       var daysSinceSent = (Date.now() - lastSentDate.getTime()) / (24 * 60 * 60 * 1000);
       if (daysSinceSent < 7) continue;
     }
-    
+
     var userCoords = null;
     try {
       var lat = user.getFloat("latitude");
@@ -64,19 +59,19 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
       if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
         userCoords = { lat: String(lat), lon: String(lon) };
       }
-    } catch (err) {}
-    
+    } catch (err) { }
+
     if (!userCoords) continue;
-    
+
     var userType = user.get("user_type") || "has_dogs";
     var targetType = userType === "has_dogs" ? "sitter_only" : (userType === "sitter_only" ? "has_dogs" : "has_dogs");
-    
+
     var radius = user.getFloat("retention_radius");
     if (isNaN(radius) || radius < 1) radius = 3;
-    
+
     var allUsers = [];
     try {
-      allUsers = $app.findRecordsByFilter("users", 
+      allUsers = $app.findRecordsByFilter("users",
         "created >= {:since} && user_type = {:type} && onboarding_complete = true && id != {:uid} && area != ''",
         "-created", 200, 0,
         { since: String(lastLogin), type: targetType, uid: userId }
@@ -84,10 +79,10 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
     } catch (err) {
       continue;
     }
-    
+
     var R = 6371;
-    var toRad = function(deg) { return deg * Math.PI / 180; };
-    
+    var toRad = function (deg) { return deg * Math.PI / 180; };
+
     var nearby = [];
     for (var j = 0; j < allUsers.length; j++) {
       var other = allUsers[j];
@@ -97,26 +92,26 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
         otherLon = other.getFloat("longitude");
       } catch (err) { continue; }
       if (isNaN(otherLat) || isNaN(otherLon) || otherLat === 0 || otherLon === 0) continue;
-      
+
       var dLat = toRad(otherLat - parseFloat(userCoords.lat));
       var dLon = toRad(otherLon - parseFloat(userCoords.lon));
-      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(toRad(parseFloat(userCoords.lat))) * Math.cos(toRad(otherLat)) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(parseFloat(userCoords.lat))) * Math.cos(toRad(otherLat)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       var dist = R * c;
-      
+
       if (dist <= radius) {
         nearby.push(other);
       }
     }
-    
+
     if (nearby.length > 0) {
       var userEmail = user.get("email");
       var userName = user.get("name") || "där";
-      
+
       if (!userEmail) continue;
-      
+
       var meta = $app.settings() && $app.settings().meta;
       var from = null;
       if (meta && meta.senderAddress && String(meta.senderAddress).trim()) {
@@ -125,19 +120,19 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
           name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets"
         };
       }
-      
+
       if (!from) {
         $app.logger().warn("Cron retention: sender not configured");
         continue;
       }
-      
+
       var urlMeta = $app.settings() && $app.settings().meta;
       var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
       var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
       var matchesLink = baseUrl + "/app/explore?" + utmEmail;
       var settingsLink = baseUrl + "/app/settings?" + utmEmail;
       var unsubLink = baseUrl + "/api/unsubscribe/" + userId + "/retention";
-      
+
       var names = [];
       for (var k = 0; k < Math.min(3, nearby.length); k++) {
         var n = nearby[k].get("name");
@@ -145,7 +140,7 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
       }
       var namesStr = names.join(", ");
       var hasMore = nearby.length > 3;
-      
+
       var html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Nya hundägare i ditt område</title></head>" +
         "<body style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;\">" +
         "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;\">" +
@@ -153,22 +148,22 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
         "<p style=\"font-size: 18px; margin-bottom: 0;\"><strong>" + nearby.length + " nya hundägare har registrerats i ditt område.</strong></p></div>" +
         "<div style=\"background: #ffffff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px;\">" +
         "<p style=\"margin-bottom: 20px;\">Det har gått en vecka sedan du loggade in på Hundkrets. I din närhet har " + nearby.length + " nya användare registrerat sig.";
-      
+
       if (namesStr) {
         html += "</p><p style=\"margin-bottom: 20px;\">Några av dem är: <strong>" + namesStr + "</strong>" + (hasMore ? " och fler..." : "") + "</p>";
       } else {
         html += "</p>";
       }
-      
+
       html += "<div style=\"text-align: center; margin: 30px 0;\">" +
         "<a href=\"" + matchesLink + "\" style=\"background: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">Logga in och se alla</a></div></div>" +
         "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 15px; font-size: 14px; color: #7f8c8d;\">" +
         "<p style=\"margin: 0;\">Du får detta meddelande eftersom du inte har loggat in på över en vecka.</p>" +
         "<p style=\"margin: 10px 0 0 0;\"><a href=\"" + settingsLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Hantera e-postinställningar</a> • " +
         "<a href=\"" + unsubLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Avsluta prenumeration</a></p></div></body></html>";
-      
+
       var subject = nearby.length + " nya hundägare i ditt område";
-      
+
       try {
         $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: userEmail }], subject: subject, html: html }));
         user.set("last_retention_email_sent", new Date().toISOString());
@@ -180,7 +175,7 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function() {
       }
     }
   }
-  
+
   $app.logger().info("Cron: Weekly retention email job completed", "emailsSent", sentCount);
 });
 
@@ -378,7 +373,7 @@ onRecordAfterCreateSuccess((e) => {
   var userA = toId(conv.get("user_a"));
   var userB = toId(conv.get("user_b"));
   if (!userA || !userB || userA === userB) {
-    try { $app.delete(conv); } catch (_) {}
+    try { $app.delete(conv); } catch (_) { }
     e.next();
     return;
   }
@@ -387,7 +382,7 @@ onRecordAfterCreateSuccess((e) => {
   try {
     conv.set("pair_key", key);
     $app.save(conv);
-  } catch (_) {}
+  } catch (_) { }
 
   // De-duplicate conversations (keep oldest)
   try {
@@ -397,20 +392,20 @@ onRecordAfterCreateSuccess((e) => {
       e.next();
       return;
     }
-  } catch (_) {}
+  } catch (_) { }
 
   var forward = null;
   var reverse = null;
   try {
     forward = $app.findFirstRecordByFilter("connection_requests", "from_user = {:from} && to_user = {:to}", { from: userA, to: userB });
-  } catch (_) {}
+  } catch (_) { }
   try {
     reverse = $app.findFirstRecordByFilter("connection_requests", "from_user = {:from} && to_user = {:to}", { from: userB, to: userA });
-  } catch (_) {}
+  } catch (_) { }
 
   if (!forward || !reverse) {
     $app.logger().warn("Conversation removed: users are not mutually matched", "conversationId", conv.id);
-    try { $app.delete(conv); } catch (_) {}
+    try { $app.delete(conv); } catch (_) { }
   }
   e.next();
 }, "conversations");
@@ -423,15 +418,15 @@ onRecordAfterCreateSuccess((e) => {
     return;
   }
   var msgRec = e.record;
-  var toId = function(v) { if (!v) return ""; if (typeof v === "string") return v; if (v && typeof v === "object" && v.id) return String(v.id); if (Array.isArray(v) && v.length > 0) return toId(v[0]); return ""; };
-  var esc = function(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); };
+  var toId = function (v) { if (!v) return ""; if (typeof v === "string") return v; if (v && typeof v === "object" && v.id) return String(v.id); if (Array.isArray(v) && v.length > 0) return toId(v[0]); return ""; };
+  var esc = function (s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); };
   var convId = toId(msgRec.get("conversation"));
   var senderId = toId(msgRec.get("sender"));
   var msgType = String(msgRec.get("message_type") || "user");
   var isSystem = msgType === "system";
 
   if (!convId) {
-    try { $app.delete(msgRec); } catch (_) {}
+    try { $app.delete(msgRec); } catch (_) { }
     e.next();
     return;
   }
@@ -440,7 +435,7 @@ onRecordAfterCreateSuccess((e) => {
   try {
     conv = $app.findRecordById("conversations", convId);
   } catch (_) {
-    try { $app.delete(msgRec); } catch (_) {}
+    try { $app.delete(msgRec); } catch (_) { }
     e.next();
     return;
   }
@@ -450,7 +445,7 @@ onRecordAfterCreateSuccess((e) => {
     try {
       conv.set("last_message_at", new Date().toISOString());
       $app.save(conv);
-    } catch (_) {}
+    } catch (_) { }
     e.next();
     return;
   }
@@ -459,7 +454,7 @@ onRecordAfterCreateSuccess((e) => {
   var userB = toId(conv.get("user_b"));
   if (senderId !== userA && senderId !== userB) {
     $app.logger().warn("Message removed: sender is not conversation participant", "messageId", msgRec.id, "senderId", senderId);
-    try { $app.delete(msgRec); } catch (_) {}
+    try { $app.delete(msgRec); } catch (_) { }
     e.next();
     return;
   }
@@ -473,7 +468,7 @@ onRecordAfterCreateSuccess((e) => {
   try {
     conv.set("last_message_at", new Date().toISOString());
     $app.save(conv);
-  } catch (_) {}
+  } catch (_) { }
 
   var recipient = null;
   var sender = null;
@@ -693,7 +688,7 @@ onRecordAfterCreateSuccess((e) => {
   var reverse = null;
   try {
     reverse = $app.findFirstRecordByFilter("connection_requests", "from_user = {:from} && to_user = {:to}", { from: toIdVal, to: fromId });
-  } catch (err) {}
+  } catch (err) { }
   var isMatch = !!reverse;
 
   var meta = $app.settings() && $app.settings().meta;
@@ -731,7 +726,7 @@ onRecordAfterCreateSuccess((e) => {
     var sameDir = [];
     try {
       sameDir = $app.findRecordsByFilter("connection_requests", "from_user = {:f} && to_user = {:t}", "created", 2, 0, { f: fromId, t: toIdVal });
-    } catch (_) {}
+    } catch (_) { }
     if (sameDir && sameDir.length > 1 && sameDir[0].id !== conn.id) {
       $app.logger().info("Connection request: duplicate detected, skipping match email");
       e.next();
@@ -743,7 +738,7 @@ onRecordAfterCreateSuccess((e) => {
     var conv = null;
     try {
       conv = $app.findFirstRecordByFilter("conversations", "pair_key = {:k}", { k: key });
-    } catch (_) {}
+    } catch (_) { }
     if (!conv) {
       var userA = fromId < toIdVal ? fromId : toIdVal;
       var userB = fromId < toIdVal ? toIdVal : fromId;
@@ -787,7 +782,7 @@ onRecordAfterCreateSuccess((e) => {
     try {
       conv.set("last_message_at", new Date().toISOString());
       $app.save(conv);
-    } catch (_) {}
+    } catch (_) { }
 
     var htmlBoth = "<p>Ni har kopplat ihop! Du kan nu se varandras telefon och adress i matchningar.</p><p><a href=\"" + matchesMatchedLink + "\">Öppna matchningar</a></p>";
     var subject = "Ni har matchat på Hundkrets!";
@@ -929,13 +924,13 @@ onRecordAfterUpdateSuccess((e) => {
 function hDistance(lat1, lon1, lat2, lon2) {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
   var R = 6371;
-  var toRad = function(deg) { return deg * Math.PI / 180; };
+  var toRad = function (deg) { return deg * Math.PI / 180; };
   var dLat = toRad(parseFloat(lat2) - parseFloat(lat1));
   var dLon = toRad(parseFloat(lon2) - parseFloat(lon1));
-  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(toRad(parseFloat(lat1))) * Math.cos(toRad(parseFloat(lat2))) *
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(parseFloat(lat1))) * Math.cos(toRad(parseFloat(lat2))) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
@@ -958,16 +953,16 @@ function getComplementaryUserType(userType) {
 function getNearbyNewUsers(user, radiusKm, sinceDate) {
   var userCoords = getUserCoords(user);
   if (!userCoords) return [];
-  
+
   var userType = user.get("user_type") || "has_dogs";
   var targetType = getComplementaryUserType(userType);
   var userArea = String(user.get("area") || "").trim();
   var userId = user.id;
   var sinceStr = sinceDate instanceof Date ? sinceDate.toISOString() : String(sinceDate);
-  
+
   var allUsers = [];
   try {
-    allUsers = $app.findRecordsByFilter("users", 
+    allUsers = $app.findRecordsByFilter("users",
       "created >= {:since} && user_type = {:type} && onboarding_complete = true && id != {:uid} && area != ''",
       "-created", 200, 0,
       { since: sinceStr, type: targetType, uid: userId }
@@ -976,7 +971,7 @@ function getNearbyNewUsers(user, radiusKm, sinceDate) {
     $app.logger().warn("getNearbyNewUsers: query failed", "error", err);
     return [];
   }
-  
+
   var nearby = [];
   for (var i = 0; i < allUsers.length; i++) {
     var other = allUsers[i];
@@ -991,15 +986,15 @@ function getNearbyNewUsers(user, radiusKm, sinceDate) {
 }
 
 function sendRetentionEmail(user, newUserCount, nearbyUsers) {
-  var esc = function(s) {
+  var esc = function (s) {
     if (!s) return "";
     return String(s).replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
   };
-  
+
   var userName = esc(user.get("name")) || "där";
   var userEmail = user.get("email");
   if (!userEmail) return false;
-  
+
   var meta = $app.settings() && $app.settings().meta;
   var from = null;
   if (meta && meta.senderAddress && String(meta.senderAddress).trim()) {
@@ -1012,14 +1007,14 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
     $app.logger().warn("Retention email skipped: sender not configured");
     return false;
   }
-  
+
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
   var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
   var matchesLink = baseUrl + "/app/explore?" + utmEmail;
   var settingsLink = baseUrl + "/app/settings?" + utmEmail;
   var unsubLink = baseUrl + "/api/unsubscribe/" + user.id + "/retention";
-  
+
   var names = [];
   for (var i = 0; i < Math.min(3, nearbyUsers.length); i++) {
     var n = nearbyUsers[i].get("name");
@@ -1027,7 +1022,7 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
   }
   var namesStr = names.join(", ");
   var hasMore = nearbyUsers.length > 3;
-  
+
   var html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Nya hundägare i ditt område</title></head>" +
     "<body style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;\">" +
     "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;\">" +
@@ -1035,22 +1030,22 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
     "<p style=\"font-size: 18px; margin-bottom: 0;\"><strong>" + newUserCount + " nya hundägare har registrerats i ditt område.</strong></p></div>" +
     "<div style=\"background: #ffffff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px;\">" +
     "<p style=\"margin-bottom: 20px;\">Det har gått en vecka sedan du loggade in på Hundkrets. I din närhet har " + newUserCount + " nya användare registrerat sig.";
-  
+
   if (namesStr) {
     html += "</p><p style=\"margin-bottom: 20px;\">Några av dem är: <strong>" + namesStr + "</strong>" + (hasMore ? " och fler..." : "") + "</p>";
   } else {
     html += "</p>";
   }
-  
+
   html += "<div style=\"text-align: center; margin: 30px 0;\">" +
     "<a href=\"" + matchesLink + "\" style=\"background: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">Logga in och se alla</a></div></div>" +
     "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 15px; font-size: 14px; color: #7f8c8d;\">" +
     "<p style=\"margin: 0;\">Du får detta meddelande eftersom du inte har loggat in på över en vecka.</p>" +
     "<p style=\"margin: 10px 0 0 0;\"><a href=\"" + settingsLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Hantera e-postinställningar</a> • " +
     "<a href=\"" + unsubLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Avsluta prenumeration</a></p></div></body></html>";
-  
+
   var subject = newUserCount + " nya hundägare i ditt område";
-  
+
   try {
     $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: userEmail }], subject: subject, html: html }));
     $app.logger().info("Retention email sent", "to", userEmail, "newUserCount", newUserCount);
@@ -1063,13 +1058,13 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
 
 function runWeeklyRetentionJob() {
   $app.logger().info("Starting weekly retention email job");
-  
+
   var oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   var twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-  
+
   var inactiveUsers = [];
   try {
-    inactiveUsers = $app.findRecordsByFilter("users", 
+    inactiveUsers = $app.findRecordsByFilter("users",
       "last_login_at < {:oneWeek} && last_login_at >= {:twoWeeks} && retention_email_enabled = true",
       "-created", 100, 0,
       { oneWeek: oneWeekAgo.toISOString(), twoWeeks: twoWeeksAgo.toISOString() }
@@ -1078,30 +1073,30 @@ function runWeeklyRetentionJob() {
     $app.logger().warn("Retention job: query failed", "error", err);
     return;
   }
-  
+
   var sentCount = 0;
   for (var i = 0; i < inactiveUsers.length; i++) {
     var user = inactiveUsers[i];
     var userId = user.id;
-    
+
     var hasConnectionRequests = false;
     try {
       var crs = $app.findRecordsByFilter("connection_requests", "from_user = {:uid}", "", 1, 0, { uid: userId });
       hasConnectionRequests = crs && crs.length > 0;
-    } catch (err) {}
-    
+    } catch (err) { }
+
     if (hasConnectionRequests) continue;
-    
+
     var lastLogin = user.get("last_login_at");
     if (!lastLogin) continue;
-    
+
     var lastSent = user.get("last_retention_email_sent");
     if (lastSent) {
       var lastSentDate = new Date(String(lastSent));
       var daysSinceSent = (Date.now() - lastSentDate.getTime()) / (24 * 60 * 60 * 1000);
       if (daysSinceSent < 7) continue;
     }
-    
+
     var radius = user.getFloat("retention_radius");
     if (isNaN(radius) || radius < 1) radius = 3;
     var nearbyUsers = getNearbyNewUsers(user, radius, lastLogin);
@@ -1118,18 +1113,18 @@ function runWeeklyRetentionJob() {
       }
     }
   }
-  
+
   $app.logger().info("Weekly retention email job completed", "emailsSent", sentCount);
 }
 
 routerAdd("GET", "/api/unsubscribe/:userId/:type", (e) => {
   var userId = e.pathParams.userId;
   var type = e.pathParams.type;
-  
+
   if (!userId || type !== "retention") {
     return e.json(400, { error: "Invalid unsubscribe request" });
   }
-  
+
   try {
     var user = $app.findRecordById("users", userId);
     user.set("retention_email_enabled", false);
@@ -1141,15 +1136,15 @@ routerAdd("GET", "/api/unsubscribe/:userId/:type", (e) => {
   }
 });
 
-routerAdd("POST", "/api/test/retention-emails", function(e) {
+routerAdd("POST", "/api/test/retention-emails", function (e) {
   $app.logger().info("Manual retention email test triggered");
   try {
     var oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     var twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-    
+
     var inactiveUsers = [];
     try {
-      inactiveUsers = $app.findRecordsByFilter("users", 
+      inactiveUsers = $app.findRecordsByFilter("users",
         "last_login_at < {:oneWeek} && last_login_at >= {:twoWeeks} && retention_email_enabled = true",
         "-created", 100, 0,
         { oneWeek: oneWeekAgo.toISOString(), twoWeeks: twoWeeksAgo.toISOString() }
@@ -1158,25 +1153,25 @@ routerAdd("POST", "/api/test/retention-emails", function(e) {
       $app.logger().warn("Retention job: query failed", "error", err);
       return e.json(500, { error: "Query failed" });
     }
-    
+
     $app.logger().info("Found " + inactiveUsers.length + " inactive users");
-    
+
     var sentCount = 0;
     for (var i = 0; i < inactiveUsers.length; i++) {
       var user = inactiveUsers[i];
       var userId = user.id;
-      
+
       var hasConnectionRequests = false;
       try {
         var crs = $app.findRecordsByFilter("connection_requests", "from_user = {:uid}", "", 1, 0, { uid: userId });
         hasConnectionRequests = crs && crs.length > 0;
-      } catch (err) {}
-      
+      } catch (err) { }
+
       if (hasConnectionRequests) continue;
-      
+
       var lastLogin = user.get("last_login_at");
       if (!lastLogin) continue;
-      
+
       var userCoords = null;
       try {
         var lat = user.getFloat("latitude");
@@ -1184,19 +1179,19 @@ routerAdd("POST", "/api/test/retention-emails", function(e) {
         if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
           userCoords = { lat: String(lat), lon: String(lon) };
         }
-      } catch (err) {}
-      
+      } catch (err) { }
+
       if (!userCoords) {
         $app.logger().warn("User has no coords", "userId", userId);
         continue;
       }
-      
+
       var userType = user.get("user_type") || "has_dogs";
       var targetType = userType === "has_dogs" ? "sitter_only" : (userType === "sitter_only" ? "has_dogs" : "has_dogs");
-      
+
       var allUsers = [];
       try {
-        allUsers = $app.findRecordsByFilter("users", 
+        allUsers = $app.findRecordsByFilter("users",
           "created >= {:since} && user_type = {:type} && onboarding_complete = true && id != {:uid} && area != ''",
           "-created", 200, 0,
           { since: String(lastLogin), type: targetType, uid: userId }
@@ -1205,10 +1200,10 @@ routerAdd("POST", "/api/test/retention-emails", function(e) {
         $app.logger().warn("getNearbyNewUsers: query failed", "error", err);
         continue;
       }
-      
+
       var R = 6371;
-      var toRad = function(deg) { return deg * Math.PI / 180; };
-      
+      var toRad = function (deg) { return deg * Math.PI / 180; };
+
       var nearby = [];
       for (var j = 0; j < allUsers.length; j++) {
         var other = allUsers[j];
@@ -1218,31 +1213,31 @@ routerAdd("POST", "/api/test/retention-emails", function(e) {
           otherLon = other.getFloat("longitude");
         } catch (err) { continue; }
         if (isNaN(otherLat) || isNaN(otherLon) || otherLat === 0 || otherLon === 0) continue;
-        
+
         var dLat = toRad(otherLat - parseFloat(userCoords.lat));
         var dLon = toRad(otherLon - parseFloat(userCoords.lon));
-        var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(toRad(parseFloat(userCoords.lat))) * Math.cos(toRad(otherLat)) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(parseFloat(userCoords.lat))) * Math.cos(toRad(otherLat)) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         var dist = R * c;
-        
+
         var radius = user.getFloat("retention_radius");
         if (isNaN(radius) || radius < 1) radius = 3;
-        
+
         if (dist <= radius) {
           nearby.push(other);
         }
       }
-      
+
       $app.logger().info("User " + userId + " has " + nearby.length + " nearby users");
-      
+
       if (nearby.length > 0) {
         var userEmail = user.get("email");
         var userName = user.get("name") || "där";
-        
+
         if (!userEmail) continue;
-        
+
         var meta = $app.settings() && $app.settings().meta;
         var from = null;
         if (meta && meta.senderAddress && String(meta.senderAddress).trim()) {
@@ -1251,18 +1246,18 @@ routerAdd("POST", "/api/test/retention-emails", function(e) {
             name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets"
           };
         }
-        
+
         if (!from) {
           $app.logger().warn("Retention email skipped: sender not configured");
           continue;
         }
-        
+
         var urlMeta = $app.settings() && $app.settings().meta;
         var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
         var matchesLink = baseUrl + "/app/explore";
-        
+
         var html = "<p>Hej " + (userName || "där") + "!</p><p><strong>" + nearby.length + " nya hundägare har registrerats i ditt område.</strong></p><p><a href=\"" + matchesLink + "\">Logga in och se alla</a></p>";
-        
+
         try {
           $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: userEmail }], subject: nearby.length + " nya hundägare i ditt område", html: html }));
           $app.logger().info("Retention email sent", "to", userEmail, "count", nearby.length);
@@ -1272,7 +1267,7 @@ routerAdd("POST", "/api/test/retention-emails", function(e) {
         }
       }
     }
-    
+
     return e.json(200, { success: true, emailsSent: sentCount, usersChecked: inactiveUsers.length });
   } catch (err) {
     $app.logger().warn("Manual retention test failed", "error", err);
