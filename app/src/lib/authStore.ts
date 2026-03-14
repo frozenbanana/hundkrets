@@ -6,7 +6,7 @@ export const [authVersion, setAuthVersion] = createSignal(0);
 
 /** Refresh auth from server to get latest user data (e.g. after email verification). */
 export async function refreshAuth(): Promise<void> {
-  if (!pb.authStore.isValid) return;
+  if (!pb?.authStore?.isValid) return;
   await pb.collection("users").authRefresh();
   setAuthVersion((v) => v + 1);
 }
