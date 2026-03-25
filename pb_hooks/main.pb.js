@@ -67,18 +67,109 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function () {
 
     var radius = user.getFloat("retention_radius");
     if (isNaN(radius) || radius < 1) radius = 3;
-    var nearbyUsers = getNearbyNewUsers(user, radius, lastLogin);
-    if (nearbyUsers.length > 0) {
-      var emailSent = sendRetentionEmail(user, nearbyUsers.length, nearbyUsers);
-      if (emailSent) {
-        try {
-          user.set("last_retention_email_sent", new Date().toISOString());
-          $app.save(user);
-        } catch (err) {
-          $app.logger().warn("Cron retention: could not update last_sent", "error", err);
-        }
-        sentCount++;
+    var userCoords = null;
+    try {
+      var myLat = user.getFloat("latitude");
+      var myLon = user.getFloat("longitude");
+      if (!isNaN(myLat) && !isNaN(myLon) && myLat !== 0 && myLon !== 0) {
+        userCoords = { lat: myLat, lon: myLon };
       }
+    } catch (err) { }
+    if (!userCoords) continue;
+
+    var allUsers = [];
+    try {
+      allUsers = $app.findRecordsByFilter(
+        "users",
+        "created >= {:since} && onboarding_complete = true && id != {:uid} && area != ''",
+        "-created",
+        200,
+        0,
+        { since: String(lastLogin), uid: userId }
+      );
+    } catch (err) {
+      $app.logger().warn("Cron retention: nearby query failed", "error", err);
+      continue;
+    }
+
+    var R = 6371;
+    var toRad = function (deg) { return deg * Math.PI / 180; };
+    var nearbyUsers = [];
+    for (var j = 0; j < allUsers.length; j++) {
+      var other = allUsers[j];
+      var otherLat, otherLon;
+      try {
+        otherLat = other.getFloat("latitude");
+        otherLon = other.getFloat("longitude");
+      } catch (err) { continue; }
+      if (isNaN(otherLat) || isNaN(otherLon) || otherLat === 0 || otherLon === 0) continue;
+
+      var dLat = toRad(otherLat - userCoords.lat);
+      var dLon = toRad(otherLon - userCoords.lon);
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(userCoords.lat)) * Math.cos(toRad(otherLat)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      var dist = R * c;
+      if (dist <= radius) nearbyUsers.push(other);
+    }
+
+    if (nearbyUsers.length === 0) continue;
+
+    var meta = $app.settings() && $app.settings().meta;
+    var from = null;
+    if (meta && meta.senderAddress && String(meta.senderAddress).trim()) {
+      from = {
+        address: String(meta.senderAddress).trim(),
+        name: (meta.senderName && String(meta.senderName).trim()) ? String(meta.senderName).trim() : "Hundkrets"
+      };
+    }
+    if (!from) {
+      $app.logger().warn("Cron retention: sender not configured");
+      continue;
+    }
+
+    var userName = String(user.get("name") || "där");
+    var urlMeta = $app.settings() && $app.settings().meta;
+    var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
+    var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
+    var matchesLink = baseUrl + "/app/explore?" + utmEmail;
+    var settingsLink = baseUrl + "/app/settings?" + utmEmail;
+    var unsubLink = baseUrl + "/api/unsubscribe/" + userId + "/retention";
+
+    var names = [];
+    for (var k = 0; k < Math.min(3, nearbyUsers.length); k++) {
+      var n = nearbyUsers[k].get("name");
+      if (n) names.push(String(n));
+    }
+    var namesStr = names.join(", ");
+    var hasMore = nearbyUsers.length > 3;
+    var html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Nya hundägare i ditt område</title></head>" +
+      "<body style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;\">" +
+      "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;\">" +
+      "<h2 style=\"color: #2c3e50; margin-top: 0;\">Hej " + userName + "!</h2>" +
+      "<p style=\"font-size: 18px; margin-bottom: 0;\"><strong>" + nearbyUsers.length + " nya hundägare har registrerats i ditt område.</strong></p></div>" +
+      "<div style=\"background: #ffffff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px;\">" +
+      "<p style=\"margin-bottom: 20px;\">Det har gått en vecka sedan du loggade in på Hundkrets. I din närhet har " + nearbyUsers.length + " nya användare registrerat sig.";
+    if (namesStr) {
+      html += "</p><p style=\"margin-bottom: 20px;\">Några av dem är: <strong>" + namesStr + "</strong>" + (hasMore ? " och fler..." : "") + "</p>";
+    } else {
+      html += "</p>";
+    }
+    html += "<div style=\"text-align: center; margin: 30px 0;\">" +
+      "<a href=\"" + matchesLink + "\" style=\"background: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">Logga in och se alla</a></div></div>" +
+      "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 15px; font-size: 14px; color: #7f8c8d;\">" +
+      "<p style=\"margin: 0;\">Du får detta meddelande eftersom du inte har loggat in på över en vecka.</p>" +
+      "<p style=\"margin: 10px 0 0 0;\"><a href=\"" + settingsLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Hantera e-postinställningar</a> • " +
+      "<a href=\"" + unsubLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Avsluta prenumeration</a></p></div></body></html>";
+
+    try {
+      $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: userEmail }], subject: nearbyUsers.length + " nya hundägare i ditt område", html: html }));
+      user.set("last_retention_email_sent", new Date().toISOString());
+      $app.save(user);
+      sentCount++;
+    } catch (err) {
+      $app.logger().warn("Cron retention: email failed", "error", err);
     }
   }
 
