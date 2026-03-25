@@ -11,7 +11,78 @@ onRealtimeConnectRequest((e) => {
 // Weekly retention email cron job - runs every Monday at 9am
 cronAdd("weekly_retention_emails", "0 9 * * 1", function () {
   $app.logger().info("Cron: Starting weekly retention email job");
-  var result = runWeeklyRetentionJob();
+  var oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  var inactiveUsers = [];
+  try {
+    inactiveUsers = $app.findRecordsByFilter("users",
+      "last_login_at < {:oneWeek} && retention_email_enabled = true",
+      "-created", 100, 0,
+      { oneWeek: oneWeekAgo.toISOString() }
+    );
+  } catch (err) {
+    $app.logger().warn("Cron retention job: query failed", "error", err);
+    return;
+  }
+
+  var sentCount = 0;
+  for (var i = 0; i < inactiveUsers.length; i++) {
+    var user = inactiveUsers[i];
+    var userId = user.id;
+
+    var hasConnectionRequests = false;
+    try {
+      var crs = $app.findRecordsByFilter("connection_requests", "from_user = {:uid}", "", 1, 0, { uid: userId });
+      hasConnectionRequests = crs && crs.length > 0;
+    } catch (err) { }
+
+    if (hasConnectionRequests) continue;
+
+    var lastLogin = user.get("last_login_at");
+    if (!lastLogin) continue;
+
+    var lastSent = user.get("last_retention_email_sent");
+    if (lastSent) {
+      var lastSentDate = new Date(String(lastSent));
+      var daysSinceSent = (Date.now() - lastSentDate.getTime()) / (24 * 60 * 60 * 1000);
+      if (daysSinceSent < 7) continue;
+    }
+
+    var userEmail = user.get("email");
+    if (!userEmail) continue;
+
+    try {
+      var previousRetention = $app.findRecordsByFilter(
+        "email_log",
+        "type = 'retention' && to ~ {:email}",
+        "-sent_at",
+        3,
+        0,
+        { email: String(userEmail) }
+      );
+      if (previousRetention && previousRetention.length >= 3) continue;
+    } catch (err) {
+      $app.logger().warn("Cron retention: could not check send limit", "error", err, "email", userEmail);
+    }
+
+    var radius = user.getFloat("retention_radius");
+    if (isNaN(radius) || radius < 1) radius = 3;
+    var nearbyUsers = getNearbyNewUsers(user, radius, lastLogin);
+    if (nearbyUsers.length > 0) {
+      var emailSent = sendRetentionEmail(user, nearbyUsers.length, nearbyUsers);
+      if (emailSent) {
+        try {
+          user.set("last_retention_email_sent", new Date().toISOString());
+          $app.save(user);
+        } catch (err) {
+          $app.logger().warn("Cron retention: could not update last_sent", "error", err);
+        }
+        sentCount++;
+      }
+    }
+  }
+
+  var result = { emailsSent: sentCount, usersChecked: inactiveUsers.length };
   $app.logger().info("Cron: Weekly retention email job completed", "emailsSent", result.emailsSent, "usersChecked", result.usersChecked);
 });
 
