@@ -205,7 +205,6 @@ export default function OnboardingChoice() {
                 onClick={() => handleChoice("has_dogs")}
                 style="text-align: left; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem;"
               >
-                <span style="font-size: 2rem;">🐕↔️🐕</span>
                 <strong>Byta hundpassning</strong>
               </button>
               <button
@@ -214,7 +213,6 @@ export default function OnboardingChoice() {
                 onClick={() => handleChoice("receiver_only")}
                 style="text-align: left; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem;"
               >
-                <span style="font-size: 2rem;">🤝</span>
                 <strong>Endast ta emot passning</strong>
               </button>
               <button
@@ -223,7 +221,6 @@ export default function OnboardingChoice() {
                 onClick={() => handleChoice("sitter_only")}
                 style="text-align: left; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem;"
               >
-                <span style="font-size: 2rem;">🚶‍♂️🐕</span>
                 <strong>Endast passa hundar</strong>
               </button>
             </div>

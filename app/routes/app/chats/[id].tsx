@@ -58,28 +58,19 @@ export default function ChatThread() {
   let chatPageRef: HTMLDivElement | undefined;
   let sendInProgress = false;
 
-  function updateChatHeight() {
-    const el = chatPageRef;
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    if (!el || !vv) return;
-    const rect = el.getBoundingClientRect();
-    const available = Math.max(200, vv.height - rect.top);
-    document.documentElement.style.setProperty("--chat-available-height", `${available}px`);
-  }
-
   onMount(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const run = () => queueMicrotask(updateChatHeight);
-    run();
-    vv.addEventListener("resize", run);
-    vv.addEventListener("scroll", run);
-    window.addEventListener("resize", run);
+    const updateKeyboardClass = () => {
+      const active = document.activeElement as HTMLElement | null;
+      const typingInComposer = !!active && (active === textareaRef || !!composeFormRef?.contains(active));
+      chatPageRef?.classList.toggle("chat-page-keyboard-open", typingInComposer);
+    };
+    updateKeyboardClass();
+    window.addEventListener("focusin", updateKeyboardClass);
+    window.addEventListener("focusout", updateKeyboardClass);
     return () => {
-      vv.removeEventListener("resize", run);
-      vv.removeEventListener("scroll", run);
-      window.removeEventListener("resize", run);
-      document.documentElement.style.removeProperty("--chat-available-height");
+      window.removeEventListener("focusin", updateKeyboardClass);
+      window.removeEventListener("focusout", updateKeyboardClass);
+      chatPageRef?.classList.remove("chat-page-keyboard-open");
     };
   });
 

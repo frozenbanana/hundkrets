@@ -985,6 +985,16 @@ export default function Matches() {
                           ? 'Du har inga matchningar än. När ni båda klickar "Jag är intresserad" blir ni matchade.'
                           : "Ingen att visa i denna vy. Prova att zooma ut på kartan eller byt filter."}
                   </p>
+                  <Show when={matchFilter() === "matched" || (searchParams as { match?: string }).match === "true"}>
+                    <button
+                      type="button"
+                      class="btn btn-secondary"
+                      style="margin-top: 0.75rem;"
+                      onClick={handleClearFilters}
+                    >
+                      Återställ filter
+                    </button>
+                  </Show>
                 </div>
               </Show>
               <Show when={filteredListings().length > 0}>

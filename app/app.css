@@ -3101,18 +3101,23 @@ input[type="checkbox"] {
   }
 }
 
-/* Chat thread layout – uses --chat-available-height from visualViewport when keyboard opens */
+/* Chat thread layout – stable height; switches to dvh while typing */
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: var(--chat-available-height, 100%);
-  min-height: 0;
+  height: 100svh;
+  min-height: 100svh;
   max-width: 640px;
   margin: 0 auto;
   padding: 1.5rem;
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
   flex: 1;
+}
+
+.chat-page.chat-page-keyboard-open {
+  height: 100dvh;
+  min-height: 100dvh;
 }
 
 .chat-page .chat-header {

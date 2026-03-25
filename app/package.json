@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "prepare": "cd .. && [ -f scripts/install-git-hooks.sh ] && ./scripts/install-git-hooks.sh || true",
-    "dev": "vinxi dev",
+    "dev": "vinxi dev --host 0.0.0.0",
     "build": "vinxi build",
     "start": "vinxi start",
     "test": "vitest",
