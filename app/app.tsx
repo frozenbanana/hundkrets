@@ -1,9 +1,10 @@
-import { Router } from "@solidjs/router";
+import { Route, Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { MetaProvider } from "@solidjs/meta";
 import { ErrorBoundary, Suspense, onMount } from "solid-js";
 import { refreshAuth } from "~/lib/authStore";
 import { ToastContainer } from "~/components/Toast";
+import ExcursionDetailPage from "~/pages/ExcursionDetailPage";
 import "./app.css";
 
 function AuthRefresh() {
@@ -35,6 +36,7 @@ export default function App() {
             </Suspense>
           )}
         >
+          <Route path="/app/excursions/:id" component={ExcursionDetailPage} />
           <FileRoutes />
         </Router>
       </MetaProvider>

@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createSignal, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { setOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { setOnboardingUserType, getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { geocodePostalCode } from "~/lib/geocode";
 import { lookupPostalCode } from "~/lib/postalCode";
 import { parseApiError } from "~/lib/errors";
@@ -14,6 +14,7 @@ export default function OnboardingChoice() {
   const nav = useNavigate();
   const [userType, setUserType] = createSignal<"has_dogs" | "sitter_only" | "receiver_only" | null>(null);
   const [name, setName] = createSignal("");
+  const [phone, setPhone] = createSignal("");
   const [address, setAddress] = createSignal<Partial<PostalCodeValue>>({});
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
@@ -32,6 +33,7 @@ export default function OnboardingChoice() {
     const user = pb.authStore.model;
     if (user) {
       setName(user.name ?? "");
+      setPhone(user.phone ?? "");
       setAddress({
         address_private: user.address_private,
         latitude: user.latitude,
@@ -41,6 +43,7 @@ export default function OnboardingChoice() {
         area: user.area,
       });
     }
+    setUserType(getOnboardingUserType());
   });
 
   function handleChoice(type: "has_dogs" | "sitter_only" | "receiver_only") {
@@ -112,6 +115,7 @@ export default function OnboardingChoice() {
       const areaVal = addr.area ?? addr.city ?? "";
       await pb.collection("users").update(userId, {
         name: name(),
+        phone: phone() || undefined,
         area: areaVal,
         city: addr.city,
         neighborhood: addr.neighborhood,
@@ -122,6 +126,7 @@ export default function OnboardingChoice() {
       pb.authStore.save(pb.authStore.token!, {
         ...pb.authStore.model,
         name: name(),
+        phone: phone(),
         area: areaVal,
         city: addr.city,
         neighborhood: addr.neighborhood,
@@ -176,6 +181,21 @@ export default function OnboardingChoice() {
                 Postnumret används för att hitta hundägare i ditt område. Din exakta adress delas inte.
               </p>
                 <PostalCodeInput id="postal-code" value={address()} onSelect={setAddress} />
+                <div class="form-group" style="margin-top: 0.75rem;">
+                  <label for="phone">Telefon (valfritt)</label>
+                  <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: 0.4rem 0 0.5rem;">
+                    Ditt nummer visas bara för personer du har matchat med. Om du inte vill ange telefon
+                    kan ni alltid prata vidare i chatten.
+                  </p>
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={phone()}
+                    onInput={(e) => setPhone(e.currentTarget.value)}
+                    placeholder="070-123 45 67"
+                    autocomplete="tel"
+                  />
+                </div>
               </section>
               <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <button type="submit" class="btn" disabled={loading()}>

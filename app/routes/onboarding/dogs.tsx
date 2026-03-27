@@ -167,7 +167,7 @@ export default function OnboardingDogs() {
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
   return (
-    <OnboardingShell step={2} totalSteps={isReceiverOnly() ? 3 : 4} title="Dina hundar" nextStepHint="Nästa: När du behöver hundpassning" backHref="/onboarding/profile">
+    <OnboardingShell step={2} totalSteps={isReceiverOnly() ? 3 : 4} title="Dina hundar" nextStepHint="Nästa: När du behöver hundpassning" backHref="/onboarding/choice">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           Lägg till hundar om du har (valfritt). Du kan lägga till fler senare från översikten.

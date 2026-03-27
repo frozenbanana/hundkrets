@@ -35,6 +35,13 @@ import {
   type MatchSort,
 } from "./explore/helpers";
 
+type UpcomingExcursion = {
+  id: string;
+  title: string;
+  start_at: string;
+  meeting_area: string;
+};
+
 export default function Matches() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -191,6 +198,20 @@ export default function Matches() {
       }
     }
   );
+
+  const [upcomingExcursions] = createResource(async () => {
+    try {
+      const nowIso = new Date().toISOString();
+      const list = await pb.collection("excursions").getFullList<UpcomingExcursion & { status?: string }>({
+        filter: `status = "scheduled" && start_at >= "${nowIso}"`,
+        sort: "start_at",
+      });
+      return list.slice(0, 3);
+    } catch (err) {
+      console.warn("[explore] upcoming excursions fetch failed", err);
+      return [] as UpcomingExcursion[];
+    }
+  });
 
   const listings = createMemo(() => {
     const d = data();
@@ -800,6 +821,33 @@ export default function Matches() {
               <A href="/app/settings" class="btn btn-secondary">
                 Uppdatera adress
               </A>
+            </div>
+          </Show>
+          <Show when={(upcomingExcursions() ?? []).length > 0}>
+            <div class="card" style="padding: 0.9rem; margin-bottom: 0.75rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
+                <div>
+                  <h3 style="margin: 0;">Kommande hundträffar</h3>
+                  <p style="margin: 0.25rem 0 0; color: var(--color-text-muted); font-size: 0.92rem;">
+                    Nya sociala promenader i nätverket.
+                  </p>
+                </div>
+                <A href="/app/excursions" class="btn btn-secondary">
+                  Alla hundträffar
+                </A>
+              </div>
+              <div style="display: grid; gap: 0.5rem; margin-top: 0.7rem;">
+                <For each={upcomingExcursions()}>
+                  {(trip) => (
+                    <A href="/app/excursions" class="card" style="padding: 0.55rem; text-decoration: none;">
+                      <strong>{trip.title}</strong>
+                      <div style="font-size: 0.85rem; color: var(--color-text-muted);">
+                        {dateStr(trip.start_at)} - {trip.meeting_area}
+                      </div>
+                    </A>
+                  )}
+                </For>
+              </div>
             </div>
           </Show>
           <Show when={data.loading && !data()}>

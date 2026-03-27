@@ -232,6 +232,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
                   <span class="nav-badge-inline" aria-label={`${badgeCount()} nya`}> ({badgeCount()})</span>
                 </Show>
               </A>
+              <A href="/app/excursions" onClick={() => setMenuOpen(false)}>Hundträffar</A>
               <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
               <A href="/app/chats" class="nav-link-with-badge" onClick={() => setMenuOpen(false)}>
                 Chattar

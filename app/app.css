@@ -3659,6 +3659,147 @@ input[type="checkbox"] {
   margin: 0 0 1rem;
 }
 
+.excursions-page {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.excursions-form-card {
+  padding: 1rem;
+}
+
+.excursions-form-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.excursions-title-input-wrap {
+  position: relative;
+}
+
+.excursions-title-input-wrap input {
+  padding-right: 2.6rem;
+}
+
+.excursions-title-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--color-fur);
+  background: #fff;
+  color: var(--color-paw-dark);
+  cursor: pointer;
+}
+
+.excursions-title-icon-btn:hover {
+  background: var(--color-fur-light);
+}
+
+.excursions-title-icon-in-input {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  transform: translateY(-50%);
+}
+
+.excursions-help-text {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin: -0.25rem 0 0.65rem;
+}
+
+.excursions-picker-map {
+  height: 260px;
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-fur);
+  overflow: hidden;
+}
+
+.excursions-picker-wrap {
+  position: relative;
+}
+
+.excursions-center-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -100%);
+  font-size: 1.55rem;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+  z-index: 450;
+}
+
+.excursions-map-hidden-hint {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px dashed var(--color-fur);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: 0.92rem;
+}
+
+.excursions-map-reveal {
+  animation: excursions-map-reveal 220ms ease-out both;
+}
+
+@keyframes excursions-map-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.excursions-meeting-meta {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+}
+
+.excursions-coordinates-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.excursions-maps-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--color-fur);
+  background: #fff;
+}
+
+.excursions-maps-icon-link:hover {
+  background: var(--color-fur-light);
+}
+
+.excursions-maps-icon-link img {
+  display: block;
+}
+
+.excursions-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

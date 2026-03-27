@@ -50,3 +50,32 @@ export interface WatchCapacity extends RecordModel {
   max_dogs: number;
   notes?: string;
 }
+
+export type ExcursionVisibility = "public" | "matched_only" | "interested_by_me";
+export type ExcursionStatus = "scheduled" | "cancelled" | "completed";
+
+export interface Excursion extends RecordModel {
+  host_user: string;
+  title: string;
+  description?: string;
+  start_at: string;
+  duration_hours?: number;
+  meeting_area: string;
+  meeting_map_url?: string;
+  meeting_latitude?: number;
+  meeting_longitude?: number;
+  visibility: ExcursionVisibility;
+  status: ExcursionStatus;
+}
+
+export interface ExcursionInterest extends RecordModel {
+  excursion: string;
+  user: string;
+}
+
+export interface ExcursionComment extends RecordModel {
+  excursion: string;
+  author: string;
+  body: string;
+  parent_comment?: string;
+}
