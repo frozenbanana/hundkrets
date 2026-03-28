@@ -4,6 +4,8 @@ import { AppShell } from "~/components/AppShell";
 import { parseApiError } from "~/lib/errors";
 import { pb } from "~/lib/pocketbase";
 import { showToast } from "~/lib/toast";
+import { ExcursionListCard } from "~/components/ExcursionListCard";
+import { EXCURSION_VISIBILITY_LABELS as visibilityLabels } from "~/lib/excursionListCard";
 import { searchAddress, searchCitiesSweden } from "~/lib/geocode";
 import type { ExcursionVisibility } from "~/types";
 
@@ -45,12 +47,6 @@ type ExcursionDetailResponse = {
   item: ExcursionListItem;
   comments: ExcursionCommentItem[];
   interests: ExcursionInterestItem[];
-};
-
-const visibilityLabels: Record<ExcursionVisibility, string> = {
-  public: "Publik",
-  matched_only: "Ömsesidigt matchade",
-  interested_by_me: "De jag visat intresse för",
 };
 
 type ReverseResponse = {
@@ -731,19 +727,19 @@ export default function ExcursionsPage() {
               <div style="display: grid; gap: 0.75rem;">
                 <For each={sortedExcursions()}>
                   {(item) => (
-                    <A
-                      href={`/app/excursions/${item.id}`}
-                      class="card"
-                      style="text-align: left; padding: 0.9rem; cursor: pointer; display: block; text-decoration: none; color: inherit;"
-                    >
-                      <strong>{item.title}</strong>
-                      <div style="font-size: 0.95rem; color: var(--color-text-muted); margin-top: 0.25rem;">
-                        {formatDate(item.start_at)} - {item.meeting_area}
-                      </div>
-                      <div style="font-size: 0.85rem; margin-top: 0.25rem;">
-                        {formatDuration(item.duration_hours)} - {visibilityLabels[item.visibility]} - {item.interest_count} intresserade - {item.comment_count} kommentarer
-                      </div>
-                    </A>
+                    <ExcursionListCard
+                      id={item.id}
+                      title={item.title}
+                      start_at={item.start_at}
+                      meeting_area={item.meeting_area}
+                      duration_hours={item.duration_hours}
+                      visibility={item.visibility}
+                      interest_count={item.interest_count}
+                      comment_count={item.comment_count}
+                      meeting_latitude={item.meeting_latitude}
+                      meeting_longitude={item.meeting_longitude}
+                      meeting_map_url={item.meeting_map_url}
+                    />
                   )}
                 </For>
               </div>

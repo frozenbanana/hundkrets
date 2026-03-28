@@ -202,13 +202,36 @@ export function MatchesMap(props: Props) {
       map.on("zoomend", onMove);
     }
 
-    const initialBounds = props.filterByBounds && map ? map.getBounds() : null;
-    const skipViewUpdate = !elChanged && !listChanged;
-    updateMarkers(initialBounds, skipViewUpdate);
-    if (props.filterByBounds && map && props.onBoundsChange) {
-      props.onBoundsChange(initialBounds ? extractBounds(initialBounds) : null);
-    } else if (!props.filterByBounds && props.onBoundsChange) {
-      props.onBoundsChange(null);
+    if (elChanged && props.filterByBounds && map && hasCoords) {
+      // First render: place all markers (no bounds filter) then fit to nearest
+      updateMarkers(null, true);
+
+      const allLayers = markerLayer!.getLayers() as L.Marker[];
+      const myPos = L.latLng(props.myLat!, props.myLon!);
+      const otherPoints = allLayers
+        .map((m) => m.getLatLng())
+        .filter((ll) => ll.distanceTo(myPos) > 50)
+        .sort((a, b) => a.distanceTo(myPos) - b.distanceTo(myPos));
+
+      if (otherPoints.length > 0) {
+        const nearest = otherPoints.slice(0, 5);
+        nearest.push(myPos);
+        map.fitBounds(L.latLngBounds(nearest).pad(0.15), { maxZoom: 13, animate: false });
+      }
+
+      // Re-run with actual bounds so the list syncs
+      const b = map.getBounds();
+      updateMarkers(b, true);
+      props.onBoundsChange?.(extractBounds(b));
+    } else {
+      const initialBounds = props.filterByBounds && map ? map.getBounds() : null;
+      const skipViewUpdate = !elChanged && !listChanged;
+      updateMarkers(initialBounds, skipViewUpdate);
+      if (props.filterByBounds && map && props.onBoundsChange) {
+        props.onBoundsChange(initialBounds ? extractBounds(initialBounds) : null);
+      } else if (!props.filterByBounds && props.onBoundsChange) {
+        props.onBoundsChange(null);
+      }
     }
 
     return () => {

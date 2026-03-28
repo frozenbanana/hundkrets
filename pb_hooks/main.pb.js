@@ -1,7 +1,10 @@
 // Hundkrets - Email hooks for connection requests and onboarding
 // Requires SMTP configured in PocketBase Admin > Settings > Mail settings
 
-$app.logger().info("Hundkrets pb_hooks loaded");
+$app.logger().info("Hundkrets pb_hooks loaded v2");
+
+// Shared utility functions are in hk_utils.js (loaded via require() inside handlers
+// because PocketBase goja JSVM isolates each handler's scope).
 
 // Allow authenticated users to connect to realtime
 onRealtimeConnectRequest((e) => {
@@ -313,21 +316,6 @@ onRecordDelete((e) => {
   e.next();
 }, "users");
 
-function asId(v) {
-  if (!v) return "";
-  if (typeof v === "string") return v;
-  if (v && typeof v === "object" && v.id) return String(v.id);
-  if (Array.isArray(v) && v.length > 0) return asId(v[0]);
-  return "";
-}
-
-function pairKey(userA, userB) {
-  var a = String(userA || "");
-  var b = String(userB || "");
-  if (!a || !b) return "";
-  return a < b ? (a + ":" + b) : (b + ":" + a);
-}
-
 function getMailFrom() {
   var meta = $app.settings() && $app.settings().meta;
   if (meta && meta.senderAddress && String(meta.senderAddress).trim()) {
@@ -583,150 +571,10 @@ routerAdd("GET", "/api/hundkrets/dog-gallery", (e) => {
   return e.json(200, items);
 });
 
-function hkToId(v) {
-  if (!v) return "";
-  if (typeof v === "string") return v;
-  if (v && typeof v === "object" && v.id) return String(v.id);
-  if (Array.isArray(v) && v.length > 0) return hkToId(v[0]);
-  return "";
-}
-
-function hkAuthUserId(e) {
-  try {
-    if (e && e.auth && e.auth.id) return String(e.auth.id);
-  } catch (_) {}
-  try {
-    if (e && e.auth && e.auth.record && e.auth.record.id) return String(e.auth.record.id);
-  } catch (_) {}
-  try {
-    if (e && typeof e.requestInfo === "function") {
-      var ri = e.requestInfo();
-      if (ri && ri.auth && ri.auth.id) return String(ri.auth.id);
-    }
-  } catch (_) {}
-  try {
-    if (e && typeof e.requestInfo === "function") {
-      var ri2 = e.requestInfo();
-      if (ri2 && ri2.auth && ri2.auth.record && ri2.auth.record.id) return String(ri2.auth.record.id);
-    }
-  } catch (_) {}
-  try {
-    if (e && typeof e.requestInfo === "function") {
-      var ri3 = e.requestInfo();
-      if (ri3 && ri3.context && ri3.context.auth && ri3.context.auth.id) return String(ri3.context.auth.id);
-    }
-  } catch (_) {}
-  try {
-    if (e && e.record && e.record.collection && e.record.collection().name === "users" && e.record.id) return String(e.record.id);
-  } catch (_) {}
-  return "";
-}
-
-function hkHasConnection(fromId, toId) {
-  if (!fromId || !toId) return false;
-  try {
-    var rec = $app.findFirstRecordByFilter(
-      "connection_requests",
-      "from_user = {:from} && to_user = {:to}",
-      { from: fromId, to: toId }
-    );
-    return !!rec;
-  } catch (_) {
-    return false;
-  }
-}
-
-function hkCanViewExcursion(viewerId, excursion) {
-  if (!excursion) return false;
-  var hostId = hkToId(excursion.get("host_user"));
-  if (!hostId) return false;
-  var visibility = String(excursion.get("visibility") || "public");
-  if (visibility === "public") return true;
-  if (!viewerId) return false;
-  if (hostId === viewerId) return true;
-  if (visibility === "interested_by_me") return hkHasConnection(hostId, viewerId);
-  if (visibility === "matched_only") return hkHasConnection(hostId, viewerId) && hkHasConnection(viewerId, hostId);
-  return false;
-}
-
-function hkExcursionHostName(hostId) {
-  if (!hostId) return "";
-  try {
-    var user = $app.findRecordById("users", hostId);
-    return String(user.get("name") || "");
-  } catch (_) {
-    return "";
-  }
-}
-
-function hkSafeGetFloat(rec, fieldName, fallback) {
-  try {
-    var v = rec.getFloat(fieldName);
-    return isNaN(v) ? fallback : v;
-  } catch (_) {
-    return fallback;
-  }
-}
-
-function hkExcursionSummary(rec, viewerId) {
-  var excursionId = rec.id;
-  var hostId = hkToId(rec.get("host_user"));
-  var interests = [];
-  var comments = [];
-  try {
-    interests = $app.findRecordsByFilter(
-      "excursion_interests",
-      "excursion = {:eid}",
-      "",
-      500,
-      0,
-      { eid: excursionId }
-    );
-  } catch (_) {}
-  try {
-    comments = $app.findRecordsByFilter(
-      "excursion_comments",
-      "excursion = {:eid}",
-      "",
-      500,
-      0,
-      { eid: excursionId }
-    );
-  } catch (_) {}
-
-  var viewerInterested = false;
-  for (var i = 0; i < interests.length; i++) {
-    if (hkToId(interests[i].get("user")) === viewerId) {
-      viewerInterested = true;
-      break;
-    }
-  }
-
-  return {
-    id: rec.id,
-    title: String(rec.get("title") || ""),
-    description: String(rec.get("description") || ""),
-    start_at: String(rec.get("start_at") || ""),
-    duration_hours: hkSafeGetFloat(rec, "duration_hours", 2),
-    meeting_area: String(rec.get("meeting_area") || ""),
-    meeting_map_url: String(rec.get("meeting_map_url") || ""),
-    meeting_latitude: hkSafeGetFloat(rec, "meeting_latitude", 0),
-    meeting_longitude: hkSafeGetFloat(rec, "meeting_longitude", 0),
-    visibility: String(rec.get("visibility") || "public"),
-    status: String(rec.get("status") || "scheduled"),
-    host_user: hostId,
-    host_name: hkExcursionHostName(hostId),
-    created: rec.get("created"),
-    updated: rec.get("updated"),
-    interest_count: interests.length,
-    comment_count: comments.length,
-    viewer_interested: viewerInterested,
-  };
-}
-
 routerAdd("GET", "/api/hundkrets/excursions/visible", (e) => {
+  var hk = require(__hooks + "/hk_utils.js");
   try {
-    var viewerId = hkAuthUserId(e);
+    var viewerId = hk.authUserId(e);
     if (!viewerId) viewerId = "";
 
     var records = [];
@@ -750,8 +598,8 @@ routerAdd("GET", "/api/hundkrets/excursions/visible", (e) => {
           var startDate = new Date(startAt);
           if (!isNaN(startDate.getTime()) && startDate.getTime() < now.getTime()) continue;
         }
-        if (!hkCanViewExcursion(viewerId, rec)) continue;
-        items.push(hkExcursionSummary(rec, viewerId));
+        if (!hk.canViewExcursion(viewerId, rec)) continue;
+        items.push(hk.excursionSummary(rec, viewerId));
       } catch (innerErr) {
         $app.logger().warn(
           "Excursions visible: skipping invalid record",
@@ -771,15 +619,16 @@ routerAdd("GET", "/api/hundkrets/excursions/visible", (e) => {
 });
 
 routerAdd("GET", "/api/hundkrets/excursions/visible/:id", (e) => {
+  var hk = require(__hooks + "/hk_utils.js");
   try {
-    var viewerId = hkAuthUserId(e);
+    var viewerId = hk.authUserId(e);
     if (!viewerId) viewerId = "";
     var excursionId = e.pathParams.id;
     if (!excursionId) return e.json(400, { error: "Missing excursion id" });
 
     var rec = null;
     rec = $app.findRecordById("excursions", excursionId);
-    if (!hkCanViewExcursion(viewerId, rec)) return e.json(403, { error: "Forbidden" });
+    if (!hk.canViewExcursion(viewerId, rec)) return e.json(403, { error: "Forbidden" });
 
     var comments = [];
     comments = $app.findRecordsByFilter(
@@ -804,14 +653,14 @@ routerAdd("GET", "/api/hundkrets/excursions/visible/:id", (e) => {
     var commentItems = [];
     for (var i = 0; i < comments.length; i++) {
       var c = comments[i];
-      var authorId = hkToId(c.get("author"));
+      var authorId = hk.toId(c.get("author"));
       commentItems.push({
         id: c.id,
-        excursion: hkToId(c.get("excursion")),
+        excursion: hk.toId(c.get("excursion")),
         author: authorId,
-        author_name: hkExcursionHostName(authorId),
+        author_name: hk.excursionHostName(authorId),
         body: String(c.get("body") || ""),
-        parent_comment: hkToId(c.get("parent_comment")),
+        parent_comment: hk.toId(c.get("parent_comment")),
         created: c.get("created"),
         updated: c.get("updated"),
       });
@@ -820,24 +669,23 @@ routerAdd("GET", "/api/hundkrets/excursions/visible/:id", (e) => {
     var interestItems = [];
     for (var j = 0; j < interests.length; j++) {
       var ir = interests[j];
-      var userId = hkToId(ir.get("user"));
+      var userId = hk.toId(ir.get("user"));
       interestItems.push({
         id: ir.id,
-        excursion: hkToId(ir.get("excursion")),
+        excursion: hk.toId(ir.get("excursion")),
         user: userId,
-        user_name: hkExcursionHostName(userId),
+        user_name: hk.excursionHostName(userId),
         created: ir.get("created"),
         updated: ir.get("updated"),
       });
     }
 
     return e.json(200, {
-      item: hkExcursionSummary(rec, viewerId),
+      item: hk.excursionSummary(rec, viewerId),
       comments: commentItems,
       interests: interestItems,
     });
   } catch (err) {
-    // Keep this route fail-safe and quiet; frontend has a collection-based fallback path.
     return e.json(404, { error: "Excursion not found" });
   }
 });
@@ -883,24 +731,14 @@ onRecordCreateRequest((e) => {
 }, "excursions");
 
 onRecordCreateRequest((e) => {
+  var hk = require(__hooks + "/hk_utils.js");
   if (!e || !e.record) {
     e.next();
     return;
   }
-  var me = "";
-  try {
-    if (e && e.auth && e.auth.id) me = String(e.auth.id);
-  } catch (_) {}
-  try {
-    if (!me && e && e.auth && e.auth.record && e.auth.record.id) me = String(e.auth.record.id);
-  } catch (_) {}
-  try {
-    if (!me && e && e.record && e.record.collection && e.record.collection().name === "users" && e.record.id) {
-      me = String(e.record.id);
-    }
-  } catch (_) {}
+  var me = hk.authUserId(e);
   if (!me) throw new BadRequestError("Du måste vara inloggad.");
-  var excursionId = hkToId(e.record.get("excursion"));
+  var excursionId = hk.toId(e.record.get("excursion"));
   if (!excursionId) throw new BadRequestError("Hundträff saknas.");
   var excursion = null;
   try {
@@ -908,7 +746,7 @@ onRecordCreateRequest((e) => {
   } catch (_) {
     throw new BadRequestError("Hundträffen finns inte.");
   }
-  if (!hkCanViewExcursion(me, excursion)) {
+  if (!hk.canViewExcursion(me, excursion)) {
     throw new BadRequestError("Du har inte behörighet att visa intresse för denna hundträff.");
   }
   e.record.set("user", me);
@@ -926,24 +764,14 @@ onRecordCreateRequest((e) => {
 }, "excursion_interests");
 
 onRecordCreateRequest((e) => {
+  var hk = require(__hooks + "/hk_utils.js");
   if (!e || !e.record) {
     e.next();
     return;
   }
-  var me = "";
-  try {
-    if (e && e.auth && e.auth.id) me = String(e.auth.id);
-  } catch (_) {}
-  try {
-    if (!me && e && e.auth && e.auth.record && e.auth.record.id) me = String(e.auth.record.id);
-  } catch (_) {}
-  try {
-    if (!me && e && e.record && e.record.collection && e.record.collection().name === "users" && e.record.id) {
-      me = String(e.record.id);
-    }
-  } catch (_) {}
+  var me = hk.authUserId(e);
   if (!me) throw new BadRequestError("Du måste vara inloggad.");
-  var excursionId = hkToId(e.record.get("excursion"));
+  var excursionId = hk.toId(e.record.get("excursion"));
   if (!excursionId) throw new BadRequestError("Hundträff saknas.");
   var body = String(e.record.get("body") || "").trim();
   if (!body) throw new BadRequestError("Kommentaren kan inte vara tom.");
@@ -953,14 +781,14 @@ onRecordCreateRequest((e) => {
   } catch (_) {
     throw new BadRequestError("Hundträffen finns inte.");
   }
-  if (!hkCanViewExcursion(me, excursion)) {
+  if (!hk.canViewExcursion(me, excursion)) {
     throw new BadRequestError("Du har inte behörighet att kommentera denna hundträff.");
   }
-  var parentId = hkToId(e.record.get("parent_comment"));
+  var parentId = hk.toId(e.record.get("parent_comment"));
   if (parentId) {
     try {
       var parent = $app.findRecordById("excursion_comments", parentId);
-      if (hkToId(parent.get("excursion")) !== excursionId) {
+      if (hk.toId(parent.get("excursion")) !== excursionId) {
         throw new BadRequestError("Svar måste tillhöra samma hundträff.");
       }
     } catch (err) {

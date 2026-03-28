@@ -1,5 +1,5 @@
 import { A, useNavigate } from "@solidjs/router";
-import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
@@ -7,6 +7,7 @@ import { geocodePostalCode } from "~/lib/geocode";
 import { lookupPostalCode } from "~/lib/postalCode";
 import { Avatar } from "~/components/Avatar";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
+import { LocationPicker } from "~/components/LocationPicker";
 import { PostalCodeInput, type PostalCodeValue } from "~/components/PostalCodeInput";
 import { ValidatedInput } from "~/components/ValidatedInput";
 
@@ -216,6 +217,14 @@ export default function EditProfile() {
                 Postnumret används för att hitta hundägare i ditt område. Din exakta adress delas inte.
               </p>
               <PostalCodeInput id="postal-code" value={address()} onSelect={setAddress} />
+              <Show when={typeof address().latitude === "number" && typeof address().longitude === "number"}>
+                <LocationPicker
+                  lat={address().latitude!}
+                  lon={address().longitude!}
+                  onChange={(lat, lon) => setAddress((prev) => ({ ...prev, latitude: lat, longitude: lon }))}
+                />
+                <p class="location-picker-hint">Dra markören eller klicka på kartan för att justera din ungefärliga position. Cirkeln visar ett område på ca 1 km.</p>
+              </Show>
             </section>
 
             <section style="margin-bottom: 1.5rem;">

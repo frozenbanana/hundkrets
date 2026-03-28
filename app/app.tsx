@@ -5,6 +5,7 @@ import { ErrorBoundary, Suspense, onMount } from "solid-js";
 import { refreshAuth } from "~/lib/authStore";
 import { ToastContainer } from "~/components/Toast";
 import ExcursionDetailPage from "~/pages/ExcursionDetailPage";
+import ExcursionInterestListPage from "~/pages/ExcursionInterestListPage";
 import "./app.css";
 
 function AuthRefresh() {
@@ -36,6 +37,7 @@ export default function App() {
             </Suspense>
           )}
         >
+          <Route path="/app/excursions/:id/intresserade" component={ExcursionInterestListPage} />
           <Route path="/app/excursions/:id" component={ExcursionDetailPage} />
           <FileRoutes />
         </Router>

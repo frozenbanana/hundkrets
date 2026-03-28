@@ -17,11 +17,13 @@ import { isUserVerified } from "~/lib/auth";
 import { findListings } from "~/lib/matching";
 import { approximateCoords, pointInBounds, type MapBounds } from "~/lib/geocode";
 import { AppShell } from "~/components/AppShell";
+import { ExcursionListCard } from "~/components/ExcursionListCard";
 import { MatchesMap } from "~/components/MatchesMap";
 import { MatchCards } from "./explore/MatchCard";
 import { InterestModal } from "./explore/InterestModal";
 import { RespondModal } from "./explore/RespondModal";
 import type { Conn } from "./explore/types";
+import type { ExcursionVisibility } from "~/types";
 import {
   DEFAULT_MAX_DISTANCE_KM,
   DISTANCE_STEPS_KM,
@@ -40,6 +42,13 @@ type UpcomingExcursion = {
   title: string;
   start_at: string;
   meeting_area: string;
+  duration_hours?: number;
+  visibility: ExcursionVisibility;
+  meeting_latitude?: number;
+  meeting_longitude?: number;
+  meeting_map_url?: string;
+  interest_count: number;
+  comment_count: number;
 };
 
 export default function Matches() {
@@ -202,11 +211,57 @@ export default function Matches() {
   const [upcomingExcursions] = createResource(async () => {
     try {
       const nowIso = new Date().toISOString();
-      const list = await pb.collection("excursions").getFullList<UpcomingExcursion & { status?: string }>({
+      const list = await pb.collection("excursions").getFullList<{
+        id: string;
+        title: string;
+        start_at: string;
+        meeting_area: string;
+        duration_hours?: number;
+        visibility: ExcursionVisibility;
+        meeting_latitude?: number;
+        meeting_longitude?: number;
+        meeting_map_url?: string;
+        status?: string;
+      }>({
         filter: `status = "scheduled" && start_at >= "${nowIso}"`,
         sort: "start_at",
       });
-      return list.slice(0, 3);
+      const slice = list.slice(0, 3);
+      if (slice.length === 0) return [] as UpcomingExcursion[];
+
+      const orExc = slice.map((e) => `excursion = "${e.id}"`).join(" || ");
+      const [interestsRaw, commentsRaw] = await Promise.all([
+        pb.collection("excursion_interests").getFullList<{ excursion: string }>({
+          filter: `(${orExc})`,
+        }),
+        pb.collection("excursion_comments").getFullList<{ excursion: string }>({
+          filter: `(${orExc})`,
+        }),
+      ]);
+      const interestBy = new Map<string, number>();
+      const commentBy = new Map<string, number>();
+      for (const r of interestsRaw) {
+        interestBy.set(r.excursion, (interestBy.get(r.excursion) ?? 0) + 1);
+      }
+      for (const r of commentsRaw) {
+        commentBy.set(r.excursion, (commentBy.get(r.excursion) ?? 0) + 1);
+      }
+
+      return slice.map(
+        (e): UpcomingExcursion => ({
+          id: e.id,
+          title: e.title,
+          start_at: e.start_at,
+          meeting_area: e.meeting_area,
+          duration_hours: e.duration_hours,
+          visibility: e.visibility,
+          meeting_latitude: e.meeting_latitude,
+          meeting_longitude: e.meeting_longitude,
+          meeting_map_url: e.meeting_map_url,
+          interest_count: interestBy.get(e.id) ?? 0,
+          comment_count: commentBy.get(e.id) ?? 0,
+        })
+      );
     } catch (err) {
       console.warn("[explore] upcoming excursions fetch failed", err);
       return [] as UpcomingExcursion[];
@@ -839,12 +894,20 @@ export default function Matches() {
               <div style="display: grid; gap: 0.5rem; margin-top: 0.7rem;">
                 <For each={upcomingExcursions()}>
                   {(trip) => (
-                    <A href="/app/excursions" class="card" style="padding: 0.55rem; text-decoration: none;">
-                      <strong>{trip.title}</strong>
-                      <div style="font-size: 0.85rem; color: var(--color-text-muted);">
-                        {dateStr(trip.start_at)} - {trip.meeting_area}
-                      </div>
-                    </A>
+                    <ExcursionListCard
+                      id={trip.id}
+                      title={trip.title}
+                      start_at={trip.start_at}
+                      meeting_area={trip.meeting_area}
+                      duration_hours={trip.duration_hours}
+                      visibility={trip.visibility}
+                      interest_count={trip.interest_count}
+                      comment_count={trip.comment_count}
+                      meeting_latitude={trip.meeting_latitude}
+                      meeting_longitude={trip.meeting_longitude}
+                      meeting_map_url={trip.meeting_map_url}
+                      compact
+                    />
                   )}
                 </For>
               </div>

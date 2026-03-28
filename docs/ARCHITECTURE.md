@@ -38,6 +38,29 @@ Hundkrets är en peer-to-peer hundpassningsplattform. Användare matchas baserat
 - **Ingen separat API-server** – PocketBase exponerar REST och realtid direkt.
 - **Realtime:** WebSocket-baserad prenumeration på samlingar.
 
+#### JSVM-scope (goja) – viktigt för hooks
+
+PocketBase kör JavaScript-hooks i en inbäddad ES5-motor (goja). **Varje handler-callback körs i sin egen isolerade scope** – variabler och funktioner deklarerade utanför en handler är *inte* tillgängliga inuti den.
+
+Dela kod mellan handlers via `require()` med en lokal modul:
+
+```javascript
+// pb_hooks/hk_utils.js  (utan .pb.js – laddas inte automatiskt)
+module.exports = {
+  toId: function(v) { /* ... */ },
+};
+
+// pb_hooks/main.pb.js
+onRecordCreateRequest((e) => {
+  var hk = require(__hooks + "/hk_utils.js");   // cachad efter första anrop
+  var id = hk.toId(e.record.get("relation"));
+  // ...
+  e.next();
+}, "my_collection");
+```
+
+Se: https://pocketbase.io/docs/js-overview
+
 ### Path alias `~/`
 
 Importer använder `~/lib/...` och `~/components/...`. Aliaset mappar till `app/src/`.
