@@ -11,6 +11,8 @@ import {
 
 export type ExcursionListCardProps = {
   id: string;
+  /** Optional detail href (defaults to /app/excursions/:id). */
+  href?: string;
   title: string;
   start_at: string;
   meeting_area: string;
@@ -23,6 +25,12 @@ export type ExcursionListCardProps = {
   meeting_map_url?: string;
   /** Mindre karta på Utforska */
   compact?: boolean;
+  /** Dölj miniatyrkarta (t.ex. desktop när huvudkartan visar samma) */
+  hideMapThumb?: boolean;
+  /** Optional edit link for own excursions */
+  editHref?: string;
+  /** Notify parent when card hover starts/ends (desktop interactions). */
+  onHoverChange?: (id: string | undefined) => void;
 };
 
 function IconClock(props: { class?: string }) {
@@ -88,32 +96,42 @@ export function ExcursionListCard(props: ExcursionListCardProps) {
   const mapLayout = () =>
     excursionPreviewMapLayout(props.meeting_latitude, props.meeting_longitude, props.meeting_map_url);
   const durationText = () => formatExcursionDurationHours(props.duration_hours);
+  const detailHref = () => props.href ?? `/app/excursions/${props.id}`;
 
   return (
-    <A
-      href={`/app/excursions/${props.id}`}
+    <div
       classList={{
         "excursions-list-card": true,
         card: true,
         "excursions-list-card--compact": !!props.compact,
       }}
+      onMouseEnter={() => props.onHoverChange?.(props.id)}
+      onMouseLeave={() => props.onHoverChange?.(undefined)}
     >
+      <div class="excursions-list-card__top-row">
+        <div class="excursions-list-card__badges">
+          <span class="excursions-card-badge excursions-card-badge--time">
+            <IconClock class="excursions-card-badge__icon" />
+            <span class="excursions-card-badge__text">
+              <span class="excursions-card-badge__date">{when().date}</span>
+              <span class="excursions-card-badge__clock">{when().time}</span>
+            </span>
+          </span>
+          <span
+            class={`excursions-card-badge excursions-card-badge--visibility ${excursionVisibilityBadgeClass(props.visibility)}`}
+          >
+            {EXCURSION_VISIBILITY_LABELS[props.visibility]}
+          </span>
+        </div>
+        <Show when={props.editHref}>
+          <A href={props.editHref!} class="btn btn-secondary excursions-card-inline-edit-btn">
+            Redigera
+          </A>
+        </Show>
+      </div>
+      <A href={detailHref()} class="excursions-list-card__link-body">
       <div class="excursions-list-card__inner">
         <div class="excursions-list-card__main">
-          <div class="excursions-list-card__badges">
-            <span class="excursions-card-badge excursions-card-badge--time">
-              <IconClock class="excursions-card-badge__icon" />
-              <span class="excursions-card-badge__text">
-                <span class="excursions-card-badge__date">{when().date}</span>
-                <span class="excursions-card-badge__clock">{when().time}</span>
-              </span>
-            </span>
-            <span
-              class={`excursions-card-badge excursions-card-badge--visibility ${excursionVisibilityBadgeClass(props.visibility)}`}
-            >
-              {EXCURSION_VISIBILITY_LABELS[props.visibility]}
-            </span>
-          </div>
           <h3 class="excursions-list-card__title">{props.title}</h3>
           <p class="excursions-list-card__place">{props.meeting_area}</p>
           <div class="excursions-list-card__stats" aria-label="Längd, intresse och kommentarer">
@@ -130,7 +148,10 @@ export function ExcursionListCard(props: ExcursionListCardProps) {
             </span>
           </div>
         </div>
-        <div class="excursions-list-card__thumb-wrap">
+        <div
+          class="excursions-list-card__thumb-wrap"
+          classList={{ "excursions-list-card__thumb-wrap--hidden": !!props.hideMapThumb }}
+        >
           <Show
             when={mapLayout()}
             fallback={
@@ -187,6 +208,7 @@ export function ExcursionListCard(props: ExcursionListCardProps) {
           </Show>
         </div>
       </div>
-    </A>
+      </A>
+    </div>
   );
 }

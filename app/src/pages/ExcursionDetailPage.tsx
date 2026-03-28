@@ -1,4 +1,4 @@
-import { A, useParams } from "@solidjs/router";
+import { A, useParams, useSearchParams } from "@solidjs/router";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
@@ -28,11 +28,13 @@ type ExcursionListItem = {
   meeting_map_url?: string;
   meeting_latitude?: number;
   meeting_longitude?: number;
+  share_phone_with_attendees?: boolean;
   visibility: ExcursionVisibility;
   status: string;
   host_user: string;
   host_name?: string;
   host_avatar?: string;
+  host_phone?: string;
   interest_count: number;
   comment_count: number;
   viewer_interested: boolean;
@@ -85,6 +87,14 @@ function mapsOpenHref(
 
 function mapsDirectionsHref(lat: number, lon: number) {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+}
+
+function isNotFoundError(err: unknown) {
+  if (!err || typeof err !== "object") return false;
+  const status = (err as { status?: number }).status;
+  if (status === 404) return true;
+  const message = ((err as { message?: string }).message ?? "").toLowerCase();
+  return message.includes("wasn't found") || message.includes("not found");
 }
 
 function IconClock(props: { class?: string }) {
@@ -160,6 +170,29 @@ function IconDirections(props: { class?: string }) {
   );
 }
 
+function IconShare(props: { class?: string }) {
+  return (
+    <svg
+      class={props.class}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+      <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+    </svg>
+  );
+}
+
 type InterestModalRow = {
   userId: string;
   name: string;
@@ -175,6 +208,8 @@ function pocketOrClause(field: string, ids: string[]): string {
 
 export default function ExcursionDetailPage() {
   const params = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const firstQueryValue = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const [detailError, setDetailError] = createSignal("");
   const [commentBody, setCommentBody] = createSignal("");
   const [commentParentId, setCommentParentId] = createSignal<string>("");
@@ -183,6 +218,7 @@ export default function ExcursionDetailPage() {
   const [interestModalOpen, setInterestModalOpen] = createSignal(false);
   const [interestModalRows, setInterestModalRows] = createSignal<InterestModalRow[]>([]);
   const [interestModalLoading, setInterestModalLoading] = createSignal(false);
+  const isLoggedIn = () => pb.authStore.isValid;
 
   const [detail, { refetch }] = createResource(
     () => params.id,
@@ -191,8 +227,7 @@ export default function ExcursionDetailPage() {
       try {
         setDetailError("");
         const me = pb.authStore.model?.id;
-        const [itemRaw, commentsRaw, interestsRaw, usersRaw] = await Promise.all([
-          pb.collection("excursions").getOne<{
+        const itemRaw = await pb.collection("excursions").getOne<{
             id: string;
             title: string;
             description?: string;
@@ -202,10 +237,34 @@ export default function ExcursionDetailPage() {
             meeting_map_url?: string;
             meeting_latitude?: number;
             meeting_longitude?: number;
+            share_phone_with_attendees?: boolean;
             visibility: ExcursionVisibility;
             status: string;
             host_user: string;
-          }>(id),
+          }>(id)
+          .catch(async (err) => {
+            if (!isLoggedIn() && isNotFoundError(err)) {
+              // Some PocketBase setups allow public records in listRule but not in viewRule.
+              // Fallback to a public list query so shared links for public excursions still work.
+              return pb.collection("excursions").getFirstListItem<{
+                id: string;
+                title: string;
+                description?: string;
+                start_at: string;
+                duration_hours?: number;
+                meeting_area: string;
+                meeting_map_url?: string;
+                meeting_latitude?: number;
+                meeting_longitude?: number;
+                share_phone_with_attendees?: boolean;
+                visibility: ExcursionVisibility;
+                status: string;
+                host_user: string;
+              }>(`id = "${id}" && visibility = "public"`);
+            }
+            throw err;
+          });
+        const [commentsRaw, interestsRaw, usersRaw] = await Promise.all([
           pb.collection("excursion_comments").getFullList<{
             id: string;
             excursion: string;
@@ -213,18 +272,20 @@ export default function ExcursionDetailPage() {
             body: string;
             parent_comment?: string;
             created?: string;
-          }>({ filter: `excursion = "${id}"` }),
+          }>({ filter: `excursion = "${id}"` }).catch(() => []),
           pb.collection("excursion_interests").getFullList<{
             id: string;
             excursion: string;
             user: string;
-          }>({ filter: `excursion = "${id}"` }),
-          pb.collection("users").getFullList<{ id: string; name?: string; avatar?: string }>(),
+          }>({ filter: `excursion = "${id}"` }).catch(() => []),
+          pb.collection("users").getFullList<{ id: string; name?: string; avatar?: string; phone?: string }>().catch(() => []),
         ]);
 
         const userNameById = new Map(usersRaw.map((u) => [u.id, u.name ?? "Användare"]));
         const userAvatarById = new Map(usersRaw.map((u) => [u.id, u.avatar ?? ""]));
+        const userPhoneById = new Map(usersRaw.map((u) => [u.id, u.phone ?? ""]));
         const hostAvatar = userAvatarById.get(itemRaw.host_user) ?? "";
+        const hostPhone = userPhoneById.get(itemRaw.host_user) ?? "";
 
         return {
           item: {
@@ -237,11 +298,13 @@ export default function ExcursionDetailPage() {
             meeting_map_url: itemRaw.meeting_map_url,
             meeting_latitude: itemRaw.meeting_latitude,
             meeting_longitude: itemRaw.meeting_longitude,
+            share_phone_with_attendees: !!itemRaw.share_phone_with_attendees,
             visibility: itemRaw.visibility,
             status: itemRaw.status,
             host_user: itemRaw.host_user,
             host_name: userNameById.get(itemRaw.host_user) || "Användare",
             host_avatar: hostAvatar,
+            host_phone: hostPhone,
             interest_count: interestsRaw.length,
             comment_count: commentsRaw.length,
             viewer_interested: !!me && interestsRaw.some((i) => i.user === me),
@@ -285,12 +348,20 @@ export default function ExcursionDetailPage() {
   });
 
   async function handleInterest() {
+    if (detail()?.item.host_user === pb.authStore.model?.id) {
+      showToast("Du ar redan med som arrangor.");
+      return;
+    }
+    if (!isLoggedIn()) {
+      showToast("Skapa konto för att delta.");
+      return;
+    }
     const id = params.id;
     if (!id) return;
     setSubmittingInterest(true);
     try {
       await pb.collection("excursion_interests").create({ excursion: id });
-      showToast("Intresse registrerat.");
+      showToast("Du är anmäld.");
       await refetch();
     } catch (err) {
       showToast(parseApiError(err), "error");
@@ -340,6 +411,10 @@ export default function ExcursionDetailPage() {
   }
 
   async function submitComment() {
+    if (!isLoggedIn()) {
+      showToast("Skapa konto för att kommentera.");
+      return;
+    }
     const id = params.id;
     if (!id) return;
     const body = commentBody().trim();
@@ -361,10 +436,43 @@ export default function ExcursionDetailPage() {
     }
   }
 
+  const excursionPath = () => `/app/excursions/${params.id}`;
+  const backHref = () => {
+    const raw = firstQueryValue(searchParams.back);
+    if (raw && raw.startsWith("/app/explore")) return raw;
+    if (firstQueryValue(searchParams.from) === "explore") return "/app/explore?utforsk=hundtraffar";
+    return "/app/excursions";
+  };
+  const createAccountHref = () => `/register?redirect=${encodeURIComponent(excursionPath())}`;
+  const excursionUrl = () =>
+    typeof window !== "undefined" ? window.location.origin + excursionPath() : excursionPath();
+
+  async function handleShareExcursion() {
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: "Hundträff - Hundkrets",
+          text: "Kolla in denna hundträff på Hundkrets",
+          url: excursionUrl(),
+        });
+        showToast("Delat!");
+        return;
+      }
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(excursionUrl());
+        showToast("Länk kopierad!");
+        return;
+      }
+      showToast("Kunde inte dela länken.", "error");
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") showToast("Kunde inte dela länken.", "error");
+    }
+  }
+
   return (
-    <AppShell>
+    <AppShell allowGuest>
       <div class="container excursions-page">
-        <A href="/app/excursions" class="profile-back-link">
+        <A href={backHref()} class="profile-back-link">
           ← Tillbaka till hundträffar
         </A>
 
@@ -377,6 +485,10 @@ export default function ExcursionDetailPage() {
             const item = () => d().item;
             const when = () => formatExcursionWhen(item().start_at);
             const durationText = () => formatExcursionDurationHours(item().duration_hours);
+            const canSeeSharedPhone = () =>
+              !!item().share_phone_with_attendees &&
+              !!item().host_phone &&
+              (item().host_user === pb.authStore.model?.id || item().viewer_interested);
             const openHref = () =>
               mapsOpenHref(
                 item().meeting_map_url,
@@ -386,7 +498,14 @@ export default function ExcursionDetailPage() {
 
             return (
               <section class="card excursion-detail-card">
-                <h1 class="excursion-detail__title">{item().title}</h1>
+                <div style="display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start;">
+                  <h1 class="excursion-detail__title" style="margin-bottom: 0.2rem;">{item().title}</h1>
+                  <Show when={item().host_user === pb.authStore.model?.id}>
+                    <A href={`/app/excursions/${item().id}/edit`} class="btn btn-secondary" style="white-space: nowrap;">
+                      Redigera
+                    </A>
+                  </Show>
+                </div>
 
                 <Show when={meetingCoords()}>
                   {(c) => <ExcursionReadOnlyMap lat={c().lat} lon={c().lon} class="excursion-detail__map" />}
@@ -475,6 +594,12 @@ export default function ExcursionDetailPage() {
                   </Show>
                 </div>
 
+                <Show when={canSeeSharedPhone()}>
+                  <p class="excursion-detail__description" style="margin-top: 0.75rem;">
+                    <strong>Kontakt:</strong> <a href={`tel:${item().host_phone}`}>{item().host_phone}</a>
+                  </p>
+                </Show>
+
                 <Show when={openHref()}>
                   <div class="excursion-detail__maps-row" aria-label="Google Maps">
                     <a
@@ -499,6 +624,15 @@ export default function ExcursionDetailPage() {
                         </a>
                       )}
                     </Show>
+                    <button
+                      type="button"
+                      class="excursions-maps-icon-link"
+                      title="Dela hundträff"
+                      aria-label="Dela hundträff"
+                      onClick={handleShareExcursion}
+                    >
+                      <IconShare />
+                    </button>
                   </div>
                 </Show>
 
@@ -507,18 +641,34 @@ export default function ExcursionDetailPage() {
                 </Show>
 
                 <div class="excursion-detail__actions">
-                  <button
-                    type="button"
-                    class="btn"
-                    onClick={handleInterest}
-                    disabled={submittingInterest() || item().viewer_interested}
+                  <Show
+                    when={isLoggedIn()}
+                    fallback={
+                      <div class="profile-cta-guest">
+                        <p style="margin: 0 0 0.75rem; color: var(--color-text-muted);">
+                          Skapa konto för att delta
+                        </p>
+                        <A href={createAccountHref()} class="btn">
+                          Skapa konto
+                        </A>
+                      </div>
+                    }
                   >
-                    {item().viewer_interested
-                      ? "Du är intresserad"
-                      : submittingInterest()
-                        ? "Sparar..."
-                        : "Jag är intresserad"}
-                  </button>
+                    <Show when={item().host_user !== pb.authStore.model?.id}>
+                      <button
+                        type="button"
+                        class="btn"
+                        onClick={handleInterest}
+                        disabled={submittingInterest() || item().viewer_interested}
+                      >
+                        {item().viewer_interested
+                          ? "Du deltar"
+                          : submittingInterest()
+                            ? "Sparar..."
+                            : "Delta"}
+                      </button>
+                    </Show>
+                  </Show>
                 </div>
 
                 <h3 class="excursion-detail__comments-heading">Kommentarer</h3>
@@ -550,26 +700,40 @@ export default function ExcursionDetailPage() {
                 </Show>
 
                 <div class="excursion-detail__compose">
-                  <Show when={commentParentId()}>
-                    <p class="excursion-detail__reply-hint">
-                      Svarar på kommentar.{" "}
-                      <button type="button" class="btn btn-secondary" onClick={() => setCommentParentId("")}>
-                        Avbryt svar
+                  <Show
+                    when={isLoggedIn()}
+                    fallback={
+                      <div class="profile-cta-guest">
+                        <p style="margin: 0 0 0.75rem; color: var(--color-text-muted);">
+                          Skapa konto för att kommentera
+                        </p>
+                        <A href={createAccountHref()} class="btn">
+                          Skapa konto
+                        </A>
+                      </div>
+                    }
+                  >
+                    <Show when={commentParentId()}>
+                      <p class="excursion-detail__reply-hint">
+                        Svarar på kommentar.{" "}
+                        <button type="button" class="btn btn-secondary" onClick={() => setCommentParentId("")}>
+                          Avbryt svar
+                        </button>
+                      </p>
+                    </Show>
+                    <textarea
+                      class="excursion-detail-comment-input"
+                      rows={3}
+                      placeholder="Skriv en kommentar..."
+                      value={commentBody()}
+                      onInput={(e) => setCommentBody(e.currentTarget.value)}
+                    />
+                    <div>
+                      <button type="button" class="btn" onClick={submitComment} disabled={submittingComment()}>
+                        {submittingComment() ? "Skickar..." : "Skicka kommentar"}
                       </button>
-                    </p>
+                    </div>
                   </Show>
-                  <textarea
-                    class="excursion-detail-comment-input"
-                    rows={3}
-                    placeholder="Skriv en kommentar..."
-                    value={commentBody()}
-                    onInput={(e) => setCommentBody(e.currentTarget.value)}
-                  />
-                  <div>
-                    <button type="button" class="btn" onClick={submitComment} disabled={submittingComment()}>
-                      {submittingComment() ? "Skickar..." : "Skicka kommentar"}
-                    </button>
-                  </div>
                 </div>
               </section>
             );

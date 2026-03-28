@@ -64,6 +64,7 @@ export interface Excursion extends RecordModel {
   meeting_map_url?: string;
   meeting_latitude?: number;
   meeting_longitude?: number;
+  share_phone_with_attendees?: boolean;
   visibility: ExcursionVisibility;
   status: ExcursionStatus;
 }

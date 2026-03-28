@@ -1304,6 +1304,11 @@ nav a {
   min-width: 0;
 }
 
+.connection-item-link:hover,
+.connection-item-link:hover * {
+  text-decoration: none;
+}
+
 /* Desktop: [Avatar] [content med namn, plats, bio, etc.] */
 .connection-item-content {
   flex: 1;
@@ -1803,6 +1808,81 @@ input[type="checkbox"] {
     grid-template-columns: 1fr;
     grid-template-rows: 400px auto;
   }
+}
+
+/* Utforska: rubrik + läge (medlemmar / hundträffar) */
+.explore-title-bar {
+  padding: 0.5rem 0 0.75rem;
+}
+
+.explore-title-with-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.explore-title-prefix {
+  margin-right: 0.15rem;
+}
+
+.explore-mode-segment {
+  display: inline-flex;
+  border-radius: var(--radius-dog);
+  border: 1px solid rgba(139, 90, 43, 0.35);
+  overflow: hidden;
+  background: rgba(139, 90, 43, 0.06);
+}
+
+.explore-mode-tab {
+  margin: 0;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.explore-mode-tab:hover {
+  color: var(--color-paw-dark);
+  background: rgba(139, 90, 43, 0.08);
+}
+
+.explore-mode-tab-active {
+  background: rgba(139, 90, 43, 0.2);
+  color: var(--color-paw-dark);
+}
+
+.matches-explore-header-spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.leaflet-popup.map-popup-excursion-wrap .leaflet-popup-content {
+  margin: 0.65rem 0.85rem;
+  min-width: 12rem;
+}
+
+.map-popup-excursion-title {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--color-paw-dark);
+  margin-bottom: 0.35rem;
+}
+
+.map-popup-excursion-meta {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.map-popup-excursion .map-popup-link {
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 /* Utforska header + filter (mobile & desktop) */
@@ -3196,6 +3276,11 @@ input[type="checkbox"] {
   color: inherit;
 }
 
+.chat-list-chat-link:hover,
+.chat-list-chat-link:hover * {
+  text-decoration: none;
+}
+
 .chat-list-chat-link .chat-list-arrow {
   flex-shrink: 0;
   display: flex;
@@ -3667,6 +3752,74 @@ input[type="checkbox"] {
 
 .excursions-form-card {
   padding: 1rem;
+}
+
+.excursions-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.excursions-owned-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+
+.excursions-edit-btn {
+  align-self: center;
+}
+
+.excursions-owned-card-wrap {
+  position: relative;
+}
+
+.excursions-card-top-edit-btn {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 2;
+  white-space: nowrap;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.excursions-new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.excursions-past-section {
+  color: var(--color-text-muted);
+}
+
+.excursions-past-card-wrap {
+  opacity: 0.72;
+  filter: grayscale(0.35);
+}
+
+@media (max-width: 720px) {
+  .excursions-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .excursions-owned-row {
+    grid-template-columns: 1fr;
+  }
+
+  .excursions-edit-btn {
+    justify-self: start;
+  }
+
+  .excursions-card-top-edit-btn {
+    top: 0.55rem;
+    right: 0.55rem;
+  }
 }
 
 .excursions-form-grid {
@@ -4171,14 +4324,6 @@ input[type="checkbox"] {
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-a.excursions-list-card:hover,
-a.excursions-list-card:focus,
-a.excursions-list-card:active,
-a.excursions-list-card:visited {
-  text-decoration: none !important;
-  color: inherit;
-}
-
 .excursions-list-card:hover {
   border-color: var(--color-fur);
   box-shadow: 0 2px 10px rgba(139, 90, 43, 0.12);
@@ -4196,6 +4341,27 @@ a.excursions-list-card:visited {
   align-items: stretch;
   gap: 0.85rem;
   min-height: 4.75rem;
+}
+
+.excursions-list-card__top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.excursions-card-inline-edit-btn {
+  white-space: nowrap;
+  align-self: flex-start;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.excursions-list-card__link-body {
+  display: block;
+  color: inherit;
+  text-decoration: none !important;
 }
 
 .excursions-list-card__main {
@@ -4320,6 +4486,10 @@ a.excursions-list-card:visited {
   flex-shrink: 0;
   width: 7.25rem;
   align-self: stretch;
+}
+
+.excursions-list-card__thumb-wrap--hidden {
+  display: none;
 }
 
 .excursions-list-card--compact .excursions-list-card__thumb-wrap {

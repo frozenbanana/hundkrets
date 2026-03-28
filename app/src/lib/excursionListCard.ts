@@ -83,7 +83,7 @@ export function excursionPreviewMapLayout(
   lat?: number,
   lon?: number,
   meetingMapUrl?: string,
-  z = 14
+  z = 11
 ): { tileUrl: string; offsetX: number; offsetY: number } | undefined {
   const c = excursionPreviewCoords(lat, lon, meetingMapUrl);
   if (!c) return undefined;
@@ -113,10 +113,42 @@ export function excursionPreviewMapSrc(
   return excursionPreviewMapLayout(lat, lon, meetingMapUrl, 14)?.tileUrl;
 }
 
-export function formatExcursionWhen(iso: string): { date: string; time: string } {
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function localDayDiff(from: Date, to: Date): number {
+  const a = startOfLocalDay(from).getTime();
+  const b = startOfLocalDay(to).getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+function isWithinCurrentWeek(now: Date, target: Date): boolean {
+  const day = now.getDay(); // 0 = Sunday ... 6 = Saturday
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+  const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+  const targetDay = startOfLocalDay(target);
+  return targetDay.getTime() >= weekStart.getTime() && targetDay.getTime() <= weekEnd.getTime();
+}
+
+export function formatExcursionWhen(
+  iso: string,
+  options?: { now?: Date }
+): { date: string; time: string } {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { date: iso, time: "" };
-  const date = new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short" }).format(d);
+  const now = options?.now ?? new Date();
+  const diff = localDayDiff(now, d);
+  let date: string;
+  if (diff === 0) date = "Idag";
+  else if (diff === 1) date = "Imorgon";
+  else if (diff > 1 && isWithinCurrentWeek(now, d)) {
+    const weekday = new Intl.DateTimeFormat("sv-SE", { weekday: "long" }).format(d);
+    date = `På ${weekday}`;
+  } else {
+    date = new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short" }).format(d);
+  }
   const time = new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit" }).format(d);
   return { date, time };
 }

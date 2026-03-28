@@ -15,6 +15,10 @@ export interface GeocodeResult {
   suburb?: string;
   village?: string;
   town?: string;
+  name?: string;
+  street?: string;
+  osm_key?: string;
+  osm_value?: string;
 }
 
 interface PhotonFeature {
@@ -91,6 +95,10 @@ export async function searchCitiesSweden(query: string): Promise<GeocodeResult[]
       suburb: p.district,
       village: p.city,
       town: p.city,
+      name: p.name,
+      street: p.street,
+      osm_key: p.osm_key,
+      osm_value: p.osm_value,
     };
   });
 }
@@ -118,6 +126,7 @@ export async function searchAddress(query: string, options?: { city?: string }):
     const cityLower = options.city.toLowerCase().trim();
     features = features.filter((f) => {
       const fCity = (f.properties?.city ?? f.properties?.locality ?? "").toLowerCase();
+      if (!fCity) return false;
       return fCity === cityLower || fCity.includes(cityLower) || cityLower.includes(fCity);
     });
   }
@@ -135,6 +144,10 @@ export async function searchAddress(query: string, options?: { city?: string }):
       suburb: p.district,
       village: p.city,
       town: p.city,
+      name: p.name,
+      street: p.street,
+      osm_key: p.osm_key,
+      osm_value: p.osm_value,
     };
   });
 }
@@ -168,6 +181,130 @@ export function pointInBounds(lat: number, lon: number, bounds: MapBounds): bool
 export async function geocodeAddress(address: string, city?: string): Promise<GeocodeResult | null> {
   const results = await searchAddress(address, city ? { city } : undefined);
   return results[0] ?? null;
+}
+
+/**
+ * Geocode a Swedish city name and return the best city/place candidate.
+ * Intended as a safe fallback when a postal code is unknown.
+ */
+export async function geocodeCity(city: string): Promise<GeocodeResult | null> {
+  const q = city.trim();
+  if (!q) return null;
+  const results = await searchCitiesSweden(q);
+  if (results.length === 0) return null;
+  const qNorm = normalizeSearchText(q);
+  const exact = results.find((r) => normalizeSearchText(r.display_name ?? "") === qNorm);
+  return exact ?? results[0] ?? null;
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreMeetingCandidate(
+  queryNorm: string,
+  queryTokens: string[],
+  cityHintNorm: string,
+  candidate: GeocodeResult
+): number {
+  const label = normalizeSearchText(candidate.display_name ?? "");
+  const name = normalizeSearchText(candidate.name ?? "");
+  const street = normalizeSearchText(candidate.street ?? "");
+  const city = normalizeSearchText(candidate.city ?? "");
+  const neighborhood = normalizeSearchText(
+    candidate.neighborhood ?? candidate.suburb ?? candidate.village ?? candidate.town ?? ""
+  );
+  const hay = `${label} ${city} ${neighborhood}`.trim();
+  if (!hay) return Number.NEGATIVE_INFINITY;
+
+  const osmKey = normalizeSearchText(candidate.osm_key ?? "");
+  const osmValue = normalizeSearchText(candidate.osm_value ?? "");
+  const isLikelyPlaceName = queryTokens.length <= 3 && !/\d/.test(queryNorm);
+  const exactNameMatch =
+    Boolean(name) && (name === queryNorm || name.startsWith(`${queryNorm} `) || name.includes(` ${queryNorm}`));
+  const naturalLike =
+    osmKey === "natural" ||
+    osmKey === "water" ||
+    osmValue === "lake" ||
+    osmValue === "water" ||
+    osmValue === "reservoir" ||
+    osmValue === "wetland";
+  const streetLike =
+    Boolean(street) ||
+    osmKey === "highway" ||
+    osmValue === "residential" ||
+    osmValue === "road" ||
+    osmValue === "service" ||
+    osmValue === "footway";
+
+  let score = 0;
+  if (exactNameMatch) score += 240;
+  if (hay.includes(queryNorm)) score += 120;
+  if (label.startsWith(queryNorm)) score += 25;
+  if (isLikelyPlaceName && naturalLike) score += 120;
+  if (isLikelyPlaceName && streetLike && !exactNameMatch) score -= 130;
+  if (cityHintNorm && city && (city.includes(cityHintNorm) || cityHintNorm.includes(city))) score += 12;
+
+  let matchedTokens = 0;
+  for (const token of queryTokens) {
+    if (hay.includes(token)) {
+      score += 24;
+      matchedTokens += 1;
+    }
+  }
+  if (queryTokens.length > 0 && matchedTokens === 0) score -= 100;
+
+  return score;
+}
+
+/**
+ * Geocode a meeting place / area string and rank candidates by textual relevance.
+ * This avoids city-scoped false positives (e.g. "Vombsjon" ending up in central Malmo).
+ */
+export async function geocodeMeetingArea(
+  area: string,
+  options?: { cityHint?: string }
+): Promise<GeocodeResult | null> {
+  const q = area.trim();
+  if (!q) return null;
+
+  const queryNorm = normalizeSearchText(q);
+  const queryTokens = queryNorm.split(" ").filter((t) => t.length >= 2);
+  const cityHintNorm = normalizeSearchText(options?.cityHint ?? "");
+
+  const buckets = await Promise.all([
+    searchAddress(q, options?.cityHint ? { city: options.cityHint } : undefined).catch(
+      () => [] as GeocodeResult[]
+    ),
+    searchAddress(q).catch(() => [] as GeocodeResult[]),
+    searchCitiesSweden(q).catch(() => [] as GeocodeResult[]),
+  ]);
+
+  const deduped = new Map<string, GeocodeResult>();
+  for (const bucket of buckets) {
+    for (const candidate of bucket) {
+      const key = `${candidate.lat.toFixed(5)},${candidate.lon.toFixed(5)}`;
+      if (!deduped.has(key)) deduped.set(key, candidate);
+    }
+  }
+  const candidates = [...deduped.values()];
+  if (candidates.length === 0) return null;
+
+  let best: GeocodeResult | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const candidate of candidates) {
+    const score = scoreMeetingCandidate(queryNorm, queryTokens, cityHintNorm, candidate);
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+  return best ?? candidates[0] ?? null;
 }
 
 /** Swedish postal code format: 123 45 or 12345 */

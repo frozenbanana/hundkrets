@@ -262,7 +262,7 @@ export default function ProfileIndex() {
                     />
                     <div class="profile-card-profile-info">
                       <p class="profile-card-name">{u.name || "—"}</p>
-                      {u.area && <p class="profile-card-area">{u.area}</p>}
+                      {u.area && <p class="profile-card-area">{u.area}, {u.city}</p>}
                       {u.bio && (
                         <p class="profile-card-bio">
                           {u.bio.length > 100 ? u.bio.slice(0, 97) + "..." : u.bio}

@@ -16,14 +16,16 @@ import { pb } from "~/lib/pocketbase";
 import { isUserVerified } from "~/lib/auth";
 import { findListings } from "~/lib/matching";
 import { approximateCoords, pointInBounds, type MapBounds } from "~/lib/geocode";
+import { EXCURSION_VISIBILITY_LABELS, excursionPreviewCoords } from "~/lib/excursionListCard";
+import { fetchExploreExcursions, type ExploreExcursionItem } from "~/lib/exploreExcursions";
 import { AppShell } from "~/components/AppShell";
 import { ExcursionListCard } from "~/components/ExcursionListCard";
+import { ExcursionsMap } from "~/components/ExcursionsMap";
 import { MatchesMap } from "~/components/MatchesMap";
 import { MatchCards } from "./explore/MatchCard";
 import { InterestModal } from "./explore/InterestModal";
 import { RespondModal } from "./explore/RespondModal";
 import type { Conn } from "./explore/types";
-import type { ExcursionVisibility } from "~/types";
 import {
   DEFAULT_MAX_DISTANCE_KM,
   DISTANCE_STEPS_KM,
@@ -37,19 +39,24 @@ import {
   type MatchSort,
 } from "./explore/helpers";
 
-type UpcomingExcursion = {
-  id: string;
-  title: string;
-  start_at: string;
-  meeting_area: string;
-  duration_hours?: number;
-  visibility: ExcursionVisibility;
-  meeting_latitude?: number;
-  meeting_longitude?: number;
-  meeting_map_url?: string;
-  interest_count: number;
-  comment_count: number;
-};
+const EXCURSION_DURATION_STEPS = [1, 2, 3, 4, 6, 8] as const;
+
+function normalizedExcursionDuration(ex: ExploreExcursionItem): number {
+  const raw = ex.duration_hours;
+  const d =
+    typeof raw === "string"
+      ? Number(raw)
+      : typeof raw === "number"
+        ? raw
+        : Number.NaN;
+  if (
+    !Number.isNaN(d) &&
+    (EXCURSION_DURATION_STEPS as readonly number[]).includes(d)
+  ) {
+    return d;
+  }
+  return 2;
+}
 
 export default function Matches() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -71,6 +78,36 @@ export default function Matches() {
 
   const [maxDistanceKm, setMaxDistanceKm] = createSignal(DEFAULT_MAX_DISTANCE_KM);
 
+  type ExploreMode = "medlemmar" | "hundtraffar";
+
+  const exploreMode = createMemo((): ExploreMode => {
+    const p = searchParams as Record<string, string | undefined>;
+    const forcesMedlemmar =
+      p.request === "true" ||
+      p.request === "1" ||
+      p.match === "true" ||
+      p.match === "1" ||
+      p.not_matched === "true" ||
+      p.not_matched === "1" ||
+      p.outgoing === "true" ||
+      p.outgoing === "1" ||
+      Boolean(p.user?.trim());
+    if (forcesMedlemmar) return "medlemmar";
+    if (p.utforsk === "hundtraffar") return "hundtraffar";
+    return "medlemmar";
+  });
+
+  function setExploreModeTab(next: ExploreMode) {
+    if (next === "hundtraffar") {
+      setSearchParams({ utforsk: "hundtraffar" }, { replace: true });
+    } else {
+      const p = new URLSearchParams(window.location.search);
+      p.delete("utforsk");
+      const qs = p.toString();
+      navigate(`/app/explore${qs ? `?${qs}` : ""}`, { replace: true });
+    }
+  }
+
   createEffect(() => {
     const p = searchParams as Record<string, string | undefined>;
     const { filter, excludeGive: eg, excludeMutual: em, excludeReceive: er, sort } = filterFromParams(p);
@@ -81,6 +118,7 @@ export default function Matches() {
     setMatchSort(sort);
   });
   createEffect(() => {
+    if (exploreMode() !== "medlemmar") return;
     if (typeof window === "undefined") return;
     const url = buildMatchesUrl({
       filter: matchFilter(),
@@ -97,7 +135,19 @@ export default function Matches() {
     if ((searchParams as { request?: string }).request === "true") markRequestsSeen();
   });
   const [mapBounds, setMapBounds] = createSignal<MapBounds | null>(null);
+  const [excursionMapBounds, setExcursionMapBounds] = createSignal<MapBounds | null>(null);
   const [mobileViewMode, setMobileViewMode] = createSignal<"list" | "map">("list");
+  const [excursionMobileViewMode, setExcursionMobileViewMode] = createSignal<"list" | "map">("list");
+  const [excursionFilterOpen, setExcursionFilterOpen] = createSignal(
+    typeof window !== "undefined" && !window.matchMedia("(max-width: 768px)").matches
+  );
+  const [excursionVisPublic, setExcursionVisPublic] = createSignal(true);
+  const [excursionVisMatched, setExcursionVisMatched] = createSignal(true);
+  const [excursionVisInterested, setExcursionVisInterested] = createSignal(true);
+  const [excursionDurFilter, setExcursionDurFilter] = createSignal<Set<number>>(
+    new Set(EXCURSION_DURATION_STEPS)
+  );
+  const [hoveredExcursionId, setHoveredExcursionId] = createSignal<string | undefined>(undefined);
   const [isMobileViewport, setIsMobileViewport] = createSignal(
     typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches
   );
@@ -110,8 +160,56 @@ export default function Matches() {
 
   const isMobileMapView = () => isMobileViewport() && mobileViewMode() === "map" && (listings().length ?? 0) > 0;
 
+  const [exploreExcursionsData, { refetch: refetchExploreExcursions }] = createResource(
+    () => exploreMode() === "hundtraffar",
+    async (load) => {
+      if (!load) return [] as ExploreExcursionItem[];
+      try {
+        return await fetchExploreExcursions(pb);
+      } catch (err) {
+        console.warn("[explore] excursions fetch failed", err);
+        return [] as ExploreExcursionItem[];
+      }
+    }
+  );
+
+  const excursionMetaFiltered = createMemo(() => {
+    const list = exploreExcursionsData() ?? [];
+    const vp = excursionVisPublic();
+    const vm = excursionVisMatched();
+    const vi = excursionVisInterested();
+    const durs = excursionDurFilter();
+    return list.filter((e) => {
+      if (e.visibility === "public" && !vp) return false;
+      if (e.visibility === "matched_only" && !vm) return false;
+      if (e.visibility === "interested_by_me" && !vi) return false;
+      return durs.has(normalizedExcursionDuration(e));
+    });
+  });
+
+  const excursionListDisplayed = createMemo(() => {
+    const list = excursionMetaFiltered();
+    if (isMobileViewport() && excursionMobileViewMode() === "list") return list;
+    const bounds = excursionMapBounds();
+    if (!bounds) return list;
+    return list.filter((e) => {
+      const c = excursionPreviewCoords(
+        e.meeting_latitude,
+        e.meeting_longitude,
+        e.meeting_map_url
+      );
+      if (!c) return false;
+      return pointInBounds(c.lat, c.lon, bounds);
+    });
+  });
+
+  const isMobileExcursionMapView = () =>
+    isMobileViewport() &&
+    excursionMobileViewMode() === "map" &&
+    (exploreExcursionsData() ?? []).length > 0;
+
   createEffect(() => {
-    const shouldDisable = isMobileMapView();
+    const shouldDisable = isMobileMapView() || isMobileExcursionMapView();
     if (shouldDisable && typeof document !== "undefined") {
       document.body.classList.add("matches-map-view-no-scroll");
     }
@@ -207,66 +305,6 @@ export default function Matches() {
       }
     }
   );
-
-  const [upcomingExcursions] = createResource(async () => {
-    try {
-      const nowIso = new Date().toISOString();
-      const list = await pb.collection("excursions").getFullList<{
-        id: string;
-        title: string;
-        start_at: string;
-        meeting_area: string;
-        duration_hours?: number;
-        visibility: ExcursionVisibility;
-        meeting_latitude?: number;
-        meeting_longitude?: number;
-        meeting_map_url?: string;
-        status?: string;
-      }>({
-        filter: `status = "scheduled" && start_at >= "${nowIso}"`,
-        sort: "start_at",
-      });
-      const slice = list.slice(0, 3);
-      if (slice.length === 0) return [] as UpcomingExcursion[];
-
-      const orExc = slice.map((e) => `excursion = "${e.id}"`).join(" || ");
-      const [interestsRaw, commentsRaw] = await Promise.all([
-        pb.collection("excursion_interests").getFullList<{ excursion: string }>({
-          filter: `(${orExc})`,
-        }),
-        pb.collection("excursion_comments").getFullList<{ excursion: string }>({
-          filter: `(${orExc})`,
-        }),
-      ]);
-      const interestBy = new Map<string, number>();
-      const commentBy = new Map<string, number>();
-      for (const r of interestsRaw) {
-        interestBy.set(r.excursion, (interestBy.get(r.excursion) ?? 0) + 1);
-      }
-      for (const r of commentsRaw) {
-        commentBy.set(r.excursion, (commentBy.get(r.excursion) ?? 0) + 1);
-      }
-
-      return slice.map(
-        (e): UpcomingExcursion => ({
-          id: e.id,
-          title: e.title,
-          start_at: e.start_at,
-          meeting_area: e.meeting_area,
-          duration_hours: e.duration_hours,
-          visibility: e.visibility,
-          meeting_latitude: e.meeting_latitude,
-          meeting_longitude: e.meeting_longitude,
-          meeting_map_url: e.meeting_map_url,
-          interest_count: interestBy.get(e.id) ?? 0,
-          comment_count: commentBy.get(e.id) ?? 0,
-        })
-      );
-    } catch (err) {
-      console.warn("[explore] upcoming excursions fetch failed", err);
-      return [] as UpcomingExcursion[];
-    }
-  });
 
   const listings = createMemo(() => {
     const d = data();
@@ -683,7 +721,60 @@ export default function Matches() {
     setSearchParams({}, { replace: true });
   }
 
+  function toggleExcursionVis(which: "public" | "matched" | "interested") {
+    if (which === "public") {
+      setExcursionVisPublic((v) => {
+        if (v && !excursionVisMatched() && !excursionVisInterested()) return true;
+        return !v;
+      });
+    } else if (which === "matched") {
+      setExcursionVisMatched((v) => {
+        if (v && !excursionVisPublic() && !excursionVisInterested()) return true;
+        return !v;
+      });
+    } else {
+      setExcursionVisInterested((v) => {
+        if (v && !excursionVisPublic() && !excursionVisMatched()) return true;
+        return !v;
+      });
+    }
+  }
+
+  function toggleExcursionDur(h: number) {
+    setExcursionDurFilter((prev) => {
+      // UX: from "all selected", tapping one selected chip should focus that single duration.
+      if (prev.has(h) && prev.size > 1) return new Set([h]);
+      const n = new Set(prev);
+      if (n.has(h)) {
+        if (n.size <= 1) return n;
+        n.delete(h);
+      } else {
+        n.add(h);
+      }
+      return n;
+    });
+  }
+
+  function handleClearExcursionFilters() {
+    setExcursionVisPublic(true);
+    setExcursionVisMatched(true);
+    setExcursionVisInterested(true);
+    setExcursionDurFilter(new Set(EXCURSION_DURATION_STEPS));
+  }
+
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
+
+  function buildExploreBackHref(): string {
+    if (typeof window === "undefined") return "/app/explore?utforsk=hundtraffar";
+    return `${window.location.pathname}${window.location.search || ""}`;
+  }
+
+  function excursionDetailHref(id: string): string {
+    const params = new URLSearchParams();
+    params.set("from", "explore");
+    params.set("back", buildExploreBackHref());
+    return `/app/excursions/${id}?${params.toString()}`;
+  }
 
   const requestedMeUserIds = createMemo(() => {
     const me = pb.authStore.model?.id;
@@ -813,14 +904,43 @@ export default function Matches() {
     <AppShell>
       <div
         class="matches-page"
-        classList={{ "matches-page-map-view": isMobileMapView() }}
+        classList={{
+          "matches-page-map-view": isMobileMapView() || isMobileExcursionMapView(),
+        }}
       >
         <div class="matches-sticky-header">
         <div class="container matches-header-container">
-          <Show when={!introDismissed() && (!isMobileViewport() || listings().length === 0)}>
+          <div class="explore-title-bar">
+            <h1 class="matches-explore-title explore-title-with-mode">
+              <span class="explore-title-prefix">Utforska</span>
+              <span class="explore-mode-segment" role="tablist" aria-label="Utforska-läge">
+                <button
+                  type="button"
+                  role="tab"
+                  class="explore-mode-tab"
+                  classList={{ "explore-mode-tab-active": exploreMode() === "medlemmar" }}
+                  aria-selected={exploreMode() === "medlemmar"}
+                  onClick={() => setExploreModeTab("medlemmar")}
+                >
+                  medlemmar
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  class="explore-mode-tab"
+                  classList={{ "explore-mode-tab-active": exploreMode() === "hundtraffar" }}
+                  aria-selected={exploreMode() === "hundtraffar"}
+                  onClick={() => setExploreModeTab("hundtraffar")}
+                >
+                  hundträffar
+                </button>
+              </span>
+            </h1>
+          </div>
+
+          <Show when={exploreMode() === "medlemmar" && !introDismissed() && (!isMobileViewport() || listings().length === 0)}>
             <div class="page-hero">
               <div class="matches-intro-box">
-                <h1>Utforska</h1>
                 <p style="color: var(--color-text-muted); margin: 0;">
                   Hundägare i ditt område som vill byta hundpassning. Klicka "Jag är intresserad" för
                   att koppla ihop—när de gör det kan ni dela uppgifter och chatta.
@@ -842,7 +962,7 @@ export default function Matches() {
               </div>
             </div>
           </Show>
-          <Show when={!pb.authStore.model?.area && !pb.authStore.model?.city}>
+          <Show when={exploreMode() === "medlemmar" && !pb.authStore.model?.area && !pb.authStore.model?.city}>
             <div class="profile-incomplete-card">
               <h3 style="margin: 0 0 0.5rem; color: var(--color-paw-dark);">
                 Profilen behöver uppdateras
@@ -864,6 +984,7 @@ export default function Matches() {
           </Show>
           <Show
             when={
+              exploreMode() === "medlemmar" &&
               pb.authStore.model?.area &&
               !pb.authStore.model?.latitude &&
               !pb.authStore.model?.longitude
@@ -878,45 +999,10 @@ export default function Matches() {
               </A>
             </div>
           </Show>
-          <Show when={(upcomingExcursions() ?? []).length > 0}>
-            <div class="card" style="padding: 0.9rem; margin-bottom: 0.75rem;">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
-                <div>
-                  <h3 style="margin: 0;">Kommande hundträffar</h3>
-                  <p style="margin: 0.25rem 0 0; color: var(--color-text-muted); font-size: 0.92rem;">
-                    Nya sociala promenader i nätverket.
-                  </p>
-                </div>
-                <A href="/app/excursions" class="btn btn-secondary">
-                  Alla hundträffar
-                </A>
-              </div>
-              <div style="display: grid; gap: 0.5rem; margin-top: 0.7rem;">
-                <For each={upcomingExcursions()}>
-                  {(trip) => (
-                    <ExcursionListCard
-                      id={trip.id}
-                      title={trip.title}
-                      start_at={trip.start_at}
-                      meeting_area={trip.meeting_area}
-                      duration_hours={trip.duration_hours}
-                      visibility={trip.visibility}
-                      interest_count={trip.interest_count}
-                      comment_count={trip.comment_count}
-                      meeting_latitude={trip.meeting_latitude}
-                      meeting_longitude={trip.meeting_longitude}
-                      meeting_map_url={trip.meeting_map_url}
-                      compact
-                    />
-                  )}
-                </For>
-              </div>
-            </div>
-          </Show>
-          <Show when={data.loading && !data()}>
+          <Show when={exploreMode() === "medlemmar" && data.loading && !data()}>
             <p>Laddar...</p>
           </Show>
-          <Show when={data.error}>
+          <Show when={exploreMode() === "medlemmar" && data.error}>
             <p style="color: #dc2626;">Kunde inte ladda matchningar: {data.error?.message}</p>
             <p style="color: var(--color-text-muted); font-size: 0.875rem;">
               Kontrollera att PocketBase körs på{" "}
@@ -926,7 +1012,15 @@ export default function Matches() {
               Försök igen
             </button>
           </Show>
-          <Show when={listings().length === 0 && !data.loading && pb.authStore.model?.area && !hasNeedsAndCapacity()}>
+          <Show
+            when={
+              exploreMode() === "medlemmar" &&
+              listings().length === 0 &&
+              !data.loading &&
+              pb.authStore.model?.area &&
+              !hasNeedsAndCapacity()
+            }
+          >
             <p>
               {userTypeInfo().isSitterOnly
                 ? "Ingen i ditt område än. Lägg till din tillgänglighet så att hundägare kan hitta dig."
@@ -947,7 +1041,15 @@ export default function Matches() {
               </Show>
             </div>
           </Show>
-          <Show when={listings().length === 0 && !data.loading && pb.authStore.model?.area && hasNeedsAndCapacity()}>
+          <Show
+            when={
+              exploreMode() === "medlemmar" &&
+              listings().length === 0 &&
+              !data.loading &&
+              pb.authStore.model?.area &&
+              hasNeedsAndCapacity()
+            }
+          >
             <div class="matches-too-far-empty">
               <p>
                 Det finns ingen att matcha med inom {maxDistanceKm()} km. Du kan:
@@ -964,10 +1066,10 @@ export default function Matches() {
               </div>
             </div>
           </Show>
-          <Show when={listings().length > 0}>
-            {/* Utforska header + filter (mobile & desktop) */}
+          <Show when={exploreMode() === "medlemmar" && listings().length > 0}>
+            {/* Filterrad (rubrik Utforska + läge finns ovan) */}
             <div class="matches-explore-header">
-                <h1 class="matches-explore-title">Utforska</h1>
+                <span class="matches-explore-header-spacer" aria-hidden="true" />
                 <button
                   type="button"
                   class="matches-filter-icon-btn"
@@ -1036,8 +1138,126 @@ export default function Matches() {
               </div>
             </div>
           </Show>
+
+          <Show when={exploreMode() === "hundtraffar"}>
+            <div class="matches-explore-header explore-excursions-filter-header">
+              <span class="matches-explore-header-spacer" aria-hidden="true" />
+              <button
+                type="button"
+                class="matches-filter-icon-btn"
+                classList={{ "matches-filter-icon-active": excursionFilterOpen() }}
+                onClick={() => setExcursionFilterOpen((o) => !o)}
+                aria-label={excursionFilterOpen() ? "Dölj filter" : "Visa filter"}
+                aria-expanded={excursionFilterOpen()}
+              >
+                <Show
+                  when={excursionFilterOpen()}
+                  fallback={
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      role="img"
+                    >
+                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                    </svg>
+                  }
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    role="img"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </Show>
+              </button>
+            </div>
+            <div
+              class="matches-filter-section"
+              classList={{ "matches-filter-section-open": excursionFilterOpen() }}
+            >
+              <div class="matches-filter-header">
+                <span class="matches-filter-title">Filter</span>
+                <button type="button" class="matches-filter-clear" onClick={handleClearExcursionFilters}>
+                  Rensa
+                </button>
+              </div>
+              <div class="matches-filter-content">
+                <div class="matches-filter-group">
+                  <span class="matches-filter-label">Synlighet</span>
+                  <div class="matches-filter-tabs" role="group">
+                    <button
+                      type="button"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": excursionVisPublic() }}
+                      onClick={() => toggleExcursionVis("public")}
+                    >
+                      {EXCURSION_VISIBILITY_LABELS.public}
+                    </button>
+                    <button
+                      type="button"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": excursionVisMatched() }}
+                      onClick={() => toggleExcursionVis("matched")}
+                    >
+                      {EXCURSION_VISIBILITY_LABELS.matched_only}
+                    </button>
+                    <button
+                      type="button"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": excursionVisInterested() }}
+                      onClick={() => toggleExcursionVis("interested")}
+                    >
+                      {EXCURSION_VISIBILITY_LABELS.interested_by_me}
+                    </button>
+                  </div>
+                </div>
+                <div class="matches-filter-group">
+                  <span class="matches-filter-label">Längd (timmar)</span>
+                  <div class="matches-filter-tabs" role="group">
+                    <For each={[...EXCURSION_DURATION_STEPS]}>
+                      {(h) => (
+                        <button
+                          type="button"
+                          class="matches-filter-tab"
+                          classList={{ "matches-filter-tab-active": excursionDurFilter().has(h) }}
+                          onClick={() => toggleExcursionDur(h)}
+                        >
+                          {h} h
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Show when={exploreExcursionsData.loading}>
+              <p>Laddar hundträffar...</p>
+            </Show>
+            <Show when={exploreExcursionsData.error}>
+              <p style="color: #dc2626;">Kunde inte ladda hundträffar.</p>
+              <button type="button" class="btn btn-secondary" onClick={() => refetchExploreExcursions()}>
+                Försök igen
+              </button>
+            </Show>
+          </Show>
         </div>
-        <Show when={listings().length > 0}>
+        <Show when={exploreMode() === "medlemmar" && listings().length > 0}>
           <div class="matches-mobile-toggle" aria-hidden="true">
             <button
               type="button"
@@ -1058,7 +1278,7 @@ export default function Matches() {
           </div>
           </Show>
         </div>
-        <Show when={listings().length > 0}>
+        <Show when={exploreMode() === "medlemmar" && listings().length > 0}>
           <div class="matches-split-wrap">
             <div
               class="matches-split"
@@ -1122,6 +1342,84 @@ export default function Matches() {
             </div>
           </div>
             
+          </div>
+        </Show>
+        <Show when={exploreMode() === "hundtraffar" && !exploreExcursionsData.loading && !exploreExcursionsData.error}>
+          <div class="matches-mobile-toggle" aria-hidden="true">
+            <button
+              type="button"
+              class="matches-view-toggle-btn"
+              classList={{ "matches-view-toggle-active": excursionMobileViewMode() === "list" }}
+              onClick={() => setExcursionMobileViewMode("list")}
+            >
+              Lista
+            </button>
+            <button
+              type="button"
+              class="matches-view-toggle-btn"
+              classList={{ "matches-view-toggle-active": excursionMobileViewMode() === "map" }}
+              onClick={() => setExcursionMobileViewMode("map")}
+            >
+              Karta
+            </button>
+          </div>
+          <div class="matches-split-wrap">
+            <div
+              class="matches-split explore-excursions-split"
+              classList={{
+                "matches-split-list-only": excursionMobileViewMode() === "list",
+                "matches-split-map-only": excursionMobileViewMode() === "map",
+              }}
+            >
+              <div class="matches-map-panel">
+                <Show when={!isMobileViewport() || excursionMobileViewMode() === "map"}>
+                  <ExcursionsMap
+                    excursions={excursionMetaFiltered()}
+                    myLat={pb.authStore.model?.latitude}
+                    myLon={pb.authStore.model?.longitude}
+                    hoveredExcursionId={!isMobileViewport() ? hoveredExcursionId() : undefined}
+                    filterByBounds
+                    onBoundsChange={setExcursionMapBounds}
+                    style={{ height: "100%", "min-height": "400px", "margin-top": "0" }}
+                  />
+                </Show>
+              </div>
+              <div class="matches-list-panel">
+                <Show when={excursionListDisplayed().length === 0} fallback={null}>
+                  <div class="matches-empty-state">
+                    <p style="color: var(--color-text-muted); margin: 0;">
+                      {excursionMetaFiltered().length === 0
+                        ? "Inga hundträffar matchar filtren. Prova att justera synlighet eller längd."
+                        : "Ingen träff i kartans utsnitt. Zooma ut eller flytta kartan."}
+                    </p>
+                  </div>
+                </Show>
+                <Show when={excursionListDisplayed().length > 0}>
+                  <div style="display: grid; gap: 0.75rem;">
+                    <For each={excursionListDisplayed()}>
+                      {(trip) => (
+                        <ExcursionListCard
+                          id={trip.id}
+                          href={excursionDetailHref(trip.id)}
+                          title={trip.title}
+                          start_at={trip.start_at}
+                          meeting_area={trip.meeting_area}
+                          duration_hours={trip.duration_hours}
+                          visibility={trip.visibility}
+                          interest_count={trip.interest_count}
+                          comment_count={trip.comment_count}
+                          meeting_latitude={trip.meeting_latitude}
+                          meeting_longitude={trip.meeting_longitude}
+                          meeting_map_url={trip.meeting_map_url}
+                          hideMapThumb={!isMobileViewport()}
+                          onHoverChange={!isMobileViewport() ? setHoveredExcursionId : undefined}
+                        />
+                      )}
+                    </For>
+                  </div>
+                </Show>
+              </div>
+            </div>
           </div>
         </Show>
       </div>

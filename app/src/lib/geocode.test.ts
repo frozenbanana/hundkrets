@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   approximateCoords,
+  geocodeMeetingArea,
   pointInBounds,
   type MapBounds,
 } from "~/lib/geocode";
@@ -53,5 +54,103 @@ describe("pointInBounds", () => {
 
   it("returns false for point west of bounds", () => {
     expect(pointInBounds(57, 9, bounds)).toBe(false);
+  });
+});
+
+describe("geocodeMeetingArea", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("prioritizes exact natural place over city-biased street", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((async (input: URL | RequestInfo) => {
+      const url = String(input);
+      const q = new URL(url).searchParams.get("q");
+
+      if (q?.includes("Vombsjön, Malmö, Sverige")) {
+        return {
+          ok: true,
+          json: async () => ({
+            features: [
+              {
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [12.9726246, 55.5815959] },
+                properties: {
+                  street: "Vombsjögatan",
+                  district: "Bellevuegården",
+                  city: "Malmö",
+                  countrycode: "SE",
+                  osm_key: "highway",
+                  osm_value: "residential",
+                },
+              },
+              {
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [13.376, 55.582] },
+                properties: {
+                  name: "Malmö",
+                  countrycode: "SE",
+                  // Empty city should not pass city filter.
+                  city: "",
+                  osm_key: "place",
+                  osm_value: "city",
+                },
+              },
+            ],
+          }),
+        } as Response;
+      }
+
+      if (q?.includes("Vombsjön Sverige")) {
+        return {
+          ok: true,
+          json: async () => ({
+            features: [
+              {
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [13.59234, 55.684416] },
+                properties: {
+                  name: "Vombsjön",
+                  state: "Lund Municipality",
+                  countrycode: "SE",
+                  osm_key: "natural",
+                  osm_value: "water",
+                },
+              },
+              {
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [12.9726246, 55.5815959] },
+                properties: {
+                  street: "Vombsjögatan",
+                  district: "Bellevuegården",
+                  city: "Malmö",
+                  countrycode: "SE",
+                  osm_key: "highway",
+                  osm_value: "residential",
+                },
+              },
+            ],
+          }),
+        } as Response;
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ features: [] }),
+      } as Response;
+    }) as typeof fetch);
+
+    const result = await geocodeMeetingArea("Vombsjön", { cityHint: "Malmö" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(result).not.toBeNull();
+    expect(result?.lat).toBeCloseTo(55.684416, 5);
+    expect(result?.lon).toBeCloseTo(13.59234, 5);
+    expect(result?.lat).not.toBeCloseTo(55.5815959, 3);
+    expect(result?.lon).not.toBeCloseTo(12.9726246, 3);
   });
 });

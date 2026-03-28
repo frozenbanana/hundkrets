@@ -4,6 +4,7 @@ import { MetaProvider } from "@solidjs/meta";
 import { ErrorBoundary, Suspense, onMount } from "solid-js";
 import { refreshAuth } from "~/lib/authStore";
 import { ToastContainer } from "~/components/Toast";
+import ExcursionsPage from "./routes/app/excursions/index";
 import ExcursionDetailPage from "~/pages/ExcursionDetailPage";
 import ExcursionInterestListPage from "~/pages/ExcursionInterestListPage";
 import "./app.css";
@@ -37,6 +38,7 @@ export default function App() {
             </Suspense>
           )}
         >
+          <Route path="/app/excursions" component={ExcursionsPage} />
           <Route path="/app/excursions/:id/intresserade" component={ExcursionInterestListPage} />
           <Route path="/app/excursions/:id" component={ExcursionDetailPage} />
           <FileRoutes />

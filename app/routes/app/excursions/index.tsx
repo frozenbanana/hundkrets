@@ -6,7 +6,7 @@ import { pb } from "~/lib/pocketbase";
 import { showToast } from "~/lib/toast";
 import { ExcursionListCard } from "~/components/ExcursionListCard";
 import { EXCURSION_VISIBILITY_LABELS as visibilityLabels } from "~/lib/excursionListCard";
-import { searchAddress, searchCitiesSweden } from "~/lib/geocode";
+import { geocodeMeetingArea } from "~/lib/geocode";
 import type { ExcursionVisibility } from "~/types";
 
 type ExcursionListItem = {
@@ -131,33 +131,9 @@ async function reverseGeocodeArea(lat: number, lon: number): Promise<string> {
 }
 
 async function forwardGeocodeArea(area: string, cityHint?: string): Promise<{ lat: number; lon: number } | null> {
-  const q = area.trim();
-  if (!q) return null;
-  // 1) Try scoped address/place search first (better precision when city is known)
-  try {
-    const scoped = await searchAddress(q, cityHint ? { city: cityHint } : undefined);
-    if (scoped[0]) return { lat: scoped[0].lat, lon: scoped[0].lon };
-  } catch {
-    // continue fallback chain
-  }
-
-  // 2) Try unscoped address/place search
-  try {
-    const unscoped = await searchAddress(q);
-    if (unscoped[0]) return { lat: unscoped[0].lat, lon: unscoped[0].lon };
-  } catch {
-    // continue fallback chain
-  }
-
-  // 3) Try city/place-oriented search (useful for area names)
-  try {
-    const cityLike = await searchCitiesSweden(q);
-    if (cityLike[0]) return { lat: cityLike[0].lat, lon: cityLike[0].lon };
-  } catch {
-    // no-op
-  }
-
-  return null;
+  const best = await geocodeMeetingArea(area, cityHint ? { cityHint } : undefined);
+  if (!best) return null;
+  return { lat: best.lat, lon: best.lon };
 }
 
 function MeetingPointPicker(props: {
@@ -279,7 +255,6 @@ export default function ExcursionsPage() {
         pb.collection("users").getFullList<{ id: string; name?: string }>(),
       ]);
 
-      const now = Date.now();
       const userNameById = new Map(usersRaw.map((u) => [u.id, u.name ?? ""]));
       const interestCountByExcursion = new Map();
       const commentCountByExcursion = new Map();
@@ -294,10 +269,6 @@ export default function ExcursionsPage() {
       }
 
       return excursionsRaw
-        .filter((e) => {
-          const t = new Date(e.start_at).getTime();
-          return Number.isNaN(t) ? true : t >= now;
-        })
         .map((e) => ({
           id: e.id,
           title: e.title,
@@ -407,6 +378,41 @@ export default function ExcursionsPage() {
   const sortedExcursions = createMemo(() => {
     const list = excursions() ?? [];
     return [...list].sort((a, b) => a.start_at.localeCompare(b.start_at));
+  });
+
+  const myUpcomingExcursions = createMemo(() => {
+    const me = pb.authStore.model?.id;
+    if (!me) return [] as ExcursionListItem[];
+    const now = Date.now();
+    return sortedExcursions().filter((item) => {
+      const t = new Date(item.start_at).getTime();
+      const isUpcoming = Number.isNaN(t) ? true : t >= now;
+      return item.host_user === me && isUpcoming;
+    });
+  });
+
+  const upcomingExcursions = createMemo(() => {
+    const me = pb.authStore.model?.id;
+    const now = Date.now();
+    return sortedExcursions().filter((item) => {
+      const t = new Date(item.start_at).getTime();
+      const isUpcoming = Number.isNaN(t) ? true : t >= now;
+      if (!isUpcoming) return false;
+      if (!me) return true;
+      return item.host_user !== me;
+    });
+  });
+
+  const myPastExcursions = createMemo(() => {
+    const me = pb.authStore.model?.id;
+    if (!me) return [] as ExcursionListItem[];
+    const now = Date.now();
+    return sortedExcursions()
+      .filter((item) => {
+        const t = new Date(item.start_at).getTime();
+        return !Number.isNaN(t) && t < now && item.host_user === me;
+      })
+      .sort((a, b) => b.start_at.localeCompare(a.start_at));
   });
 
   const selectedComments = createMemo(() => {
@@ -534,10 +540,14 @@ export default function ExcursionsPage() {
   async function handleInterest() {
     const id = selectedExcursionId();
     if (!id) return;
+    if (selectedDetail()?.item.host_user === pb.authStore.model?.id) {
+      showToast("Du ar redan med som arrangor.");
+      return;
+    }
     setSubmittingInterest(true);
     try {
       await pb.collection("excursion_interests").create({ excursion: id });
-      showToast("Intresse registrerat.");
+      showToast("Du är anmäld.");
       await Promise.all([refetchExcursions(), refetchSelectedDetail()]);
     } catch (err) {
       showToast(parseApiError(err), "error");
@@ -571,150 +581,48 @@ export default function ExcursionsPage() {
   return (
     <AppShell>
       <div class="container excursions-page">
-        <div class="page-hero">
-          <h1>Hundträffar</h1>
-          <p style="margin: 0; color: var(--color-text-muted);">
-            Planera hundpromenader och träffar med andra i Hundkrets.
-          </p>
+        <div class="page-hero excursions-page-header">
+          <div>
+            <h1>Hundträffar</h1>
+            <p style="margin: 0; color: var(--color-text-muted);">
+              Planera hundpromenader och träffar med andra i Hundkrets.
+            </p>
+          </div>
+          <A href="/app/excursions/create" class="btn excursions-new-btn">
+            <span aria-hidden="true">＋</span>
+            <span>Ny hundträff</span>
+          </A>
         </div>
 
-        <section class="card excursions-form-card">
-          <h2 style="margin-top: 0;">Skapa hundträff</h2>
-          <div class="excursions-form-grid">
-            <div class="form-group">
-              <label for="excursion-title">
-                {titleMode() === "auto" ? "Titel (autogenererad)" : "Titel (egenskriven)"}
-              </label>
-              <div class="excursions-title-input-wrap">
-                <input id="excursion-title" type="text" value={title()} readOnly />
-                <Show when={titleMode() === "auto"} fallback={
-                  <button type="button" class="excursions-title-icon-btn excursions-title-icon-in-input" onClick={resetToAutoTitle} aria-label="Byt till autogenererad titel" title="Byt till autogenererad titel">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M3 2v6h6" />
-                      <path d="M21 12a9 9 0 0 0-15-6.7L3 8" />
-                      <path d="M21 22v-6h-6" />
-                      <path d="M3 12a9 9 0 0 0 15 6.7L21 16" />
-                    </svg>
-                  </button>
-                }>
-                  <button type="button" class="excursions-title-icon-btn excursions-title-icon-in-input" onClick={openTitleModal} aria-label="Redigera titel" title="Redigera titel">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4z" />
-                    </svg>
-                  </button>
-                </Show>
+        <section class="card" style="padding: 1rem;">
+          <h2 style="margin-top: 0;">Mina uppkommande hundträffar</h2>
+          <Show when={listError()}>
+            <p style="color: #dc2626; margin-top: 0;">Kunde inte ladda hundträffar: {listError()}</p>
+          </Show>
+          <Show when={!excursions.loading} fallback={<p>Laddar hundträffar...</p>}>
+            <Show when={myUpcomingExcursions().length > 0} fallback={<p>Du har inte gått på en hundträff än.</p>}>
+              <div style="display: grid; gap: 0.75rem;">
+                <For each={myUpcomingExcursions()}>
+                  {(item) => (
+                    <ExcursionListCard
+                      id={item.id}
+                      title={item.title}
+                      start_at={item.start_at}
+                      meeting_area={item.meeting_area}
+                      duration_hours={item.duration_hours}
+                      visibility={item.visibility}
+                      interest_count={item.interest_count}
+                      comment_count={item.comment_count}
+                      meeting_latitude={item.meeting_latitude}
+                      meeting_longitude={item.meeting_longitude}
+                      meeting_map_url={item.meeting_map_url}
+                      editHref={`/app/excursions/${item.id}/edit`}
+                    />
+                  )}
+                </For>
               </div>
-            </div>
-            <div class="form-group">
-              <label for="excursion-description">Beskrivning (valfritt)</label>
-              <p class="excursions-help-text">
-                Skriv kort vad ni planerar: om ni tar en promenad, ungefär var ni går och hur långt.
-                Nämn gärna också om ni vill ta en fika efteråt.
-              </p>
-              <textarea
-                id="excursion-description"
-                rows={3}
-                placeholder="Exempel: Vi ses vid motionsspåret, går cirka 5 km i lugnt tempo och tar gärna en fika efter promenaden."
-                value={description()}
-                onInput={(e) => setDescription(e.currentTarget.value)}
-              />
-            </div>
-            <div class="form-group">
-              <label for="excursion-meeting-area">Mötesplats</label>
-              <p class="excursions-help-text">
-                Skriv först mötesplats. Kartan visas då automatiskt, och du finjusterar genom att flytta
-                nålen tills den pekar rätt.
-              </p>
-              <input
-                id="excursion-meeting-area"
-                type="text"
-                value={meetingArea()}
-                onInput={(e) => setMeetingArea(e.currentTarget.value)}
-                placeholder="T.ex. Slottskogen, Göteborg"
-                style="margin-bottom: 0.5rem;"
-              />
-              <Show
-                when={meetingArea().trim().length > 0}
-                fallback={<p class="excursions-map-hidden-hint">Skriv en mötesplats för att visa kartan.</p>}
-              >
-                <div class="excursions-map-reveal">
-                  <MeetingPointPicker lat={meetingLat()} lon={meetingLon()} onPick={applyMeetingPoint} />
-                </div>
-              </Show>
-              <div class="excursions-meeting-meta">
-                <Show when={typeof meetingLat() === "number" && typeof meetingLon() === "number"}>
-                  <div class="excursions-coordinates-row">
-                    <div>
-                      <strong>Koordinater:</strong> {`(${meetingLat()!.toFixed(5)}, ${meetingLon()!.toFixed(5)})`}
-                    </div>
-                    <Show when={meetingMapUrl()}>
-                      <a
-                        href={meetingMapUrl()}
-                        target="_blank"
-                        rel="noreferrer"
-                        class="excursions-maps-icon-link"
-                        title="Öppna i Google Maps"
-                        aria-label="Öppna i Google Maps"
-                      >
-                        <img src="https://maps.gstatic.com/favicon3.ico" alt="" width="18" height="18" />
-                      </a>
-                    </Show>
-                  </div>
-                </Show>
-                <Show when={meetingArea().trim().length > 0 && meetingArea() !== "Vald plats"}>
-                    <div>
-                      <strong>Mötesplatsnamn:</strong> {meetingArea()}
-                    </div>
-                </Show>
-                <Show when={meetingSearchLoading()}>
-                  <div>Uppdaterar kartan från text...</div>
-                </Show>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="excursion-start">Datum och tid</label>
-              <input
-                id="excursion-start"
-                type="datetime-local"
-                value={startAt()}
-                onInput={(e) => setStartAt(e.currentTarget.value)}
-              />
-            </div>
-            <div class="form-group">
-              <label for="excursion-duration">Hur lång tid</label>
-              <select
-                id="excursion-duration"
-                value={String(durationHours())}
-                onChange={(e) => setDurationHours(parseInt(e.currentTarget.value, 10) || 2)}
-              >
-                <option value="1">1 timme</option>
-                <option value="2">2 timmar</option>
-                <option value="3">3 timmar</option>
-                <option value="4">4 timmar</option>
-                <option value="6">6 timmar</option>
-                <option value="8">8 timmar</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="excursion-visibility">Synlighet</label>
-              <select
-                id="excursion-visibility"
-                class="input"
-                value={visibility()}
-                onChange={(e) => setVisibility(e.currentTarget.value as ExcursionVisibility)}
-              >
-                <option value="public">{visibilityLabels.public}</option>
-                <option value="matched_only">{visibilityLabels.matched_only}</option>
-                <option value="interested_by_me">{visibilityLabels.interested_by_me}</option>
-              </select>
-            </div>
-            <div class="excursions-form-actions">
-              <button type="button" class="btn" onClick={createExcursion} disabled={creating()}>
-                {creating() ? "Publicerar..." : "Publicera hundträff"}
-              </button>
-            </div>
-          </div>
+            </Show>
+          </Show>
         </section>
 
         <section class="card" style="padding: 1rem;">
@@ -723,9 +631,19 @@ export default function ExcursionsPage() {
             <p style="color: #dc2626; margin-top: 0;">Kunde inte ladda hundträffar: {listError()}</p>
           </Show>
           <Show when={!excursions.loading} fallback={<p>Laddar hundträffar...</p>}>
-            <Show when={sortedExcursions().length > 0} fallback={<p>Inga kommande hundträffar ännu.</p>}>
+            <Show
+              when={upcomingExcursions().length > 0}
+              fallback={
+                <div style="display: grid; gap: 0.6rem;">
+                  <p style="margin: 0;">Det finns inga hundträffar än. Varför inte skapa en?</p>
+                  <A href="/app/excursions/create" class="btn excursions-new-btn" style="justify-self: start;">
+                    Skapa hundträff
+                  </A>
+                </div>
+              }
+            >
               <div style="display: grid; gap: 0.75rem;">
-                <For each={sortedExcursions()}>
+                <For each={upcomingExcursions()}>
                   {(item) => (
                     <ExcursionListCard
                       id={item.id}
@@ -740,6 +658,36 @@ export default function ExcursionsPage() {
                       meeting_longitude={item.meeting_longitude}
                       meeting_map_url={item.meeting_map_url}
                     />
+                  )}
+                </For>
+              </div>
+            </Show>
+          </Show>
+        </section>
+
+        <section class="card excursions-past-section" style="padding: 1rem;">
+          <h2 style="margin-top: 0;">Mina passerade hundträffar</h2>
+          <Show when={!excursions.loading} fallback={<p>Laddar hundträffar...</p>}>
+            <Show when={myPastExcursions().length > 0} fallback={<p>Du har inga passerade hundträffar än.</p>}>
+              <div style="display: grid; gap: 0.75rem;">
+                <For each={myPastExcursions()}>
+                  {(item) => (
+                    <div class="excursions-past-card-wrap">
+                      <ExcursionListCard
+                        id={item.id}
+                        title={item.title}
+                        start_at={item.start_at}
+                        meeting_area={item.meeting_area}
+                        duration_hours={item.duration_hours}
+                        visibility={item.visibility}
+                        interest_count={item.interest_count}
+                        comment_count={item.comment_count}
+                        meeting_latitude={item.meeting_latitude}
+                        meeting_longitude={item.meeting_longitude}
+                        meeting_map_url={item.meeting_map_url}
+                        editHref={`/app/excursions/${item.id}/edit`}
+                      />
+                    </div>
                   )}
                 </For>
               </div>
@@ -773,20 +721,29 @@ export default function ExcursionsPage() {
                     <p style="margin: 0 0 0.5rem;">{detail().item.description}</p>
                   </Show>
                 </div>
-                <button type="button" class="btn btn-secondary" onClick={() => setSelectedExcursionId(null)}>
-                  Stang
-                </button>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                  <Show when={detail().item.host_user === pb.authStore.model?.id}>
+                    <A href={`/app/excursions/${detail().item.id}/edit`} class="btn btn-secondary">
+                      Redigera
+                    </A>
+                  </Show>
+                  <button type="button" class="btn btn-secondary" onClick={() => setSelectedExcursionId(null)}>
+                    Stang
+                  </button>
+                </div>
               </div>
 
               <div style="margin: 1rem 0;">
-                <button
-                  type="button"
-                  class="btn"
-                  onClick={handleInterest}
-                  disabled={submittingInterest() || detail().item.viewer_interested}
-                >
-                  {detail().item.viewer_interested ? "Du ar intresserad" : submittingInterest() ? "Sparar..." : "Jag ar intresserad"}
-                </button>
+                <Show when={detail().item.host_user !== pb.authStore.model?.id}>
+                  <button
+                    type="button"
+                    class="btn"
+                    onClick={handleInterest}
+                    disabled={submittingInterest() || detail().item.viewer_interested}
+                  >
+                    {detail().item.viewer_interested ? "Du deltar" : submittingInterest() ? "Sparar..." : "Delta"}
+                  </button>
+                </Show>
               </div>
 
               <h3>Kommentarer</h3>
@@ -853,35 +810,6 @@ export default function ExcursionsPage() {
           </section>
         </Show>
       </div>
-      <Show when={titleModalOpen()}>
-        <div class="modal-backdrop" onClick={() => setTitleModalOpen(false)}>
-          <div class="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style="margin-top: 0;">Skriv egen titel</h3>
-            <p style="margin: 0 0 0.75rem; color: var(--color-text-muted);">
-              När du sparar här påverkas titeln inte längre av ändringar i formuläret.
-            </p>
-            <div class="form-group" style="margin-bottom: 1rem;">
-              <label for="manual-title-input">Titel</label>
-              <input
-                id="manual-title-input"
-                type="text"
-                value={manualTitleDraft()}
-                onInput={(e) => setManualTitleDraft(e.currentTarget.value)}
-                placeholder="Skriv en egen titel"
-                autofocus
-              />
-            </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button type="button" class="btn" onClick={saveManualTitle}>
-                Spara titel
-              </button>
-              <button type="button" class="btn btn-secondary" onClick={() => setTitleModalOpen(false)}>
-                Avbryt
-              </button>
-            </div>
-          </div>
-        </div>
-      </Show>
     </AppShell>
   );
 }

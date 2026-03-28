@@ -3,7 +3,7 @@ import { showToast } from "~/lib/toast";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
-import { geocodePostalCode } from "~/lib/geocode";
+import { geocodeCity, geocodePostalCode } from "~/lib/geocode";
 import { lookupPostalCode } from "~/lib/postalCode";
 import { parseApiError } from "~/lib/errors";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
@@ -85,21 +85,42 @@ export default function OnboardingProfile() {
       if (!addr.latitude || !addr.longitude) {
         if (postalInput) {
           const lookup = await lookupPostalCode(postalInput);
-          const geocoded = await geocodePostalCode(postalInput, {
-            city: lookup?.city,
-          });
-          if (geocoded) {
-            const city = cityInput || (geocoded.city ?? "");
-            const area = areaInput || (geocoded.neighborhood ?? "");
-            const raw = postalInput.replace(/\s/g, "").trim();
-            const formatted = raw.length === 5 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : postalInput;
+          if (lookup?.city) {
+            const geocoded = await geocodePostalCode(postalInput, {
+              city: lookup.city,
+            });
+            if (geocoded) {
+              const city = cityInput || lookup.city || geocoded.city || "";
+              const area = areaInput || (lookup.area ?? geocoded.neighborhood ?? "");
+              const raw = postalInput.replace(/\s/g, "").trim();
+              const formatted = raw.length === 5 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : postalInput;
+              const parts = [city, area].filter(Boolean);
+              addr = {
+                address_private: `Postnummer ${formatted}, ${parts.join(", ")}`.trim(),
+                latitude: geocoded.lat,
+                longitude: geocoded.lon,
+                city,
+                neighborhood: geocoded.neighborhood ?? "",
+                area: area || undefined,
+              };
+            }
+          }
+        }
+        if ((!addr.latitude || !addr.longitude) && cityInput) {
+          const geocodedCity = await geocodeCity(cityInput);
+          if (geocodedCity) {
+            const raw = (postalInput ?? "").replace(/\s/g, "").trim();
+            const formatted = raw.length === 5 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : (postalInput ?? "");
+            const city = cityInput;
+            const area = areaInput || addr.area || geocodedCity.neighborhood || "";
             const parts = [city, area].filter(Boolean);
             addr = {
+              ...addr,
               address_private: `Postnummer ${formatted}, ${parts.join(", ")}`.trim(),
-              latitude: geocoded.lat,
-              longitude: geocoded.lon,
+              latitude: geocodedCity.lat,
+              longitude: geocodedCity.lon,
               city,
-              neighborhood: geocoded.neighborhood ?? "",
+              neighborhood: geocodedCity.neighborhood ?? "",
               area: area || undefined,
             };
           }
@@ -114,7 +135,7 @@ export default function OnboardingProfile() {
         };
       }
       if (!addr.latitude || !addr.longitude) {
-        setError("Ange ett giltigt postnummer.");
+        setError("Kunde inte hitta koordinater. Kontrollera postnummer och stad.");
         setLoading(false);
         return;
       }

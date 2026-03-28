@@ -10,8 +10,12 @@ import { countUnreadIncomingMessages } from "~/lib/chat";
 
 const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
-export function AppShell(props: { children: import("solid-js").JSX.Element }) {
+export function AppShell(props: { children: import("solid-js").JSX.Element; allowGuest?: boolean }) {
   const nav = useNavigate();
+  const isAuthenticated = () => {
+    authVersion();
+    return !!pb?.authStore?.isValid && !!pb?.authStore?.model?.id;
+  };
   const user = () => {
     authVersion(); // Re-render when auth data changes (e.g. avatar upload)
     return pb?.authStore?.model;
@@ -130,7 +134,8 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
   });
 
   onMount(() => {
-    if (!pb?.authStore?.isValid) {
+    if (props.allowGuest) return;
+    if (!isAuthenticated()) {
       nav("/login", { replace: true });
       return;
     }
@@ -187,79 +192,89 @@ export function AppShell(props: { children: import("solid-js").JSX.Element }) {
       <nav class="app-nav">
         <div class="app-nav-inner">
           <div class="app-nav-brand">
-            <A href="/app/explore" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;">
+            <A
+              href={isAuthenticated() ? "/app/explore" : "/"}
+              style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.1rem;"
+            >
               <img src="/logo-icon.png" alt="" width="28" height="28" style="border-radius: 6px;" />
               Hundkrets
             </A>
           </div>
-          <A href="/app/profile" class="app-nav-avatar-mobile" aria-label="Profil" onClick={() => setMenuOpen(false)}>
-            <Avatar
-              name={user()?.name}
-              city={user()?.city}
-              neighborhood={user()?.neighborhood}
-              size="sm"
-              class="avatar-sm app-nav-avatar"
-              verified={(user() as { verified?: boolean } | null)?.verified}
-              id={user()?.id}
-              avatar={(user() as { avatar?: string } | null)?.avatar}
-              baseUrl={baseUrl}
-            />
-          </A>
-          <button
-            ref={hamburgerRef}
-            type="button"
-            class="app-nav-hamburger"
-            classList={{ "app-nav-hamburger-open": menuOpen() }}
-            aria-label={menuOpen() ? "Stäng meny" : "Öppna meny"}
-            aria-expanded={menuOpen()}
-            onClick={() => setMenuOpen((o) => !o)}
-          >
-            <span class="app-nav-hamburger-bar" />
-            <span class="app-nav-hamburger-bar" />
-            <span class="app-nav-hamburger-bar" />
-          </button>
-          <div
-            class="app-nav-menu"
-            classList={{ "app-nav-links-open": menuOpen() }}
-            ref={menuLinksRef}
-            tabIndex={-1}
-            onKeyDown={handleMenuKeyDown}
-          >
-            <div class="app-nav-links">
-              <A href="/app/explore" class="nav-link-with-badge" onClick={() => setMenuOpen(false)}>
-                Utforska
-                <Show when={badgeCount() > 0}>
-                  <span class="nav-badge-inline" aria-label={`${badgeCount()} nya`}> ({badgeCount()})</span>
-                </Show>
-              </A>
-              <A href="/app/excursions" onClick={() => setMenuOpen(false)}>Hundträffar</A>
-              <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
-              <A href="/app/chats" class="nav-link-with-badge" onClick={() => setMenuOpen(false)}>
-                Chattar
-                <Show when={(chatBadgeCount() ?? 0) > 0}>
-                  <span class="nav-badge-inline" aria-label={`${chatBadgeCount()} nya`}> ({chatBadgeCount()})</span>
-                </Show>
-              </A>
+          <Show when={isAuthenticated()} fallback={
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <A href="/login" class="btn btn-secondary" style="padding: 0.4rem 0.7rem;">Logga in</A>
+              <A href="/register" class="btn" style="padding: 0.4rem 0.7rem;">Skapa konto</A>
             </div>
-            <div class="app-nav-right">
-              <A href="/app/profile" class="app-nav-avatar-link" onClick={() => setMenuOpen(false)} aria-label="Profil">
-                <Avatar
-                  name={user()?.name}
-                  city={user()?.city}
-                  neighborhood={user()?.neighborhood}
-                  size="sm"
-                  class="avatar-sm app-nav-avatar"
-                  verified={(user() as { verified?: boolean } | null)?.verified}
-                  id={user()?.id}
-                  avatar={(user() as { avatar?: string } | null)?.avatar}
-                  baseUrl={baseUrl}
-                />
-              </A>
-              <button type="button" class="btn btn-secondary app-nav-logout" onClick={() => { setMenuOpen(false); logout(); }}>
-                Logga ut
-              </button>
+          }>
+            <A href="/app/profile" class="app-nav-avatar-mobile" aria-label="Profil" onClick={() => setMenuOpen(false)}>
+              <Avatar
+                name={user()?.name}
+                city={user()?.city}
+                neighborhood={user()?.neighborhood}
+                size="sm"
+                class="avatar-sm app-nav-avatar"
+                verified={(user() as { verified?: boolean } | null)?.verified}
+                id={user()?.id}
+                avatar={(user() as { avatar?: string } | null)?.avatar}
+                baseUrl={baseUrl}
+              />
+            </A>
+            <button
+              ref={hamburgerRef}
+              type="button"
+              class="app-nav-hamburger"
+              classList={{ "app-nav-hamburger-open": menuOpen() }}
+              aria-label={menuOpen() ? "Stäng meny" : "Öppna meny"}
+              aria-expanded={menuOpen()}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <span class="app-nav-hamburger-bar" />
+              <span class="app-nav-hamburger-bar" />
+              <span class="app-nav-hamburger-bar" />
+            </button>
+            <div
+              class="app-nav-menu"
+              classList={{ "app-nav-links-open": menuOpen() }}
+              ref={menuLinksRef}
+              tabIndex={-1}
+              onKeyDown={handleMenuKeyDown}
+            >
+              <div class="app-nav-links">
+                <A href="/app/explore" class="nav-link-with-badge" onClick={() => setMenuOpen(false)}>
+                  Utforska
+                  <Show when={badgeCount() > 0}>
+                    <span class="nav-badge-inline" aria-label={`${badgeCount()} nya`}> ({badgeCount()})</span>
+                  </Show>
+                </A>
+                <A href="/app/excursions" onClick={() => setMenuOpen(false)}>Hundträffar</A>
+                <A href="/app/profile" onClick={() => setMenuOpen(false)}>Profil</A>
+                <A href="/app/chats" class="nav-link-with-badge" onClick={() => setMenuOpen(false)}>
+                  Chattar
+                  <Show when={(chatBadgeCount() ?? 0) > 0}>
+                    <span class="nav-badge-inline" aria-label={`${chatBadgeCount()} nya`}> ({chatBadgeCount()})</span>
+                  </Show>
+                </A>
+              </div>
+              <div class="app-nav-right">
+                <A href="/app/profile" class="app-nav-avatar-link" onClick={() => setMenuOpen(false)} aria-label="Profil">
+                  <Avatar
+                    name={user()?.name}
+                    city={user()?.city}
+                    neighborhood={user()?.neighborhood}
+                    size="sm"
+                    class="avatar-sm app-nav-avatar"
+                    verified={(user() as { verified?: boolean } | null)?.verified}
+                    id={user()?.id}
+                    avatar={(user() as { avatar?: string } | null)?.avatar}
+                    baseUrl={baseUrl}
+                  />
+                </A>
+                <button type="button" class="btn btn-secondary app-nav-logout" onClick={() => { setMenuOpen(false); logout(); }}>
+                  Logga ut
+                </button>
+              </div>
             </div>
-          </div>
+          </Show>
         </div>
       </nav>
       <AdminMessageBanner />

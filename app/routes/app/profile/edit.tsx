@@ -3,7 +3,7 @@ import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
 import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
-import { geocodePostalCode } from "~/lib/geocode";
+import { geocodeCity, geocodePostalCode } from "~/lib/geocode";
 import { lookupPostalCode } from "~/lib/postalCode";
 import { Avatar } from "~/components/Avatar";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
@@ -73,21 +73,42 @@ export default function EditProfile() {
       if (!addr.latitude || !addr.longitude) {
         if (postalInput) {
           const lookup = await lookupPostalCode(postalInput);
-          const geocoded = await geocodePostalCode(postalInput, {
-            city: lookup?.city,
-          });
-          if (geocoded) {
-            const city = cityInput || (geocoded.city ?? "");
-            const area = areaInput || (geocoded.neighborhood ?? "");
-            const raw = postalInput.replace(/\s/g, "").trim();
-            const formatted = raw.length === 5 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : postalInput;
+          if (lookup?.city) {
+            const geocoded = await geocodePostalCode(postalInput, {
+              city: lookup.city,
+            });
+            if (geocoded) {
+              const city = cityInput || lookup.city || geocoded.city || "";
+              const area = areaInput || (lookup.area ?? geocoded.neighborhood ?? "");
+              const raw = postalInput.replace(/\s/g, "").trim();
+              const formatted = raw.length === 5 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : postalInput;
+              const parts = [city, area].filter(Boolean);
+              addr = {
+                address_private: `Postnummer ${formatted}, ${parts.join(", ")}`.trim(),
+                latitude: geocoded.lat,
+                longitude: geocoded.lon,
+                city,
+                neighborhood: geocoded.neighborhood ?? "",
+                area: area || undefined,
+              };
+            }
+          }
+        }
+        if ((!addr.latitude || !addr.longitude) && cityInput) {
+          const geocodedCity = await geocodeCity(cityInput);
+          if (geocodedCity) {
+            const raw = (postalInput ?? "").replace(/\s/g, "").trim();
+            const formatted = raw.length === 5 ? `${raw.slice(0, 3)} ${raw.slice(3)}` : (postalInput ?? "");
+            const city = cityInput;
+            const area = areaInput || addr.area || geocodedCity.neighborhood || "";
             const parts = [city, area].filter(Boolean);
             addr = {
+              ...addr,
               address_private: `Postnummer ${formatted}, ${parts.join(", ")}`.trim(),
-              latitude: geocoded.lat,
-              longitude: geocoded.lon,
+              latitude: geocodedCity.lat,
+              longitude: geocodedCity.lon,
               city,
-              neighborhood: geocoded.neighborhood ?? "",
+              neighborhood: geocodedCity.neighborhood ?? "",
               area: area || undefined,
             };
           }
@@ -102,7 +123,7 @@ export default function EditProfile() {
         };
       }
       if (!addr.latitude || !addr.longitude) {
-        setError("Ange ett giltigt postnummer.");
+        setError("Kunde inte hitta koordinater. Kontrollera postnummer och stad.");
         setLoading(false);
         return;
       }
@@ -216,15 +237,31 @@ export default function EditProfile() {
               <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.75rem;">
                 Postnumret används för att hitta hundägare i ditt område. Din exakta adress delas inte.
               </p>
-              <PostalCodeInput id="postal-code" value={address()} onSelect={setAddress} />
-              <Show when={typeof address().latitude === "number" && typeof address().longitude === "number"}>
+              <PostalCodeInput id="postal-code" value={address()} onSelect={setAddress} hideArea />
+              <Show when={address().latitude && address().longitude && !(address().latitude === 0 && address().longitude === 0)}>
                 <LocationPicker
                   lat={address().latitude!}
                   lon={address().longitude!}
                   onChange={(lat, lon) => setAddress((prev) => ({ ...prev, latitude: lat, longitude: lon }))}
                 />
-                <p class="location-picker-hint">Dra markören eller klicka på kartan för att justera din ungefärliga position. Cirkeln visar ett område på ca 1 km.</p>
+                <p class="location-picker-hint">
+                  Dra markören eller klicka på kartan för att justera din ungefärliga position. Cirkeln visar ett område på ca 300 m.
+                </p>
               </Show>
+              <div class="form-group" style="margin-top: 0.75rem;">
+                <label for="postal-area">Område (valfritt)</label>
+                <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: -0.5rem 0 0.5rem 0;">
+                  Främst stadsdel. Kan också användas för att beskriva mer exakt vart du bor inom staden eller kommunen.
+                </p>
+                <input
+                  id="postal-area"
+                  type="text"
+                  value={address().area ?? ""}
+                  onInput={(e) => setAddress((prev) => ({ ...prev, area: e.currentTarget.value }))}
+                  placeholder="T.ex. Västra Hamnen"
+                  autocomplete="address-level3"
+                />
+              </div>
             </section>
 
             <section style="margin-bottom: 1.5rem;">

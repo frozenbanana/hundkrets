@@ -10,10 +10,12 @@ This document outlines all major user flows that must be tested using Playwright
 
 ## Test Accounts
 
-Create test accounts for testing:
-- `test-user@example.com` / `password123` - Regular user with dogs
-- `test-sitter@example.com` / `password123` - Sitter-only user
-- `test-receiver@example.com` / `password123` - Receiver-only user
+Default test data comes from `./scripts/reset-and-seed.sh`:
+- `anna.malmo@example.com` / `password123!` - Regular user with dogs
+- `erik.malmo@example.com` / `password123!` - Seeded Malmö user
+- `sofia.malmo@example.com` / `password123!` - Seeded Malmö user
+
+If you prefer custom fixtures (for example `test-user@example.com`), create them explicitly before running the suite.
 
 ---
 
@@ -427,6 +429,104 @@ Create test accounts for testing:
 1. New user with no dogs/needs/capacity
 2. Verify appropriate empty state messages
 3. Verify correct CTAs based on user type
+
+---
+
+## 11. App - Hundträffar & Public Share
+
+### 11.1 Hundträffar list page structure
+**Path:** `/app/excursions`
+
+**Steps:**
+1. Log in as a user with own upcoming, own past, and other upcoming hundträffar
+2. Open `/app/excursions`
+3. Verify header button `+ Ny hundträff` exists and links to `/app/excursions/create`
+4. Verify three sections are rendered:
+   - `Mina uppkommande hundträffar`
+   - `Kommande hundträffar`
+   - `Mina passerade hundträffar`
+
+**Validations:**
+- Own cards in upcoming/past show inline `Redigera`
+- `datum`, `visibilitet`, and `Redigera` are on the same row
+- Empty states show correct Swedish copy
+
+### 11.2 Create hundträff page and form behavior
+**Path:** `/app/excursions/create`
+
+**Steps:**
+1. Click `+ Ny hundträff`
+2. Verify dedicated create page loads (not inline form on index)
+3. Fill title, meeting point, date/time, duration, visibility
+4. Submit and verify redirect back to list/detail
+5. Re-open create page and verify `Tillbaka` returns to `/app/excursions`
+6. Toggle `Dela med dig av ditt telefonnummer för de som kommer`
+7. If profile phone is empty: enter phone in form and submit
+
+**Validations:**
+- Create form saves successfully
+- Form fields validate and show errors when required fields are missing
+- If phone-sharing is enabled and profile phone is missing, entered phone is saved to profile on submit
+
+### 11.3 Edit hundträff uses same form + manual title persistence
+**Path:** `/app/excursions/:id/edit`
+
+**Steps:**
+1. Open own hundträff and click `Redigera`
+2. Verify edit page has `Tillbaka` button in top right
+3. Open custom title modal, enter a custom title, save
+4. Change another field and submit
+5. Re-open edited hundträff
+
+**Validations:**
+- Same form UI/behavior as create page
+- Existing values are pre-populated
+- Manually entered title is persisted after save
+
+### 11.4 Hundträff detail page for host and logged-in user
+**Path:** `/app/excursions/:id`
+
+**Steps:**
+1. Open own hundträff detail page
+2. Verify `Redigera` button is visible in header
+3. Verify map block contains Google Maps icon + directions + share icon
+4. Click share icon
+
+**Validations:**
+- Host ser inte `Delta` på egen hundträff (är redan deltagare)
+- Share uses native share when available, else copies link
+- Toast confirms success (`Delat!` or `Länk kopierad!`)
+
+### 11.5 Explore mode switch: medlemmar vs hundträffar
+**Path:** `/app/explore`
+
+**Steps:**
+1. Toggle mode next to `Utforska` between `medlemmar` and `hundträffar`
+2. In hundträffar mode, verify map renders brown points for upcoming hundträffar
+3. Pan/zoom map and confirm list updates by bounds
+4. Toggle visibility filters (`public`, `matched_only`, `interested_by_me`)
+5. Toggle duration filters (1,2,3,4,6,8h)
+
+**Validations:**
+- URL keeps `utforsk` state
+- Desktop cards in hundträffar mode hide mini map thumbnail
+- Empty state appears when filters produce no results
+
+### 11.6 Public shared hundträff (guest)
+**Path:** `/app/excursions/:id` (public excursion), while logged out
+
+**Steps:**
+1. Log out completely (or open in incognito)
+2. Open direct detail URL to a public hundträff
+3. Verify page loads without redirect to `/login`
+4. Verify guest navbar actions (`Logga in`, `Skapa konto`) are shown instead of `Logga ut`
+5. Verify interest/comment actions are replaced with guest CTA
+
+**Validations:**
+- Guest sees detail content (title, place, date, map, description)
+- Interest CTA text: `Skapa konto för att delta` + button `Skapa konto`
+- Comment CTA blocks writing comments and prompts sign-up
+- Share icon is available and copies/shares current URL
 
 ---
 

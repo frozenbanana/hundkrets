@@ -8,11 +8,12 @@ interface Props {
 }
 
 /**
- * Interactive Leaflet map with a draggable marker and a 1 km radius circle.
+ * Interactive Leaflet map with a draggable marker and a ~300 m radius circle.
  * Used in onboarding and profile editing so users can refine their approximate location.
  */
 export function LocationPicker(props: Props) {
   const [mapRef, setMapRef] = createSignal<HTMLDivElement | null>(null);
+  const [mapReady, setMapReady] = createSignal(false);
   let map: import("leaflet").Map | null = null;
   let marker: import("leaflet").Marker | null = null;
   let circle: import("leaflet").Circle | null = null;
@@ -37,7 +38,7 @@ export function LocationPicker(props: Props) {
       }).addTo(map);
 
       circle = L.circle([lat, lon], {
-        radius: 1000,
+        radius: 300,
         color: "var(--color-paw, #c45c3e)",
         fillColor: "var(--color-paw, #c45c3e)",
         fillOpacity: 0.12,
@@ -57,6 +58,7 @@ export function LocationPicker(props: Props) {
         circle?.setLatLng(ev.latlng);
         props.onChange(ev.latlng.lat, ev.latlng.lng);
       });
+      setMapReady(true);
     })();
 
     onCleanup(() => {
@@ -65,9 +67,10 @@ export function LocationPicker(props: Props) {
   });
 
   createEffect(() => {
-    if (!map || !marker || !circle) return;
     const lat = props.lat;
     const lon = props.lon;
+    const ready = mapReady();
+    if (!ready || !map || !marker || !circle) return;
     if (typeof lat !== "number" || typeof lon !== "number") return;
     const cur = marker.getLatLng();
     if (Math.abs(cur.lat - lat) < 0.00001 && Math.abs(cur.lng - lon) < 0.00001) return;
@@ -82,6 +85,7 @@ export function LocationPicker(props: Props) {
       map = null;
       marker = null;
       circle = null;
+      setMapReady(false);
     }
   });
 

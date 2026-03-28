@@ -711,6 +711,9 @@ onRecordCreateRequest((e) => {
   e.record.set("host_user", me);
   if (!e.record.get("visibility")) e.record.set("visibility", "public");
   if (!e.record.get("status")) e.record.set("status", "scheduled");
+  if (e.record.get("share_phone_with_attendees") == null) {
+    e.record.set("share_phone_with_attendees", false);
+  }
   var startAt = String(e.record.get("start_at") || "");
   if (!startAt) throw new BadRequestError("Starttid krävs.");
   var durationHours = e.record.getFloat("duration_hours");
@@ -726,6 +729,48 @@ onRecordCreateRequest((e) => {
   }
   if (!isNaN(lon) && (lon < -180 || lon > 180)) {
     throw new BadRequestError("Ogiltig longitud för mötesplats.");
+  }
+  e.next();
+}, "excursions");
+
+onRecordAfterCreateSuccess((e) => {
+  var hk = require(__hooks + "/hk_utils.js");
+  if (!e || !e.record) {
+    e.next();
+    return;
+  }
+  var excursionId = e.record.id;
+  var hostId = hk.toId(e.record.get("host_user"));
+  if (!excursionId || !hostId) {
+    e.next();
+    return;
+  }
+  try {
+    var existing = null;
+    try {
+      existing = $app.findFirstRecordByFilter(
+        "excursion_interests",
+        "excursion = {:eid} && user = {:uid}",
+        { eid: excursionId, uid: hostId }
+      );
+    } catch (_) {}
+    if (!existing) {
+      var col = $app.findCollectionByNameOrId("excursion_interests");
+      var rec = new Record(col);
+      rec.set("excursion", excursionId);
+      rec.set("user", hostId);
+      $app.save(rec);
+    }
+  } catch (err) {
+    $app.logger().warn(
+      "Could not auto-add host as excursion participant",
+      "excursionId",
+      excursionId,
+      "hostId",
+      hostId,
+      "error",
+      err && (err.message || String(err))
+    );
   }
   e.next();
 }, "excursions");
@@ -748,6 +793,10 @@ onRecordCreateRequest((e) => {
   }
   if (!hk.canViewExcursion(me, excursion)) {
     throw new BadRequestError("Du har inte behörighet att visa intresse för denna hundträff.");
+  }
+  var hostId = hk.toId(excursion.get("host_user"));
+  if (hostId && hostId === me) {
+    throw new BadRequestError("Du ar redan med som arrangor.");
   }
   e.record.set("user", me);
   try {
@@ -1092,18 +1141,15 @@ onRecordAfterCreateSuccess((e) => {
   e.next();
 }, "users");
 
-// 4. When user saves profile with area, update postal_codes so future users get it as suggestion
+// 4. When user saves profile, upsert postal_codes so future users get better suggestions.
 onRecordAfterUpdateSuccess((e) => {
   if (!e || !e.record) {
     e.next();
     return;
   }
   var user = e.record;
+  var cityVal = String(user.get("city") || "").trim();
   var areaVal = String(user.get("area") || "").trim();
-  if (!areaVal) {
-    e.next();
-    return;
-  }
   var addr = String(user.get("address_private") || "");
   var match = addr.match(/Postnummer\s+(\d{3}\s?\d{2})/i) || addr.match(/(\d{3}\s?\d{2})/);
   if (!match) {
@@ -1115,19 +1161,40 @@ onRecordAfterUpdateSuccess((e) => {
     e.next();
     return;
   }
+  if (!cityVal) {
+    e.next();
+    return;
+  }
   try {
     var pcRecords = $app.findRecordsByFilter("postal_codes", "postal_code = {:pc}", "", 1, 0, { pc: postalCode });
     if (pcRecords && pcRecords.length > 0) {
       var pcRec = pcRecords[0];
+      var existingCity = String(pcRec.get("city") || "").trim();
       var existingArea = String(pcRec.get("area") || "").trim();
+      var didUpdate = false;
+      if (!existingCity) {
+        pcRec.set("city", cityVal);
+        didUpdate = true;
+      }
       if (!existingArea) {
         pcRec.set("area", areaVal);
-        $app.save(pcRec);
-        $app.logger().info("postal_codes area updated", "postal_code", postalCode, "area", areaVal);
+        didUpdate = true;
       }
+      if (didUpdate) {
+        $app.save(pcRec);
+        $app.logger().info("postal_codes record enriched", "postal_code", postalCode, "city", cityVal, "area", areaVal);
+      }
+    } else {
+      var pcCol = $app.findCollectionByNameOrId("postal_codes");
+      var newPc = new Record(pcCol);
+      newPc.set("postal_code", postalCode);
+      newPc.set("city", cityVal);
+      if (areaVal) newPc.set("area", areaVal);
+      $app.save(newPc);
+      $app.logger().info("postal_codes record created from user input", "postal_code", postalCode, "city", cityVal, "area", areaVal);
     }
   } catch (err) {
-    $app.logger().warn("postal_codes area update failed", "error", err);
+    $app.logger().warn("postal_codes upsert failed", "error", err, "postal_code", postalCode, "city", cityVal);
   }
   e.next();
 }, "users");

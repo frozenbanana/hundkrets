@@ -148,6 +148,7 @@ module.exports = {
       meeting_map_url: String(rec.get("meeting_map_url") || ""),
       meeting_latitude: hk.safeGetFloat(rec, "meeting_latitude", 0),
       meeting_longitude: hk.safeGetFloat(rec, "meeting_longitude", 0),
+      share_phone_with_attendees: !!rec.get("share_phone_with_attendees"),
       visibility: String(rec.get("visibility") || "public"),
       status: String(rec.get("status") || "scheduled"),
       host_user: hostId,
