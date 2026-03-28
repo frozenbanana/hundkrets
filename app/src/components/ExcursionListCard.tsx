@@ -138,7 +138,7 @@ export function ExcursionListCard(props: ExcursionListCardProps) {
             <span class="excursions-list-card__stat excursions-list-card__stat--duration" title="Beräknad längd">
               {durationText()}
             </span>
-            <span class="excursions-list-card__stat" title="Antal intresserade">
+            <span class="excursions-list-card__stat" title="Antal som kommer">
               <IconHeart class="excursions-list-card__stat-icon" />
               {props.interest_count}
             </span>

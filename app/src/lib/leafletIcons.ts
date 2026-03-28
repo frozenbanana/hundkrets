@@ -1,8 +1,5 @@
-import markerIcon2xUrl from "leaflet/dist/images/marker-icon-2x.png";
-import markerIconUrl from "leaflet/dist/images/marker-icon.png";
-import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
-
 let configured = false;
+const LEAFLET_CDN_BASE = "https://unpkg.com/leaflet@1.9.4/dist/images";
 
 /**
  * Leaflet default marker icons use relative URLs that often break in production builds.
@@ -18,8 +15,8 @@ export function configureLeafletDefaultIcons(
   delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
 
   L.Icon.Default.mergeOptions({
-    iconRetinaUrl: markerIcon2xUrl,
-    iconUrl: markerIconUrl,
-    shadowUrl: markerShadowUrl,
+    iconRetinaUrl: `${LEAFLET_CDN_BASE}/marker-icon-2x.png`,
+    iconUrl: `${LEAFLET_CDN_BASE}/marker-icon.png`,
+    shadowUrl: `${LEAFLET_CDN_BASE}/marker-shadow.png`,
   });
 }

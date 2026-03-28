@@ -588,7 +588,7 @@ export default function ExcursionDetailPage() {
                         </Show>
                       </div>
                       <span class="excursion-detail__interest-label">
-                        {item().interest_count} intresserad{item().interest_count !== 1 ? "e" : ""}
+                        {item().interest_count} medlem{item().interest_count !== 1 ? "mar" : ""} kommer
                       </span>
                     </button>
                   </Show>
