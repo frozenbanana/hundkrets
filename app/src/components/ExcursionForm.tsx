@@ -1,5 +1,6 @@
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { geocodeMeetingArea } from "~/lib/geocode";
+import { configureLeafletDefaultIcons } from "~/lib/leafletIcons";
 import { showToast } from "~/lib/toast";
 import type { ExcursionVisibility } from "~/types";
 
@@ -149,6 +150,7 @@ function MeetingPointPicker(props: {
       await import("leaflet/dist/leaflet.css");
       const L = await import("leaflet");
       if (disposed || !el || map) return;
+      configureLeafletDefaultIcons(L);
 
       const defaultLat = typeof props.lat === "number" ? props.lat : 59.3293;
       const defaultLon = typeof props.lon === "number" ? props.lon : 18.0686;

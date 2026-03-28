@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup } from "solid-js";
+import { configureLeafletDefaultIcons } from "~/lib/leafletIcons";
 
 interface Props {
   lat: number;
@@ -27,6 +28,7 @@ export function LocationPicker(props: Props) {
       await import("leaflet/dist/leaflet.css");
       const L = await import("leaflet");
       if (disposed || !el || map) return;
+      configureLeafletDefaultIcons(L);
 
       const lat = props.lat;
       const lon = props.lon;

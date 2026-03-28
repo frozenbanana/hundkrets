@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup } from "solid-js";
+import { configureLeafletDefaultIcons } from "~/lib/leafletIcons";
 
 interface Props {
   lat: number;
@@ -32,6 +33,7 @@ export function ExcursionReadOnlyMap(props: Props) {
       await import("leaflet/dist/leaflet.css");
       const L = await import("leaflet");
       if (cancelled || !el || map) return;
+      configureLeafletDefaultIcons(L);
 
       map = L.map(el).setView([lat, lon], zoom);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
