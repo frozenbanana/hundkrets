@@ -771,9 +771,14 @@ export default function Matches() {
 
   function excursionDetailHref(id: string): string {
     const params = new URLSearchParams();
-    params.set("from", "explore");
-    params.set("back", buildExploreBackHref());
+    params.set("from", buildExploreBackHref());
     return `/app/excursions/${id}?${params.toString()}`;
+  }
+
+  function excursionCreateHref(): string {
+    const params = new URLSearchParams();
+    params.set("from", buildExploreBackHref());
+    return `/app/excursions/create?${params.toString()}`;
   }
 
   const requestedMeUserIds = createMemo(() => {
@@ -1141,7 +1146,9 @@ export default function Matches() {
 
           <Show when={exploreMode() === "hundtraffar"}>
             <div class="matches-explore-header explore-excursions-filter-header">
-              <span class="matches-explore-header-spacer" aria-hidden="true" />
+              <A href={excursionCreateHref()} class="btn btn-secondary">
+                + Ny hundträff
+              </A>
               <button
                 type="button"
                 class="matches-filter-icon-btn"

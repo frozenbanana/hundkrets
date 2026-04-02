@@ -438,9 +438,8 @@ export default function ExcursionDetailPage() {
 
   const excursionPath = () => `/app/excursions/${params.id}`;
   const backHref = () => {
-    const raw = firstQueryValue(searchParams.back);
-    if (raw && raw.startsWith("/app/explore")) return raw;
-    if (firstQueryValue(searchParams.from) === "explore") return "/app/explore?utforsk=hundtraffar";
+    const from = firstQueryValue(searchParams.from);
+    if (from && from.startsWith("/app/")) return from;
     return "/app/excursions";
   };
   const createAccountHref = () => `/register?redirect=${encodeURIComponent(excursionPath())}`;

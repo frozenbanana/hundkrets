@@ -1,4 +1,4 @@
-import { A, useNavigate } from "@solidjs/router";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { AppShell } from "~/components/AppShell";
 import { ExcursionForm } from "~/components/ExcursionForm";
 import { parseApiError } from "~/lib/errors";
@@ -7,6 +7,13 @@ import { showToast } from "~/lib/toast";
 
 export default function ExcursionCreatePage() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const firstQueryValue = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const backHref = () => {
+    const from = firstQueryValue(searchParams.from);
+    if (from && from.startsWith("/app/")) return from;
+    return "/app/excursions";
+  };
 
   return (
     <AppShell>
@@ -18,7 +25,7 @@ export default function ExcursionCreatePage() {
               Skapa en ny hundträff och bjud in andra i Hundkrets.
             </p>
           </div>
-          <A href="/app/excursions" class="btn btn-secondary">
+          <A href={backHref()} class="btn btn-secondary">
             Tillbaka
           </A>
         </div>
