@@ -27,6 +27,12 @@ function dateStr(n: {
   return "—";
 }
 
+function careTypeLabel(v: string | undefined): string {
+  if (v === "daytime") return "Dagpassning";
+  if (v === "overnight") return "Övernattning";
+  return "Heldagar (med övernattning)";
+}
+
 export default function NeedsList() {
   const nav = useNavigate();
 
@@ -96,6 +102,9 @@ export default function NeedsList() {
                         <h3 style="margin: 0 0 0.5rem;">{dogNames}</h3>
                         <p style="margin: 0; color: var(--color-text-muted); font-size: 0.95rem;">
                           {dateStr(need)}
+                        </p>
+                        <p style="margin: 0.35rem 0 0; color: var(--color-text-muted); font-size: 0.9rem;">
+                          Typ: {careTypeLabel(need.care_type as string | undefined)}
                         </p>
                         {need.notes && (
                           <p style="margin: 0.5rem 0 0; font-size: 0.9rem;">{need.notes}</p>

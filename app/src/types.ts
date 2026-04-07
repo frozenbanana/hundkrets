@@ -30,6 +30,7 @@ export interface Dog extends RecordModel {
 export interface WatchNeed extends RecordModel {
   user: string;
   dog: string;
+  care_type?: "daytime" | "overnight" | "both";
   start_date?: string;
   end_date?: string;
   flexible_dates?: boolean;
@@ -40,6 +41,7 @@ export interface WatchNeed extends RecordModel {
 
 export interface WatchCapacity extends RecordModel {
   user: string;
+  care_type?: "daytime" | "overnight" | "both";
   start_date?: string;
   end_date?: string;
   flexible_dates?: boolean;

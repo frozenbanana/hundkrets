@@ -13,6 +13,7 @@ export default function EditWatchCapacity() {
   const [flexible, setFlexible] = createSignal(true);
   const [openAnyDuration, setOpenAnyDuration] = createSignal(true);
   const [durationSpecific, setDurationSpecific] = createSignal("");
+  const [careType, setCareType] = createSignal<"daytime" | "overnight" | "both">("both");
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
   const [dogSizes, setDogSizes] = createSignal<("small" | "medium" | "large")[]>([]);
@@ -35,6 +36,7 @@ export default function EditWatchCapacity() {
       setFlexible(c.flexible_dates ?? true);
       setOpenAnyDuration(c.open_any_duration ?? true);
       setDurationSpecific(c.duration_specific ?? "");
+      setCareType((c.care_type as "daytime" | "overnight" | "both") ?? "both");
       setStartDate(c.start_date ?? "");
       setEndDate(c.end_date ?? "");
       const sizes = c.dog_sizes;
@@ -70,6 +72,7 @@ export default function EditWatchCapacity() {
         flexible_dates: flexible(),
         open_any_duration: openAnyDuration(),
         duration_specific: durationSpecific() || undefined,
+        care_type: careType(),
         dog_sizes: dogSizes(),
         dog_genders: dogGenders(),
         max_dogs: maxDogs(),
@@ -137,6 +140,18 @@ export default function EditWatchCapacity() {
                   />
                 </div>
               </Show>
+              <div class="form-group">
+                <label for="careType">Typ av passning</label>
+                <select
+                  id="careType"
+                  value={careType()}
+                  onInput={(e) => setCareType(e.currentTarget.value as "daytime" | "overnight" | "both")}
+                >
+                  <option value="daytime">Dagpassning</option>
+                  <option value="overnight">Övernattning</option>
+                  <option value="both">Heldagar (med övernattning)</option>
+                </select>
+              </div>
               <div class="form-group">
                 <label>Hundstorlekar du kan passa (välj alla som passar)</label>
                 <div class="checkbox-group">

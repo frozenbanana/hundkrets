@@ -175,7 +175,7 @@ export default function OnboardingChoice() {
   return (
     <OnboardingShell
       step={1}
-      totalSteps={userType() ? (isSitterOnly() ? 2 : isReceiverOnly() ? 3 : 4) : 4}
+      totalSteps={userType() ? (isSitterOnly() ? 3 : isReceiverOnly() ? 4 : 5) : 5}
       title="Vad vill du göra?"
       nextStepHint="Nästa: Fyll i namn och postnummer"
       backHref="history"

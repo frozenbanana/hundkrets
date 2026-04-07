@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createEffect, createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { clearOnboardingUserType, getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { DogImage } from "~/components/DogImage";
@@ -34,6 +34,7 @@ export default function OnboardingNeeds() {
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
   const [notes, setNotes] = createSignal("");
+  const [careType, setCareType] = createSignal<"daytime" | "overnight" | "both">("both");
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
 
@@ -78,6 +79,7 @@ export default function OnboardingNeeds() {
       if (!userId) throw new Error("Not authenticated");
       const data: Record<string, unknown> = {
         user: userId,
+        care_type: careType(),
         flexible_dates: flexible(),
         open_any_duration: openAnyDuration(),
         duration_specific: durationSpecific() || undefined,
@@ -92,9 +94,8 @@ export default function OnboardingNeeds() {
       }
       await pb.collection("watch_needs").create(data);
       if (isReceiverOnly()) {
-        await setOnboardingComplete();
-        showToast("Klart! Du kan nu se dina matchningar.");
-        nav("/app/explore");
+        showToast("Behov tillagt");
+        nav("/onboarding/recommendations");
       } else {
         showToast("Behov tillagt");
         nav("/onboarding/capacity");
@@ -108,26 +109,10 @@ export default function OnboardingNeeds() {
 
   async function handleSkip() {
     if (isReceiverOnly()) {
-      await setOnboardingComplete();
-      showToast("Klart! Du kan nu se dina matchningar.");
       nav("/app/explore");
     } else {
       nav("/onboarding/capacity");
     }
-  }
-
-  async function setOnboardingComplete() {
-    const userId = pb.authStore.model?.id;
-    if (!userId) return;
-    const userType = getOnboardingUserType();
-    const update: Record<string, unknown> = { onboarding_complete: true };
-    if (userType) update.user_type = userType;
-    await pb.collection("users").update(userId, update);
-    pb.authStore.save(pb.authStore.token!, {
-      ...pb.authStore.model,
-      ...update,
-    });
-    clearOnboardingUserType();
   }
 
   const hasDogs = () => dogs() && dogs()!.length > 0;
@@ -135,7 +120,7 @@ export default function OnboardingNeeds() {
   const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
   return (
-    <OnboardingShell step={3} totalSteps={isReceiverOnly() ? 3 : 4} title="När du behöver hundpassning" nextStepHint={isReceiverOnly() ? "Nästa: Se matchningar" : "Nästa: När du kan passa hundar"} backHref="/onboarding/dogs">
+    <OnboardingShell step={3} totalSteps={isReceiverOnly() ? 4 : 5} title="När du behöver hundpassning" nextStepHint={isReceiverOnly() ? "Nästa: Dina rekommendationer" : "Nästa: När du kan passa hundar"} backHref="/onboarding/dogs">
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           När behöver du att någon passar din hund? Du kan vara flexibel—exakta tider bestäms privat.
@@ -215,6 +200,18 @@ export default function OnboardingNeeds() {
               />
             </div>
           </Show>
+          <div class="form-group">
+            <label for="careType">Typ av passning</label>
+            <select
+              id="careType"
+              value={careType()}
+              onInput={(e) => setCareType(e.currentTarget.value as "daytime" | "overnight" | "both")}
+            >
+              <option value="daytime">Dagpassning</option>
+              <option value="overnight">Övernattning</option>
+              <option value="both">Heldagar (med övernattning)</option>
+            </select>
+          </div>
           <div class="form-group">
             <label for="notes">Anteckningar</label>
             <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="Några speciella behov?" />

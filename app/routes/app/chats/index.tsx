@@ -2,6 +2,7 @@ import { A, useNavigate } from "@solidjs/router";
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js";
 import { AppShell } from "~/components/AppShell";
 import { Avatar } from "~/components/Avatar";
+import { RecommendedMembersSection } from "~/components/RecommendedMembersSection";
 import { pb } from "~/lib/pocketbase";
 import { countUnreadIncomingMessages, conversationPairKey } from "~/lib/chat";
 import { isUserVerified } from "~/lib/auth";
@@ -340,15 +341,6 @@ export default function Chats() {
           <button type="button" class="btn" onClick={() => refetch()}>Försök igen</button>
         </Show>
 
-        <Show when={!data.loading && items().length === 0}>
-          <div class="card">
-            <p style="margin: 0; color: var(--color-text-muted);">
-              Inga chattar ännu. Gå till matchningar och öppna en chatt med en matchad användare.
-            </p>
-            <A href="/app/explore?match=true" class="btn" style="margin-top: 1rem;">Till Utforska</A>
-          </div>
-        </Show>
-
         <Show when={items().length > 0}>
           <div style="display: flex; flex-direction: column; gap: 0.75rem;">
             <For each={items()}>
@@ -400,6 +392,20 @@ export default function Chats() {
                 );
               }}
             </For>
+          </div>
+        </Show>
+
+        <div class="card">
+          <h2>Rekommenderade medlemmar</h2>
+          <RecommendedMembersSection profileFrom="chats" showNeedsCapacityHint showFooterActions={false} />
+        </div>
+
+        <Show when={!data.loading && items().length === 0}>
+          <div class="card">
+            <p style="margin: 0; color: var(--color-text-muted);">
+              Inga chattar ännu. Gå till matchningar och öppna en chatt med en matchad användare.
+            </p>
+            <A href="/app/explore?match=true" class="btn" style="margin-top: 1rem;">Till Utforska</A>
           </div>
         </Show>
 

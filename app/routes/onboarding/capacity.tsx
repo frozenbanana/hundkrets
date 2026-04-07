@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { clearOnboardingUserType, getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -34,6 +34,7 @@ export default function OnboardingCapacity() {
   const [dogGenders, setDogGenders] = createSignal<"male" | "female" | "any">("any");
   const [maxDogs, setMaxDogs] = createSignal(1);
   const [notes, setNotes] = createSignal("");
+  const [careType, setCareType] = createSignal<"daytime" | "overnight" | "both">("both");
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
 
@@ -62,6 +63,7 @@ export default function OnboardingCapacity() {
       if (!userId) throw new Error("Not authenticated");
       const data: Record<string, unknown> = {
         user: userId,
+        care_type: careType(),
         flexible_dates: flexible(),
         open_any_duration: openAnyDuration(),
         duration_specific: durationSpecific() || undefined,
@@ -75,9 +77,8 @@ export default function OnboardingCapacity() {
         data.end_date = endDate();
       }
       await pb.collection("watch_capacity").create(data);
-      await setOnboardingComplete();
-      showToast("Klart! Du kan nu se dina matchningar.");
-      nav("/app/explore");
+      showToast("Kapacitet tillagd");
+      nav("/onboarding/recommendations");
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -86,26 +87,11 @@ export default function OnboardingCapacity() {
   }
 
   async function handleSkip() {
-    await setOnboardingComplete();
     nav("/app/explore");
   }
 
-  async function setOnboardingComplete() {
-    const userId = pb.authStore.model?.id;
-    if (!userId) return;
-    const userType = getOnboardingUserType();
-    const update: Record<string, unknown> = { onboarding_complete: true };
-    if (userType) update.user_type = userType;
-    await pb.collection("users").update(userId, update);
-    pb.authStore.save(pb.authStore.token!, {
-      ...pb.authStore.model,
-      ...update,
-    });
-    clearOnboardingUserType();
-  }
-
   return (
-    <OnboardingShell step={isSitterOnly() ? 2 : 4} totalSteps={isSitterOnly() ? 2 : 4} title="När du kan passa hundar" nextStepHint="Nästa: Se matchningar" backHref={isSitterOnly() ? "/onboarding/choice" : "/onboarding/needs"}>
+    <OnboardingShell step={isSitterOnly() ? 2 : 4} totalSteps={isSitterOnly() ? 3 : 5} title="När du kan passa hundar" nextStepHint="Nästa: Dina rekommendationer" backHref={isSitterOnly() ? "/onboarding/choice" : "/onboarding/needs"}>
       <div class="card">
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           När kan du passa andras hundar? Var flexibel—exakta tider bestäms privat.
@@ -151,6 +137,18 @@ export default function OnboardingCapacity() {
               />
             </div>
           </Show>
+          <div class="form-group">
+            <label for="careType">Typ av passning</label>
+            <select
+              id="careType"
+              value={careType()}
+              onInput={(e) => setCareType(e.currentTarget.value as "daytime" | "overnight" | "both")}
+            >
+              <option value="daytime">Dagpassning</option>
+              <option value="overnight">Övernattning</option>
+              <option value="both">Heldagar (med övernattning)</option>
+            </select>
+          </div>
           <div class="form-group">
             <label>Hundstorlekar du kan passa (välj alla som passar)</label>
             <div class="checkbox-group">

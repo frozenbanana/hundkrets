@@ -3,6 +3,7 @@ import type { ExcursionVisibility } from "~/types";
 
 export type ExploreExcursionItem = {
   id: string;
+  created?: string;
   title: string;
   start_at: string;
   meeting_area: string;
@@ -15,9 +16,8 @@ export type ExploreExcursionItem = {
   comment_count: number;
 };
 
-/** Scheduled excursions from now, with interest/comment counts (for Utforska hundträffar). */
+/** Scheduled excursions with interest/comment counts (for Utforska hundträffar). */
 export async function fetchExploreExcursions(pb: PocketBase): Promise<ExploreExcursionItem[]> {
-  const nowIso = new Date().toISOString();
   const list = await pb.collection("excursions").getFullList<{
     id: string;
     title: string;
@@ -30,7 +30,7 @@ export async function fetchExploreExcursions(pb: PocketBase): Promise<ExploreExc
     meeting_map_url?: string;
     status?: string;
   }>({
-    filter: `status = "scheduled" && start_at >= "${nowIso}"`,
+    filter: `status = "scheduled"`,
     sort: "start_at",
   });
 
@@ -53,6 +53,7 @@ export async function fetchExploreExcursions(pb: PocketBase): Promise<ExploreExc
   return list.map(
     (e): ExploreExcursionItem => ({
       id: e.id,
+      created: (e as { created?: string }).created,
       title: e.title,
       start_at: e.start_at,
       meeting_area: e.meeting_area,

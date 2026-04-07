@@ -13,6 +13,7 @@ export default function NewWatchNeed() {
   const [flexible, setFlexible] = createSignal(true);
   const [openAnyDuration, setOpenAnyDuration] = createSignal(true);
   const [durationSpecific, setDurationSpecific] = createSignal("");
+  const [careType, setCareType] = createSignal<"daytime" | "overnight" | "both">("both");
   const [startDate, setStartDate] = createSignal("");
   const [endDate, setEndDate] = createSignal("");
   const [notes, setNotes] = createSignal("");
@@ -55,6 +56,7 @@ export default function NewWatchNeed() {
       const data: Record<string, unknown> = {
         user: userId,
         dog: selectedDogs().length === 1 ? selectedDogs()[0] : selectedDogs(),
+        care_type: careType(),
         flexible_dates: flexible(),
         open_any_duration: openAnyDuration(),
         duration_specific: durationSpecific() || undefined,
@@ -141,6 +143,18 @@ export default function NewWatchNeed() {
             />
           </div>
         </Show>
+        <div class="form-group">
+          <label for="careType">Typ av passning</label>
+          <select
+            id="careType"
+            value={careType()}
+            onInput={(e) => setCareType(e.currentTarget.value as "daytime" | "overnight" | "both")}
+          >
+            <option value="daytime">Dagpassning</option>
+            <option value="overnight">Övernattning</option>
+            <option value="both">Heldagar (med övernattning)</option>
+          </select>
+        </div>
         <div class="form-group">
           <label for="notes">Anteckningar</label>
           <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} />

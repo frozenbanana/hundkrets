@@ -437,9 +437,17 @@ export default function ExcursionDetailPage() {
   }
 
   const excursionPath = () => `/app/excursions/${params.id}`;
+  const normalizeExploreHref = (href: string) => {
+    const [path, rawQuery = ""] = href.split("?");
+    if (path !== "/app/explore") return href;
+    const params = new URLSearchParams(rawQuery);
+    params.set("utforsk", "hundtraffar");
+    return `/app/explore?${params.toString()}`;
+  };
   const backHref = () => {
     const from = firstQueryValue(searchParams.from);
-    if (from && from.startsWith("/app/")) return from;
+    // Detail should only bounce back to explore context, never another detail URL.
+    if (from && from.startsWith("/app/explore")) return normalizeExploreHref(from);
     return "/app/excursions";
   };
   const createAccountHref = () => `/register?redirect=${encodeURIComponent(excursionPath())}`;

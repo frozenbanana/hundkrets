@@ -15,6 +15,7 @@ import {
 import { pb } from "~/lib/pocketbase";
 import { isUserVerified } from "~/lib/auth";
 import { findListings } from "~/lib/matching";
+import { haversineDistance } from "~/lib/matching";
 import { approximateCoords, pointInBounds, type MapBounds } from "~/lib/geocode";
 import { EXCURSION_VISIBILITY_LABELS, excursionPreviewCoords } from "~/lib/excursionListCard";
 import { fetchExploreExcursions, type ExploreExcursionItem } from "~/lib/exploreExcursions";
@@ -40,6 +41,8 @@ import {
 } from "./explore/helpers";
 
 const EXCURSION_DURATION_STEPS = [1, 2, 3, 4, 6, 8] as const;
+type ExcursionDateFilter = "all" | "upcoming" | "this_week";
+const EXPLORE_EXCURSIONS_SEEN_AT_KEY = "explore-hundtraffar-seen-at";
 
 function normalizedExcursionDuration(ex: ExploreExcursionItem): number {
   const raw = ex.duration_hours;
@@ -99,6 +102,7 @@ export default function Matches() {
 
   function setExploreModeTab(next: ExploreMode) {
     if (next === "hundtraffar") {
+      markExploreExcursionsSeenNow();
       setSearchParams({ utforsk: "hundtraffar" }, { replace: true });
     } else {
       const p = new URLSearchParams(window.location.search);
@@ -144,10 +148,12 @@ export default function Matches() {
   const [excursionVisPublic, setExcursionVisPublic] = createSignal(true);
   const [excursionVisMatched, setExcursionVisMatched] = createSignal(true);
   const [excursionVisInterested, setExcursionVisInterested] = createSignal(true);
+  const [excursionDateFilter, setExcursionDateFilter] = createSignal<ExcursionDateFilter>("all");
   const [excursionDurFilter, setExcursionDurFilter] = createSignal<Set<number>>(
     new Set(EXCURSION_DURATION_STEPS)
   );
   const [hoveredExcursionId, setHoveredExcursionId] = createSignal<string | undefined>(undefined);
+  const [exploreExcursionsSeenAt, setExploreExcursionsSeenAt] = createSignal<string>("");
   const [isMobileViewport, setIsMobileViewport] = createSignal(
     typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches
   );
@@ -161,9 +167,9 @@ export default function Matches() {
   const isMobileMapView = () => isMobileViewport() && mobileViewMode() === "map" && (listings().length ?? 0) > 0;
 
   const [exploreExcursionsData, { refetch: refetchExploreExcursions }] = createResource(
-    () => exploreMode() === "hundtraffar",
-    async (load) => {
-      if (!load) return [] as ExploreExcursionItem[];
+    () => pb.authStore.model?.id,
+    async (userId) => {
+      if (!userId) return [] as ExploreExcursionItem[];
       try {
         return await fetchExploreExcursions(pb);
       } catch (err) {
@@ -173,17 +179,71 @@ export default function Matches() {
     }
   );
 
+  function markExploreExcursionsSeenNow() {
+    const now = new Date().toISOString();
+    setExploreExcursionsSeenAt(now);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(EXPLORE_EXCURSIONS_SEEN_AT_KEY, now);
+    }
+  }
+
+  onMount(() => {
+    if (typeof localStorage === "undefined") return;
+    const existing = localStorage.getItem(EXPLORE_EXCURSIONS_SEEN_AT_KEY);
+    if (existing) {
+      setExploreExcursionsSeenAt(existing);
+      return;
+    }
+    const me = pb.authStore.model as { last_login_at?: string } | null;
+    const initialSeenAt = me?.last_login_at || new Date().toISOString();
+    localStorage.setItem(EXPLORE_EXCURSIONS_SEEN_AT_KEY, initialSeenAt);
+    setExploreExcursionsSeenAt(initialSeenAt);
+  });
+
+  function isPastExcursion(startAt: string): boolean {
+    const t = new Date(startAt).getTime();
+    return !Number.isNaN(t) && t < Date.now();
+  }
+
+  function isWithinCurrentWeek(startAt: string): boolean {
+    const t = new Date(startAt);
+    if (Number.isNaN(t.getTime())) return false;
+    const now = new Date();
+    const day = now.getDay(); // Sun=0, Mon=1
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() + mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+    return t >= weekStart && t < weekEnd;
+  }
+
   const excursionMetaFiltered = createMemo(() => {
     const list = exploreExcursionsData() ?? [];
     const vp = excursionVisPublic();
     const vm = excursionVisMatched();
     const vi = excursionVisInterested();
+    const dateFilter = excursionDateFilter();
     const durs = excursionDurFilter();
-    return list.filter((e) => {
+    const filtered = list.filter((e) => {
       if (e.visibility === "public" && !vp) return false;
       if (e.visibility === "matched_only" && !vm) return false;
       if (e.visibility === "interested_by_me" && !vi) return false;
-      return durs.has(normalizedExcursionDuration(e));
+      if (!durs.has(normalizedExcursionDuration(e))) return false;
+      if (dateFilter === "upcoming" && isPastExcursion(e.start_at)) return false;
+      if (dateFilter === "this_week" && !isWithinCurrentWeek(e.start_at)) return false;
+      return true;
+    });
+    // Keep upcoming first, then passed (most recent first among passed).
+    return filtered.sort((a, b) => {
+      const aTime = new Date(a.start_at).getTime();
+      const bTime = new Date(b.start_at).getTime();
+      const aPast = isPastExcursion(a.start_at);
+      const bPast = isPastExcursion(b.start_at);
+      if (aPast !== bPast) return aPast ? 1 : -1;
+      if (aPast && bPast) return bTime - aTime;
+      return aTime - bTime;
     });
   });
 
@@ -201,6 +261,18 @@ export default function Matches() {
       if (!c) return false;
       return pointInBounds(c.lat, c.lon, bounds);
     });
+  });
+
+  const newExcursionsCount = createMemo(() => {
+    const seenAt = exploreExcursionsSeenAt();
+    if (!seenAt) return 0;
+    const seenTs = Date.parse(seenAt);
+    if (Number.isNaN(seenTs)) return 0;
+    const list = exploreExcursionsData() ?? [];
+    return list.filter((e) => {
+      const createdOrStartTs = Date.parse((e.created as string | undefined) ?? e.start_at ?? "");
+      return !Number.isNaN(createdOrStartTs) && createdOrStartTs > seenTs;
+    }).length;
   });
 
   const isMobileExcursionMapView = () =>
@@ -383,6 +455,57 @@ export default function Matches() {
         ((a as { distanceKm?: number }).distanceKm ?? 999) -
         ((b as { distanceKm?: number }).distanceKm ?? 999)
     );
+  });
+
+  const newMembersCount = createMemo(() => {
+    const d = data();
+    const meId = pb.authStore.model?.id;
+    const me = pb.authStore.model as
+      | {
+          id?: string;
+          last_login_at?: string;
+          retention_radius?: number;
+          latitude?: number;
+          longitude?: number;
+          area?: string;
+          city?: string;
+        }
+      | null;
+    if (!d || !meId || !me?.last_login_at) return 0;
+    const since = Date.parse(me.last_login_at);
+    if (Number.isNaN(since)) return 0;
+    const radiusKm =
+      typeof me.retention_radius === "number" && me.retention_radius > 0
+        ? me.retention_radius
+        : 3;
+    const meArea = (me.area ?? "").trim().toLowerCase();
+    const meCity = (me.city ?? "").trim().toLowerCase();
+    const users = d.users as Array<{
+      id: string;
+      created?: string;
+      latitude?: number;
+      longitude?: number;
+      area?: string;
+      city?: string;
+    }>;
+    return users.filter((u) => {
+      if (u.id === meId) return false;
+      const created = Date.parse(u.created ?? "");
+      if (Number.isNaN(created) || created <= since) return false;
+      if (
+        typeof me.latitude === "number" &&
+        typeof me.longitude === "number" &&
+        typeof u.latitude === "number" &&
+        typeof u.longitude === "number"
+      ) {
+        return haversineDistance(me.latitude, me.longitude, u.latitude, u.longitude) <= radiusKm;
+      }
+      const userArea = (u.area ?? "").trim().toLowerCase();
+      const userCity = (u.city ?? "").trim().toLowerCase();
+      if (meArea && userArea && meArea === userArea) return true;
+      if (meCity && userCity && meCity === userCity) return true;
+      return false;
+    }).length;
   });
 
   async function handleInterested(toUserId: string, message?: string) {
@@ -759,6 +882,7 @@ export default function Matches() {
     setExcursionVisPublic(true);
     setExcursionVisMatched(true);
     setExcursionVisInterested(true);
+    setExcursionDateFilter("all");
     setExcursionDurFilter(new Set(EXCURSION_DURATION_STEPS));
   }
 
@@ -766,7 +890,10 @@ export default function Matches() {
 
   function buildExploreBackHref(): string {
     if (typeof window === "undefined") return "/app/explore?utforsk=hundtraffar";
-    return `${window.location.pathname}${window.location.search || ""}`;
+    const params = new URLSearchParams(window.location.search);
+    // Keep any active query state, but force hundträffar mode on return.
+    params.set("utforsk", "hundtraffar");
+    return `/app/explore?${params.toString()}`;
   }
 
   function excursionDetailHref(id: string): string {
@@ -923,21 +1050,37 @@ export default function Matches() {
                   type="button"
                   role="tab"
                   class="explore-mode-tab"
-                  classList={{ "explore-mode-tab-active": exploreMode() === "medlemmar" }}
+                  classList={{
+                    "explore-mode-tab-active": exploreMode() === "medlemmar",
+                    "explore-mode-tab-with-marker": newMembersCount() > 0,
+                  }}
                   aria-selected={exploreMode() === "medlemmar"}
                   onClick={() => setExploreModeTab("medlemmar")}
                 >
-                  medlemmar
+                  Medlemmar
+                  <Show when={newMembersCount() > 0}>
+                    <span class="explore-mode-tab-marker" aria-label={`${newMembersCount()} nya medlemmar`}>
+                      ×
+                    </span>
+                  </Show>
                 </button>
                 <button
                   type="button"
                   role="tab"
                   class="explore-mode-tab"
-                  classList={{ "explore-mode-tab-active": exploreMode() === "hundtraffar" }}
+                  classList={{
+                    "explore-mode-tab-active": exploreMode() === "hundtraffar",
+                    "explore-mode-tab-with-marker": newExcursionsCount() > 0,
+                  }}
                   aria-selected={exploreMode() === "hundtraffar"}
                   onClick={() => setExploreModeTab("hundtraffar")}
                 >
-                  hundträffar
+                  Hundträffar
+                  <Show when={newExcursionsCount() > 0}>
+                    <span class="explore-mode-tab-marker" aria-label={`${newExcursionsCount()} nya hundträffar`}>
+                      ×
+                    </span>
+                  </Show>
                 </button>
               </span>
             </h1>
@@ -1235,6 +1378,38 @@ export default function Matches() {
                   </div>
                 </div>
                 <div class="matches-filter-group">
+                  <span class="matches-filter-label">Datum</span>
+                  <div class="matches-filter-tabs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": excursionDateFilter() === "all" }}
+                      onClick={() => setExcursionDateFilter("all")}
+                    >
+                      Alla
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": excursionDateFilter() === "upcoming" }}
+                      onClick={() => setExcursionDateFilter("upcoming")}
+                    >
+                      Kommande
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      class="matches-filter-tab"
+                      classList={{ "matches-filter-tab-active": excursionDateFilter() === "this_week" }}
+                      onClick={() => setExcursionDateFilter("this_week")}
+                    >
+                      Denna veckan
+                    </button>
+                  </div>
+                </div>
+                <div class="matches-filter-group">
                   <span class="matches-filter-label">Längd (timmar)</span>
                   <div class="matches-filter-tabs" role="group">
                     <For each={[...EXCURSION_DURATION_STEPS]}>
@@ -1405,22 +1580,24 @@ export default function Matches() {
                   <div style="display: grid; gap: 0.75rem;">
                     <For each={excursionListDisplayed()}>
                       {(trip) => (
-                        <ExcursionListCard
-                          id={trip.id}
-                          href={excursionDetailHref(trip.id)}
-                          title={trip.title}
-                          start_at={trip.start_at}
-                          meeting_area={trip.meeting_area}
-                          duration_hours={trip.duration_hours}
-                          visibility={trip.visibility}
-                          interest_count={trip.interest_count}
-                          comment_count={trip.comment_count}
-                          meeting_latitude={trip.meeting_latitude}
-                          meeting_longitude={trip.meeting_longitude}
-                          meeting_map_url={trip.meeting_map_url}
-                          hideMapThumb={!isMobileViewport()}
-                          onHoverChange={!isMobileViewport() ? setHoveredExcursionId : undefined}
-                        />
+                        <div classList={{ "excursions-past-card-wrap": isPastExcursion(trip.start_at) }}>
+                          <ExcursionListCard
+                            id={trip.id}
+                            href={excursionDetailHref(trip.id)}
+                            title={trip.title}
+                            start_at={trip.start_at}
+                            meeting_area={trip.meeting_area}
+                            duration_hours={normalizedExcursionDuration(trip)}
+                            visibility={trip.visibility}
+                            interest_count={trip.interest_count}
+                            comment_count={trip.comment_count}
+                            meeting_latitude={trip.meeting_latitude}
+                            meeting_longitude={trip.meeting_longitude}
+                            meeting_map_url={trip.meeting_map_url}
+                            hideMapThumb={!isMobileViewport()}
+                            onHoverChange={!isMobileViewport() ? setHoveredExcursionId : undefined}
+                          />
+                        </div>
                       )}
                     </For>
                   </div>

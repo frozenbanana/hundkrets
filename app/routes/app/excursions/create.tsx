@@ -9,9 +9,16 @@ export default function ExcursionCreatePage() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const firstQueryValue = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const normalizeExploreHref = (href: string) => {
+    const [path, rawQuery = ""] = href.split("?");
+    if (path !== "/app/explore") return href;
+    const params = new URLSearchParams(rawQuery);
+    params.set("utforsk", "hundtraffar");
+    return `/app/explore?${params.toString()}`;
+  };
   const backHref = () => {
     const from = firstQueryValue(searchParams.from);
-    if (from && from.startsWith("/app/")) return from;
+    if (from && from.startsWith("/app/explore")) return normalizeExploreHref(from);
     return "/app/excursions";
   };
 

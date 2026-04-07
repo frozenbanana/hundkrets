@@ -25,6 +25,12 @@ import { parseApiError } from "~/lib/errors";
 import { showToast } from "~/lib/toast";
 import { AppShell } from "~/components/AppShell";
 
+function careTypeLabel(v: string | undefined): string {
+  if (v === "daytime") return "Dagpassning";
+  if (v === "overnight") return "Övernattning";
+  return "Heldagar (med övernattning)";
+}
+
 type ProfileData = {
   user: { id: string; name?: string; avatar?: string; area?: string; city?: string; neighborhood?: string; bio?: string; breeds_owned_before?: string; verified?: boolean };
   needs: Array<Record<string, unknown> & { dog?: string; notes?: string }>;
@@ -684,6 +690,9 @@ export default function UserProfile() {
                                   <div class="need-card-footer">
                                     <span class="need-card-label">Datum:</span> {dateStr(n)}
                                   </div>
+                                  <div class="need-card-footer">
+                                    <span class="need-card-label">Typ:</span> {careTypeLabel((n.care_type as string | undefined))}
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -1019,6 +1028,9 @@ export default function UserProfile() {
                                   )}
                                   <div class="need-card-footer">
                                     <span class="need-card-label">Datum:</span> {dateStr(n)}
+                                  </div>
+                                  <div class="need-card-footer">
+                                    <span class="need-card-label">Passningsbehov:</span> {careTypeLabel((n.care_type as string | undefined))}
                                   </div>
                                 </div>
                               </div>

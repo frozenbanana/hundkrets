@@ -15,6 +15,7 @@ function extractBounds(b: L.LatLngBounds): MapBounds {
 }
 
 const BROWN_FILL = "#a0522d";
+const PAST_FILL = "#8a8f99";
 
 export type ExcursionsMapProps = {
   excursions: ExploreExcursionItem[];
@@ -95,18 +96,22 @@ export function ExcursionsMap(props: ExcursionsMapProps) {
         if (props.filterByBounds && currentBounds && !currentBounds.contains([lat, lon])) continue;
 
         const when = formatExcursionWhen(ex.start_at);
+        const startTs = new Date(ex.start_at).getTime();
+        const isPast = !Number.isNaN(startTs) && startTs < Date.now();
         const detailUrl = `/app/excursions/${ex.id}`;
         const isHovered = hoveredExcursionId === ex.id;
+        const statusText = isPast ? "Passerad" : "Kommande";
         const tooltipHtml = `
           <div class="map-tooltip-excursion">
             <strong>${esc(ex.title)}</strong><br />
-            <span>${esc(when.date)} ${esc(when.time)} · ${esc(ex.meeting_area)}</span>
+            <span>${esc(when.date)} ${esc(when.time)} · ${esc(ex.meeting_area)} · ${statusText}</span>
           </div>
         `;
         const popupHtml = `
           <div class="map-popup-excursion">
             <strong class="map-popup-excursion-title">${esc(ex.title)}</strong>
             <p class="map-popup-excursion-meta">${esc(when.date)} ${esc(when.time)} · ${esc(ex.meeting_area)}</p>
+            <p class="map-popup-excursion-meta">${statusText}</p>
             <a href="${detailUrl}" class="map-popup-link">Öppna hundträff</a>
           </div>
         `;
@@ -114,8 +119,8 @@ export function ExcursionsMap(props: ExcursionsMapProps) {
           radius: isHovered ? 12 : 9,
           color: "#fff",
           weight: isHovered ? 3 : 2,
-          fillColor: BROWN_FILL,
-          fillOpacity: isHovered ? 1 : 0.92,
+          fillColor: isPast ? PAST_FILL : BROWN_FILL,
+          fillOpacity: isPast ? (isHovered ? 0.92 : 0.8) : isHovered ? 1 : 0.92,
         })
           .addTo(markerLayer!)
           .bindPopup(popupHtml, { className: "map-popup-excursion-wrap", closeButton: true });
