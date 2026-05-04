@@ -192,7 +192,7 @@ export default function OnboardingCapacity() {
             />
           </div>
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-            <button type="submit" class="btn" disabled={loading()}>
+            <button type="submit" class="btn" disabled={loading()} data-umami-event="Onboarding capacity submit">
               {loading() ? "Sparar..." : "Spara och fortsätt"}
             </button>
             <button type="button" class="btn btn-secondary" onClick={handleSkip}>

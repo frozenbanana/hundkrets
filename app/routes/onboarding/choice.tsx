@@ -247,7 +247,7 @@ export default function OnboardingChoice() {
                 </div>
               </section>
               <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button type="submit" class="btn" disabled={loading()}>
+              <button type="submit" class="btn" disabled={loading()} data-umami-event="Onboarding profile submit">
                 {loading() ? "Sparar..." : "Spara och fortsätt"}
               </button>
               <button
@@ -273,6 +273,8 @@ export default function OnboardingChoice() {
                 class="btn"
                 onClick={() => handleChoice("has_dogs")}
                 style="text-align: left; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem;"
+                data-umami-event="Onboarding choice"
+                data-umami-event-type="has_dogs"
               >
                 <strong>Byta hundpassning</strong>
               </button>
@@ -281,6 +283,8 @@ export default function OnboardingChoice() {
                 class="btn btn-receiver"
                 onClick={() => handleChoice("receiver_only")}
                 style="text-align: left; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem;"
+                data-umami-event="Onboarding choice"
+                data-umami-event-type="receiver_only"
               >
                 <strong>Endast ta emot passning</strong>
               </button>
@@ -289,6 +293,8 @@ export default function OnboardingChoice() {
                 class="btn btn-secondary"
                 onClick={() => handleChoice("sitter_only")}
                 style="text-align: left; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1rem;"
+                data-umami-event="Onboarding choice"
+                data-umami-event-type="sitter_only"
               >
                 <strong>Endast passa hundar</strong>
               </button>

@@ -588,7 +588,7 @@ export default function ExcursionsPage() {
               Planera hundpromenader och träffar med andra i Hundkrets.
             </p>
           </div>
-          <A href="/app/excursions/create" class="btn excursions-new-btn">
+          <A href="/app/excursions/create" class="btn excursions-new-btn" data-umami-event="Excursion create click">
             <span aria-hidden="true">＋</span>
             <span>Ny hundträff</span>
           </A>

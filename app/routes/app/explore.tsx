@@ -20,6 +20,7 @@ import { approximateCoords, pointInBounds, type MapBounds } from "~/lib/geocode"
 import { EXCURSION_VISIBILITY_LABELS, excursionPreviewCoords } from "~/lib/excursionListCard";
 import { fetchExploreExcursions, type ExploreExcursionItem } from "~/lib/exploreExcursions";
 import { AppShell } from "~/components/AppShell";
+import { trackUmami } from "~/lib/analytics";
 import { ExcursionListCard } from "~/components/ExcursionListCard";
 import { ExcursionsMap } from "~/components/ExcursionsMap";
 import { MatchesMap } from "~/components/MatchesMap";
@@ -523,6 +524,7 @@ export default function Matches() {
         return { ...prev, connections: [...prev.connections, created] };
       });
       showToast("Intresse skickat");
+      trackUmami("Interest sent");
     } catch (e) {
       const err = e as { response?: { data?: unknown }; data?: unknown };
       console.error("[matches] handleInterested error", e);
@@ -1176,7 +1178,16 @@ export default function Matches() {
                   ? "Ingen i ditt område än. Lägg till dina behov så att hundpassare kan hitta dig."
                   : "Ingen i ditt område än. Lägg till dina behov och kapacitet så att andra kan hitta dig."}
             </p>
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+              <Show when={nextDistanceStep()}>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  onClick={handleIncreaseDistance}
+                >
+                  Öka avstånd till {nextDistanceStep()} km
+                </button>
+              </Show>
               <Show when={!userTypeInfo().isSitterOnly}>
                 <A href="/app/needs" class="btn">
                   Lägg till behov

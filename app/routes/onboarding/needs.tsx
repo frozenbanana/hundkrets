@@ -217,9 +217,9 @@ export default function OnboardingNeeds() {
             <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="Några speciella behov?" />
           </div>
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-            <button type="submit" class="btn" disabled={loading()}>
-              {loading() ? "Sparar..." : "Spara och fortsätt"}
-            </button>
+          <button type="submit" class="btn" disabled={loading()} data-umami-event="Onboarding needs submit">
+            {loading() ? "Sparar..." : "Spara och fortsätt"}
+          </button>
             <button type="button" class="btn btn-secondary" onClick={handleSkip}>
               Skippa
             </button>

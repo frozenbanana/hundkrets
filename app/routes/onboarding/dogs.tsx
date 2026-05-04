@@ -240,9 +240,9 @@ export default function OnboardingDogs() {
             <label for="notes">Anteckningar (valfritt)</label>
             <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="T.ex. speciella behov, diet, mediciner" rows={4} />
           </div>
-          <button type="submit" class="btn" disabled={loading()}>
-            {loading() ? "Lägger till..." : "Lägg till nästa hund"}
-          </button>
+        <button type="submit" class="btn" disabled={loading()} data-umami-event="Onboarding dogs submit">
+          {loading() ? "Sparar..." : "Spara och fortsätt"}
+        </button>
         </form>
         <Show when={dogs() && dogs()!.length > 0}>
           <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--color-fur);">
@@ -264,7 +264,7 @@ export default function OnboardingDogs() {
           <button type="button" class="btn" disabled={loading()} onClick={() => handleSaveAndContinue()}>
             {loading() ? "Sparar..." : "Spara och fortsätt"}
           </button>
-          <button type="button" class="btn btn-secondary" onClick={() => nav("/onboarding/needs")}>
+          <button type="button" class="btn btn-secondary" onClick={() => nav("/onboarding/needs")} data-umami-event="Onboarding dogs skip">
             Skippa
           </button>
         </div>

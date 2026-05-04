@@ -78,7 +78,7 @@ export default function Login() {
         </div>
         {success() && <p style="color: #16a34a; margin-bottom: 0.5rem;" role="status">{success()}</p>}
         {error() && <p class="form-error" role="alert">{error()}</p>}
-        <button type="submit" class="btn" style="width: 100%;" disabled={loading()}>
+        <button type="submit" class="btn" style="width: 100%;" disabled={loading()} data-umami-event="Login submit">
           {loading() ? "Loggar in..." : "Logga in"}
         </button>
       </form>

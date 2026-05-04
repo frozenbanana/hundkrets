@@ -4,6 +4,7 @@ import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
 import { ValidatedInput } from "~/components/ValidatedInput";
 import { handleOAuthRedirect } from "~/lib/oauth";
+import { trackUmami } from "~/lib/analytics";
 
 export default function Register() {
   const nav = useNavigate();
@@ -32,6 +33,7 @@ export default function Register() {
       });
       await pb.collection("users").authWithPassword(email(), password());
       await pb.collection("users").requestVerification(email());
+      trackUmami("Registration success", { method: "email" });
       const redirect = redirectTo();
       if (redirect && redirect.startsWith("/")) {
         nav(redirect, { replace: true });
@@ -94,7 +96,7 @@ export default function Register() {
           />
         </div>
         {error() && <p class="form-error" role="alert">{error()}</p>}
-        <button type="submit" class="btn" style="width: 100%;" disabled={loading()}>
+        <button type="submit" class="btn" style="width: 100%;" disabled={loading()} data-umami-event="Register submit">
           {loading() ? "Skapar..." : "Skapa konto"}
         </button>
       </form>
