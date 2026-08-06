@@ -9,7 +9,10 @@
     "start": "vinxi start",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "test:geocode": "node scripts/test-geocode.mjs",
+    "setup:mailpit": "cd .. && node scripts/setup-mailpit.mjs",
     "test:email": "node scripts/test-email-flows.mjs",
     "test:pb-login": "node scripts/test-pb-admin-login.mjs",
     "seed": "node scripts/seed-malmo.mjs",
@@ -29,6 +32,7 @@
     "vinxi": "^0.5.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/canvas-confetti": "^1.9.0",
     "dotenv": "^17.3.1",
     "sharp": "^0.34.5",

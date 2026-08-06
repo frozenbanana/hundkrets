@@ -51,7 +51,11 @@ export default function ProfileIndex() {
     myId,
     async (id) => {
       if (!id) return null;
-      const res = await fetch(`/api/users/${id}/profile`);
+      const headers: HeadersInit = {};
+      if (pb.authStore.token) {
+        headers.Authorization = pb.authStore.token;
+      }
+      const res = await fetch(`/api/users/${id}/profile`, { headers });
       if (!res.ok) throw new Error("Kunde inte ladda profil");
       return res.json() as Promise<ProfileData>;
     }

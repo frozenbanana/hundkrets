@@ -7,6 +7,7 @@ import { AdminMessageBanner } from "~/components/AdminMessageBanner";
 import { UnverifiedBanner } from "~/components/UnverifiedBanner";
 import { getRequestsSeenAt, requestsSeenVersion } from "~/lib/requestsSeen";
 import { countUnreadIncomingMessages } from "~/lib/chat";
+import { isOnboardingDone } from "~/lib/onboarding";
 
 const baseUrl = import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090";
 
@@ -140,8 +141,7 @@ export function AppShell(props: { children: import("solid-js").JSX.Element; allo
       return;
     }
     const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
-    const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-    if (!done) {
+    if (!isOnboardingDone(m)) {
       nav("/onboarding/choice", { replace: true });
       return;
     }

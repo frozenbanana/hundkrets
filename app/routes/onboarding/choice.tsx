@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { setOnboardingUserType, getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { setOnboardingUserType, getOnboardingUserType, isOnboardingDone, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { geocodeCity, geocodePostalCode } from "~/lib/geocode";
 import { lookupPostalCode } from "~/lib/postalCode";
 import { parseApiError } from "~/lib/errors";
@@ -26,8 +26,7 @@ export default function OnboardingChoice() {
       return;
     }
     const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
-    const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-    if (done) {
+    if (isOnboardingDone(m)) {
       nav("/app/explore", { replace: true });
       return;
     }
@@ -261,11 +260,8 @@ export default function OnboardingChoice() {
           </form>
         ) : (
           <>
-            <p style="color: var(--color-text); margin-bottom: 0.5rem;">
+            <p style="color: var(--color-text); margin-bottom: 1.25rem;">
               Välj hur du vill använda Hundkrets. Du kan alltid ändra senare.
-            </p>
-            <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
-              Nästa steg: du fyller i namn och postnummer så att vi kan hitta hundägare i ditt område.
             </p>
             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
               <button

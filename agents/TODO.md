@@ -9,6 +9,11 @@ Prioriterad funktionslista för Hundkrets.
 ## Nästa
 
 - Bekräfta att förväntade guest-flöden fortfarande fungerar på publik hundträff (`guest-public-excursion-mobile.png`) och att share-toast visas (`issue-or-proof-share-toast-mobile.png`).
+- Review 2026-06-15 flagged items that are actually working — no action needed:
+  - **Umami analytics**: working fine, users visible on umami.henrybergstrom.com. The review script reported zero but the tracking script is installed correctly.
+  - **Create excursion button**: exists and works. The review script failed to find it but it's present.
+  - **Delete account button**: exists and works. The review script failed to find it but it's present.
+- **Onboarding redirect question**: Review noted users redirecting from Explore/Excursions back to `/onboarding/choice`. Need evidence — is this actually a loop, or just expected behavior for users who haven't completed onboarding?
 
 ## Senare
 

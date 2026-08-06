@@ -1,4 +1,4 @@
-import { useNavigate } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import { onMount } from "solid-js";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { RecommendedMembersSection } from "~/components/RecommendedMembersSection";
@@ -34,12 +34,20 @@ export default function OnboardingRecommendations() {
     <OnboardingShell
       step={isSitterOnly() ? 3 : isReceiverOnly() ? 4 : 5}
       totalSteps={isSitterOnly() ? 3 : isReceiverOnly() ? 4 : 5}
-      title="Dina rekommendationer"
-      nextStepHint="Nästa: Utforska fler medlemmar"
+      title="Skicka ditt första intresse"
+      nextStepHint="När någon svarar kan ni chatta och planera passning"
       backHref={isSitterOnly() ? "/onboarding/capacity" : isReceiverOnly() ? "/onboarding/needs" : "/onboarding/capacity"}
     >
       <div class="card">
+        <p style="margin: 0 0 1rem; color: var(--color-text-muted);">
+          Här är grannar som passar dig. Skicka intresse till minst en—det är så Hundkrets kommer igång.
+        </p>
         <RecommendedMembersSection profileFrom="onboarding" />
+        <div style="margin-top: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+          <A href="/app/explore" class="btn">
+            Fortsätt till Utforska
+          </A>
+        </div>
       </div>
     </OnboardingShell>
   );

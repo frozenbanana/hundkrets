@@ -26,3 +26,17 @@ export function isSitterOnly(): boolean {
 export function isReceiverOnly(): boolean {
   return getOnboardingUserType() === "receiver_only";
 }
+
+/**
+ * Whether the user can use the main app.
+ * Prefer explicit `onboarding_complete`, but also allow users who already have an area
+ * (legacy / seed / abandoned mid-flow after saving location) so they aren't trapped on choice.
+ */
+export function isOnboardingDone(user: {
+  onboarding_complete?: boolean | null;
+  area?: string | null;
+} | null | undefined): boolean {
+  if (!user) return false;
+  if (user.onboarding_complete === true) return true;
+  return Boolean(user.area && String(user.area).trim());
+}

@@ -1,4 +1,5 @@
 import { pb } from "~/lib/pocketbase";
+import { isOnboardingDone } from "~/lib/onboarding";
 
 /**
  * After OAuth login, redirect based on onboarding status.
@@ -9,6 +10,5 @@ export function handleOAuthRedirect(nav: (path: string) => void): void {
     return;
   }
   const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
-  const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-  nav(done ? "/app/explore" : "/onboarding/choice", { replace: true });
+  nav(isOnboardingDone(m) ? "/app/explore" : "/onboarding/choice", { replace: true });
 }

@@ -5,6 +5,7 @@ import { parseApiError } from "~/lib/errors";
 import { ValidatedInput } from "~/components/ValidatedInput";
 import { handleOAuthRedirect } from "~/lib/oauth";
 import { trackUmami } from "~/lib/analytics";
+import { isOnboardingDone } from "~/lib/onboarding";
 
 export default function Register() {
   const nav = useNavigate();
@@ -40,8 +41,7 @@ export default function Register() {
         return;
       }
       const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
-      const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-      nav(done ? "/app/explore" : "/onboarding/choice", { replace: true });
+      nav(isOnboardingDone(m) ? "/app/explore" : "/onboarding/choice", { replace: true });
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {

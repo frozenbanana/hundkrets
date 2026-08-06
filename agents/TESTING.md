@@ -532,6 +532,28 @@ If you prefer custom fixtures (for example `test-user@example.com`), create them
 
 ## Running Tests
 
+Unit tests (vitest):
+
+```bash
+cd app && npm run test:run
+```
+
+E2E (Playwright) — requires PocketBase on `:8090` and the app on `:3000`:
+
+```bash
+# once
+cd app && npx playwright install chromium
+
+# run
+cd app && npm run test:e2e
+```
+
+Specs live in `app/e2e/`. Seed account: `anna.malmo@example.com` / `password123!`.
+
+Override with `HUNDKRETS_URL`, `TEST_EMAIL`, `TEST_PASS` if needed.
+
+**Profile API note:** Logged-in profile views forward the PocketBase auth token. Guest profile views still need `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` in `app/.env`.
+
 ```bash
 # Install Playwright
 npm install -D @playwright/test
@@ -540,7 +562,7 @@ npm install -D @playwright/test
 npx playwright test
 
 # Run specific test file
-npx playwright test tests/auth.spec.ts
+npx playwright test e2e/explore-profile.spec.ts
 
 # Run with UI mode
 npx playwright test --ui

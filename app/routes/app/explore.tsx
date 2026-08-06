@@ -79,6 +79,9 @@ export default function Matches() {
   const [introDismissed, setIntroDismissed] = createSignal(
     typeof window !== "undefined" && localStorage.getItem("matches-intro-dismissed") === "true"
   );
+  const [nextActionDismissed, setNextActionDismissed] = createSignal(
+    typeof window !== "undefined" && localStorage.getItem("explore-next-action-dismissed") === "true"
+  );
 
   const [maxDistanceKm, setMaxDistanceKm] = createSignal(DEFAULT_MAX_DISTANCE_KM);
 
@@ -981,6 +984,25 @@ export default function Matches() {
     };
   });
 
+  const myListingGaps = createMemo(() => {
+    const d = data();
+    if (!d) return { missingNeeds: false, missingCapacity: false };
+    const userType = (pb.authStore.model as { user_type?: string } | null)?.user_type;
+    const missingNeeds =
+      userType !== "sitter_only" && (d.myNeeds?.length ?? 0) === 0;
+    const missingCapacity =
+      userType !== "receiver_only" && (d.myCapacities?.length ?? 0) === 0;
+    return { missingNeeds, missingCapacity };
+  });
+
+  const showNextActionBanner = createMemo(() => {
+    if (nextActionDismissed()) return false;
+    if (exploreMode() !== "medlemmar") return false;
+    if (!data()) return false;
+    const counts = tabCounts();
+    return counts.outgoing === 0 && counts.not_matched > 0;
+  });
+
   const matchFilteredListings = createMemo(() => {
     let list = listings();
     const filter = matchFilter();
@@ -1147,6 +1169,81 @@ export default function Matches() {
               <A href="/app/settings" class="btn btn-secondary">
                 Uppdatera adress
               </A>
+            </div>
+          </Show>
+          <Show
+            when={
+              exploreMode() === "medlemmar" &&
+              !!pb.authStore.model?.area &&
+              (myListingGaps().missingNeeds || myListingGaps().missingCapacity)
+            }
+          >
+            <div class="profile-incomplete-card profile-incomplete-card-subtle">
+              <p style="margin: 0 0 0.75rem; color: var(--color-text-muted);">
+                {myListingGaps().missingNeeds && myListingGaps().missingCapacity
+                  ? "Lägg till när du behöver passning och när du kan passa—då syns du bättre för grannar."
+                  : myListingGaps().missingNeeds
+                    ? "Lägg till när du behöver passning så andra kan erbjuda hjälp."
+                    : "Lägg till när du kan passa hundar så andra hittar dig."}
+              </p>
+              <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <Show when={myListingGaps().missingNeeds}>
+                  <A href="/app/needs" class="btn btn-secondary">
+                    Lägg till behov
+                  </A>
+                </Show>
+                <Show when={myListingGaps().missingCapacity}>
+                  <A href="/app/capacity" class="btn btn-secondary">
+                    Lägg till kapacitet
+                  </A>
+                </Show>
+              </div>
+            </div>
+          </Show>
+          <Show when={exploreMode() === "medlemmar" && requestedMeUnseenCount() > 0}>
+            <div class="explore-action-banner explore-action-banner-incoming">
+              <p class="explore-action-banner-text">
+                {requestedMeUnseenCount() === 1
+                  ? "1 person vill ha kontakt med dig."
+                  : `${requestedMeUnseenCount()} personer vill ha kontakt med dig.`}
+              </p>
+              <button
+                type="button"
+                class="btn"
+                onClick={() => handleFilterChange("requested_me")}
+              >
+                Visa mottagna
+              </button>
+            </div>
+          </Show>
+          <Show when={showNextActionBanner()}>
+            <div class="explore-action-banner">
+              <p class="explore-action-banner-text">
+                {tabCounts().not_matched === 1
+                  ? "1 granne nära dig vill byta hundpassning. Skicka intresse för att komma igång."
+                  : `${tabCounts().not_matched} grannar nära dig vill byta hundpassning. Skicka intresse för att komma igång.`}
+              </p>
+              <div class="explore-action-banner-actions">
+                <button
+                  type="button"
+                  class="btn"
+                  onClick={() => handleFilterChange("not_matched")}
+                >
+                  Visa tillgängliga
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  onClick={() => {
+                    setNextActionDismissed(true);
+                    if (typeof localStorage !== "undefined") {
+                      localStorage.setItem("explore-next-action-dismissed", "true");
+                    }
+                  }}
+                >
+                  Dölj
+                </button>
+              </div>
             </div>
           </Show>
           <Show when={exploreMode() === "medlemmar" && data.loading && !data()}>
@@ -1502,23 +1599,43 @@ export default function Matches() {
                 <div class="matches-empty-state">
                   <p style="color: var(--color-text-muted); margin: 0;">
                     {matchFilter() === "outgoing"
-                      ? 'Du har inte skickat några förfrågningar än. Bläddra bland Alla eller Tillgängliga och klicka på "Jag är intresserad" för att koppla ihop.'
+                      ? 'Du har inte skickat några förfrågningar än. Bläddra bland Tillgängliga och klicka "Jag är intresserad" för att koppla ihop.'
                       : matchFilter() === "requested_me"
                         ? "Ingen har skickat förfrågan till dig än."
                         : matchFilter() === "matched"
                           ? 'Du har inga matchningar än. När ni båda klickar "Jag är intresserad" blir ni matchade.'
                           : "Ingen att visa i denna vy. Prova att zooma ut på kartan eller byt filter."}
                   </p>
-                  <Show when={matchFilter() === "matched" || (searchParams as { match?: string }).match === "true"}>
-                    <button
-                      type="button"
-                      class="btn btn-secondary"
-                      style="margin-top: 0.75rem;"
-                      onClick={handleClearFilters}
-                    >
-                      Återställ filter
-                    </button>
-                  </Show>
+                  <div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    <Show when={matchFilter() === "outgoing" || matchFilter() === "matched"}>
+                      <button
+                        type="button"
+                        class="btn"
+                        onClick={() => handleFilterChange("not_matched")}
+                      >
+                        Visa tillgängliga
+                      </button>
+                    </Show>
+                    <Show when={matchFilter() === "matched" || (searchParams as { match?: string }).match === "true"}>
+                      <button
+                        type="button"
+                        class="btn btn-secondary"
+                        onClick={handleClearFilters}
+                      >
+                        Återställ filter
+                      </button>
+                    </Show>
+                    <Show when={myListingGaps().missingNeeds}>
+                      <A href="/app/needs" class="btn btn-secondary">
+                        Lägg till behov
+                      </A>
+                    </Show>
+                    <Show when={myListingGaps().missingCapacity}>
+                      <A href="/app/capacity" class="btn btn-secondary">
+                        Lägg till kapacitet
+                      </A>
+                    </Show>
+                  </div>
                 </div>
               </Show>
               <Show when={filteredListings().length > 0}>
@@ -1582,9 +1699,14 @@ export default function Matches() {
                   <div class="matches-empty-state">
                     <p style="color: var(--color-text-muted); margin: 0;">
                       {excursionMetaFiltered().length === 0
-                        ? "Inga hundträffar matchar filtren. Prova att justera synlighet eller längd."
+                        ? "Inga hundträffar just nu. Skapa en promenad eller träff i ditt område."
                         : "Ingen träff i kartans utsnitt. Zooma ut eller flytta kartan."}
                     </p>
+                    <Show when={excursionMetaFiltered().length === 0}>
+                      <A href={excursionCreateHref()} class="btn" style="margin-top: 0.75rem;">
+                        Skapa hundträff
+                      </A>
+                    </Show>
                   </div>
                 </Show>
                 <Show when={excursionListDisplayed().length > 0}>

@@ -1,7 +1,8 @@
 import { Route, Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { MetaProvider } from "@solidjs/meta";
-import { ErrorBoundary, Suspense, onMount } from "solid-js";
+import { ErrorBoundary, Suspense, createEffect, onMount } from "solid-js";
+import { useLocation } from "@solidjs/router";
 import { refreshAuth } from "~/lib/authStore";
 import { ToastContainer } from "~/components/Toast";
 import ExcursionsPage from "./routes/app/excursions/index";
@@ -12,6 +13,18 @@ import "./app.css";
 function AuthRefresh() {
   onMount(() => {
     refreshAuth().catch(() => {});
+  });
+  return null;
+}
+
+function UmamiTracker() {
+  const location = useLocation();
+  createEffect(() => {
+    const path = location.pathname;
+    const umami = (window as unknown as { umami?: { track: (url?: string) => void } }).umami;
+    if (umami?.track) {
+      umami.track(path);
+    }
   });
   return null;
 }
@@ -31,8 +44,16 @@ export default function App() {
       <MetaProvider>
         <Router
           root={(props) => (
-            <Suspense fallback={<div class="loading">Laddar Hundkrets…</div>}>
+            <Suspense
+              fallback={
+                <div class="loading loading-brand" role="status" aria-live="polite">
+                  <img src="/logo-icon.png" alt="" class="loading-brand-logo" width="64" height="64" />
+                  <p class="loading-brand-text">Laddar Hundkrets…</p>
+                </div>
+              }
+            >
               <AuthRefresh />
+              <UmamiTracker />
               {props.children}
               <ToastContainer />
             </Suspense>

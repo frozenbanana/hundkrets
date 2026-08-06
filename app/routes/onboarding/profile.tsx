@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { getOnboardingUserType, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { getOnboardingUserType, isOnboardingDone, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { geocodeCity, geocodePostalCode } from "~/lib/geocode";
 import { lookupPostalCode } from "~/lib/postalCode";
 import { parseApiError } from "~/lib/errors";
@@ -42,8 +42,7 @@ export default function OnboardingProfile() {
       return;
     }
     const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
-    const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-    if (done) {
+    if (isOnboardingDone(m)) {
       nav("/app/explore", { replace: true });
       return;
     }

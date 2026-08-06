@@ -189,6 +189,15 @@ export function MatchCard(props: {
               <span class="match-card-value">{locationStr()}</span>
             </div>
           )}
+          <div class="match-card-cta-hint">
+            {mutual()
+              ? "Öppna · chatta"
+              : requestedMe()
+                ? "Öppna · svara"
+                : requestedOutgoing()
+                  ? "Öppna · se status"
+                  : "Öppna · skicka intresse"}
+          </div>
         </div>
         <div class="match-card-image">
           <Show

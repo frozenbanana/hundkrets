@@ -144,6 +144,7 @@ Automatisk e-post till inaktiva användare som inte loggat in på 7-14 dagar:
 |----------|-------------|
 | `./scripts/reset-and-seed.sh` | Återställ DB och seeda Malmö-data |
 | `./scripts/mailpit-certs.sh` | Skapa cert för Mailpit (lokal e-posttest) |
+| `./scripts/setup-mailpit.mjs` | Starta Mailpit + konfigurera PB SMTP automatiskt |
 | `./scripts/install-git-hooks.sh` | Installera pre-commit (kör tester) |
 | `cd app && npm run test:email` | Testa e-postflöden (PocketBase + Mailpit) |
 | `cd app && npm run seed` | Seeda användare (kräver tom/ny DB) |

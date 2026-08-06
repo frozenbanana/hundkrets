@@ -1,6 +1,7 @@
 /**
  * Public profile API – fetches user, needs, capacities, dogs for display.
- * No auth required. Uses PocketBase admin to bypass collection rules.
+ * Prefer PB admin (for guests). Fall back to the caller's auth token so
+ * logged-in users can open profiles even when PB_ADMIN_* is unset locally.
  * GET /api/users/:id/profile
  */
 import type { APIEvent } from "@solidjs/start/server";
@@ -13,19 +14,43 @@ const PB_URL =
       "http://127.0.0.1:8090"
     : "http://127.0.0.1:8090";
 
-let cachedPb: PocketBase | null = null;
+let cachedAdminPb: PocketBase | null = null;
 
-async function getAdminPb(): Promise<PocketBase> {
-  if (cachedPb?.authStore.isValid) return cachedPb;
+async function getAdminPb(): Promise<PocketBase | null> {
   const email = process.env.PB_ADMIN_EMAIL;
   const password = process.env.PB_ADMIN_PASSWORD;
-  if (!email || !password) {
-    throw new Error("PB_ADMIN_EMAIL and PB_ADMIN_PASSWORD must be set for public profile API");
-  }
+  if (!email || !password) return null;
+  if (cachedAdminPb?.authStore.isValid) return cachedAdminPb;
   const pb = new PocketBase(PB_URL);
   await pb.collection("_superusers").authWithPassword(email, password);
-  cachedPb = pb;
+  cachedAdminPb = pb;
   return pb;
+}
+
+function getCallerPb(event: APIEvent): PocketBase | null {
+  const auth =
+    event.request.headers.get("authorization") ||
+    event.request.headers.get("Authorization");
+  if (!auth) return null;
+  const token = auth.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  const pb = new PocketBase(PB_URL);
+  pb.authStore.save(token, null);
+  return pb;
+}
+
+async function getPbClient(event: APIEvent): Promise<PocketBase> {
+  try {
+    const admin = await getAdminPb();
+    if (admin) return admin;
+  } catch (err) {
+    console.error("[profile API] admin auth failed", err);
+  }
+  const caller = getCallerPb(event);
+  if (caller) return caller;
+  throw new Error(
+    "Profile API requires PB_ADMIN_EMAIL/PB_ADMIN_PASSWORD or an authenticated request"
+  );
 }
 
 function pickPublicUser(u: Record<string, unknown>): Record<string, unknown> {
@@ -74,7 +99,7 @@ export async function GET(event: APIEvent) {
   }
 
   try {
-    const pb = await getAdminPb();
+    const pb = await getPbClient(event);
 
     const [user, needsRaw, capacitiesRaw] = await Promise.all([
       pb.collection("users").getOne(id).catch(() => null),
@@ -108,13 +133,20 @@ export async function GET(event: APIEvent) {
     return new Response(JSON.stringify(payload), {
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=60",
+        "Cache-Control": "private, max-age=60",
       },
     });
   } catch (err) {
     console.error("[profile API]", err);
+    const message = err instanceof Error ? err.message : "Failed to load profile";
+    const isConfig =
+      message.includes("PB_ADMIN") || message.includes("authenticated request");
     return new Response(
-      JSON.stringify({ error: "Failed to load profile" }),
+      JSON.stringify({
+        error: isConfig
+          ? "Failed to load profile (server missing admin config and no auth)"
+          : "Failed to load profile",
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

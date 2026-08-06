@@ -2,20 +2,29 @@ import { createResource, For, Show } from "solid-js";
 import { fetchGalleryDogImages } from "~/lib/dog-ceo";
 
 export function DogGallery() {
-  const [dogs] = createResource(() => fetchGalleryDogImages(12));
+  const [gallery] = createResource(() => fetchGalleryDogImages(12));
 
   return (
     <div class="dog-gallery">
-      <Show when={dogs.loading}>
+      <Show when={!gallery.loading && gallery()}>
+        {(g) => (
+          <p class="landing-gallery-heading">
+            {g().fromCommunity
+              ? "Hundar som finns på Hundkrets"
+              : "Hundar som snart kan vara i din krets"}
+          </p>
+        )}
+      </Show>
+      <Show when={gallery.loading}>
         <div class="dog-gallery-loading">
           <span class="dog-gallery-loading-dot" />
           <span class="dog-gallery-loading-dot" />
           <span class="dog-gallery-loading-dot" />
         </div>
       </Show>
-      <Show when={dogs() && dogs()!.length > 0}>
+      <Show when={gallery() && gallery()!.urls.length > 0}>
         <div class="dog-gallery-grid">
-          <For each={dogs()}>
+          <For each={gallery()!.urls}>
             {(url, i) => (
               <div
                 class="dog-gallery-item"

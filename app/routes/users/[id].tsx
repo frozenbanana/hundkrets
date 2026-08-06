@@ -62,7 +62,11 @@ export default function UserProfile() {
   const [profile, { refetch }] = createResource(
     userId,
     async (id) => {
-      const res = await fetch(`/api/users/${id}/profile`);
+      const headers: HeadersInit = {};
+      if (pb.authStore.token) {
+        headers.Authorization = pb.authStore.token;
+      }
+      const res = await fetch(`/api/users/${id}/profile`, { headers });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Profilen hittades inte");

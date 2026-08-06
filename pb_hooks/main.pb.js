@@ -552,18 +552,29 @@ routerAdd("GET", "/api/hundkrets/user-locations", (e) => {
   return e.json(200, items);
 });
 
-// Public route: dog images for landing gallery (id, image – no auth needed)
+// Public route: dog images for landing gallery (id, image – no auth needed).
+// File fields don't support `image != ''` filters reliably — fetch recent dogs and filter in JS.
 routerAdd("GET", "/api/hundkrets/dog-gallery", (e) => {
   var records = [];
   try {
-    records = $app.findRecordsByFilter("dogs", "image != ''", "-created", 50, 0);
+    records = $app.findRecordsByFilter("dogs", "", "-created", 200, 0);
   } catch (err) {
-    return e.json(500, []);
+    $app.logger().warn("dog-gallery: query failed", "error", err);
+    return e.json(200, []);
   }
   var items = [];
-  for (var i = 0; i < records.length; i++) {
+  for (var i = 0; i < records.length && items.length < 50; i++) {
     var r = records[i];
-    var img = r.getString("image");
+    var img = "";
+    try {
+      img = String(r.get("image") || r.getString("image") || "").trim();
+    } catch (_) {
+      img = "";
+    }
+    // File fields may return a filename string or an array of filenames
+    if (Array.isArray(img)) {
+      img = img.length > 0 ? String(img[0] || "").trim() : "";
+    }
     if (img) {
       items.push({ id: r.id, image: img });
     }
@@ -618,7 +629,7 @@ routerAdd("GET", "/api/hundkrets/excursions/visible", (e) => {
   }
 });
 
-routerAdd("GET", "/api/hundkrets/excursions/visible/:id", (e) => {
+routerAdd("GET", "/api/hundkrets/excursions/visible/{id}", (e) => {
   var hk = require(__hooks + "/hk_utils.js");
   try {
     var viewerId = hk.authUserId(e);
@@ -1311,13 +1322,13 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
   }
 
   html += "<div style=\"text-align: center; margin: 30px 0;\">" +
-    "<a href=\"" + matchesLink + "\" style=\"background: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">Logga in och se alla</a></div></div>" +
+    "<a href=\"" + matchesLink + "\" style=\"background: #8b5a2b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">Skicka intresse till någon i ditt område</a></div></div>" +
     "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 15px; font-size: 14px; color: #7f8c8d;\">" +
     "<p style=\"margin: 0;\">Du får detta meddelande eftersom du inte har loggat in på över en vecka.</p>" +
     "<p style=\"margin: 10px 0 0 0;\"><a href=\"" + settingsLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Hantera e-postinställningar</a> • " +
     "<a href=\"" + unsubLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Avsluta prenumeration</a></p></div></body></html>";
 
-  var subject = newUserCount + " nya hundägare i ditt område";
+  var subject = newUserCount + " nya i ditt område — skicka intresse";
 
   try {
     $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: userEmail }], subject: subject, html: html }));
@@ -1408,7 +1419,7 @@ function runWeeklyRetentionJob() {
   return { emailsSent: sentCount, usersChecked: inactiveUsers.length };
 }
 
-routerAdd("GET", "/api/unsubscribe/:userId/:type", (e) => {
+routerAdd("GET", "/api/unsubscribe/{userId}/{type}", (e) => {
   var userId = e.pathParams.userId;
   var type = e.pathParams.type;
 

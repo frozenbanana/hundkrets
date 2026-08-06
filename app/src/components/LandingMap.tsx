@@ -118,11 +118,18 @@ export function LandingMap(props: Props) {
     }
   });
 
+  const memberCount = () => {
+    const list = users();
+    // Demo markers are placeholders — don't claim them as real members
+    if (list.length === 0 || list.every((u) => String(u.id).startsWith("demo-"))) return 0;
+    return list.length;
+  };
+
   return (
     <div class="landing-map-wrapper">
       <p class="landing-map-caption">
-        {users().length > 0
-          ? "Hundägare som använder Hundkrets"
+        {memberCount() > 0
+          ? `${memberCount()} hundägare använder Hundkrets`
           : "Hundägare i Sverige—bli en av dem"}
       </p>
       <div

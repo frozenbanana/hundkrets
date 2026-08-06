@@ -102,6 +102,7 @@ const PB_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_POCKE
 export async function fetchDogImagesFromDb(): Promise<string[]> {
   try {
     const res = await fetch(`${PB_URL}/api/hundkrets/dog-gallery`);
+    if (!res.ok) return [];
     const data = (await res.json()) as Array<{ id?: string; image?: string }>;
     if (!Array.isArray(data)) return [];
     return data
@@ -112,13 +113,22 @@ export async function fetchDogImagesFromDb(): Promise<string[]> {
   }
 }
 
+export type GalleryImages = {
+  urls: string[];
+  /** True when at least one image came from Hundkrets member dogs */
+  fromCommunity: boolean;
+};
+
 /** Fetch gallery images: DB first, dog.ceo API as fallback. Pads with API if DB has fewer than count. */
-export async function fetchGalleryDogImages(count: number = 12): Promise<string[]> {
+export async function fetchGalleryDogImages(count: number = 12): Promise<GalleryImages> {
   const fromDb = await fetchDogImagesFromDb();
-  if (fromDb.length >= count) return fromDb.slice(0, count);
+  if (fromDb.length >= count) {
+    return { urls: fromDb.slice(0, count), fromCommunity: true };
+  }
   if (fromDb.length > 0) {
     const pad = await fetchMultipleRandomDogs(count - fromDb.length);
-    return [...fromDb, ...pad];
+    return { urls: [...fromDb, ...pad], fromCommunity: true };
   }
-  return fetchMultipleRandomDogs(count);
+  const stock = await fetchMultipleRandomDogs(count);
+  return { urls: stock, fromCommunity: false };
 }

@@ -4,6 +4,7 @@ import { pb } from "~/lib/pocketbase";
 import { parseApiError } from "~/lib/errors";
 import { ValidatedInput } from "~/components/ValidatedInput";
 import { handleOAuthRedirect } from "~/lib/oauth";
+import { isOnboardingDone } from "~/lib/onboarding";
 
 export default function Login() {
   const nav = useNavigate();
@@ -31,8 +32,7 @@ export default function Login() {
     try {
       const auth = await pb.collection("users").authWithPassword(email(), password());
       const m = auth.record as { onboarding_complete?: boolean; area?: string } | null;
-      const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-      nav(done ? "/app/explore" : "/onboarding/choice", { replace: true });
+      nav(isOnboardingDone(m) ? "/app/explore" : "/onboarding/choice", { replace: true });
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {

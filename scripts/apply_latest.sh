@@ -1,15 +1,17 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 echo "📥 Pulling latest code..."
-git pull
+git pull --ff-only
 
 echo "🔨 Building pocketbase and app (no cache)..."
-sudo docker compose build --no-cache pocketbase app
+export VITE_POCKETBASE_URL="${VITE_POCKETBASE_URL:-https://api.hundkrets.se}"
+docker compose build --no-cache pocketbase app
 
 echo "🚀 Starting containers..."
-sudo docker compose up -d
+docker compose up -d
 
 echo "✅ Done."
+docker compose ps

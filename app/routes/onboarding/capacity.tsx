@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { isOnboardingDone, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -15,8 +15,7 @@ export default function OnboardingCapacity() {
       return;
     }
     const m = pb.authStore.model as { onboarding_complete?: boolean; area?: string } | null;
-    const done = m?.onboarding_complete === true || (m?.onboarding_complete !== false && !!m?.area);
-    if (done) {
+    if (isOnboardingDone(m)) {
       nav("/app/explore", { replace: true });
       return;
     }

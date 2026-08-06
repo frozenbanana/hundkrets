@@ -169,9 +169,14 @@ export function RecommendedMembersSection(props: {
         <p style="margin-bottom: 1rem;">
           Lägg till behov eller kapacitet för att få personliga rekommendationer.
         </p>
-        <A class="btn" href="/app/explore">
-          Gå till Utforska
-        </A>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+          <A class="btn" href="/app/needs">
+            Lägg till behov
+          </A>
+          <A class="btn btn-secondary" href="/app/capacity">
+            Lägg till kapacitet
+          </A>
+        </div>
       </Show>
 
       <Show when={!data.loading && canShowRecommendations() && (data()?.top.length ?? 0) === 0}>

@@ -65,9 +65,11 @@ Web UI: **http://localhost:8025**
 3. Sätt:
    - **Host:** `mailpit` (om PocketBase körs i Docker) eller `localhost` (om PocketBase körs lokalt)
    - **Port:** `1025`
-   - **TLS:** Auto (StartTLS)
+   - **TLS:** Off (ingen kryptering — enklast för lokal dev)
    - **Username/Password:** tomma
    - **AUTH method:** Om det finns "None" eller "Off", välj det. Annars lämna PLAIN med tomma fält.
+   
+   **Tips:** Kör `node scripts/setup-mailpit.mjs --config-only` för att automatiskt konfigurera SMTP och sender address.
 
 ### API för programmatisk testning
 
@@ -81,9 +83,22 @@ curl http://localhost:8025/api/v1/messages
 curl http://localhost:8025/api/v1/message/{id}
 ```
 
+### Snabbstart (dev)
+
+```bash
+# Starta Mailpit och konfigurera PocketBase SMTP automatiskt:
+node scripts/setup-mailpit.mjs
+
+# Eller bara konfigurera PB (Mailpit körs reda):
+node scripts/setup-mailpit.mjs --config-only
+
+# Stoppa Mailpit:
+node scripts/setup-mailpit.mjs --stop
+```
+
 ### Automatiska e-posttester
 
-Kör integrationstester som verifierar att alla mailflöden skickar rätt e-post:
+Kör integrationstester som verifierar att alla mailflöden skickar rätt e-post och loggas i email_log:
 
 ```bash
 cd app && npm run test:email
@@ -91,14 +106,23 @@ cd app && npm run test:email
 
 Kräver: PocketBase + Mailpit igång, Mail settings konfigurerade, Sender address satt. Seed-användare (*@example.com) markeras som verifierade via migration – starta om PocketBase en gång för att köra migrationen. Testerna verifierar:
 
-- Intresseanmälan (connection request)
-- Matchbekräftelse (båda användare)
-- Välkomstmail
-- Chattnotis (instant)
-- Återställ lösenord (reset password)
-- E-postverifiering (verification)
-- Bekräfta e-postbyte (confirm email change)
-- Login alert (ny inloggning – migration `1739622700_enable_auth_alert.js` aktiverar detta, eller manuellt i Collection > users > Options)
+1. Intresseanmälan (connection request)
+2. Matchbekräftelse (båda användare)
+3. Välkomstmail (endast en gång — welcome_email_sent guard)
+4. Chattnotis (instant)
+5. Chattnotis (daglig sammanfattning)
+6. Chatt avstängt (frequency=off → ingen mail)
+7. Återställ lösenord (reset password)
+8. E-postverifiering (verification)
+9. Bekräfta e-postbyte (confirm email change)
+10. Login alert (ny inloggning – migration `1739622700_enable_auth_alert.js` aktiverar detta, eller manuellt i Collection > users > Options)
+11. Avprenumerera (unsubscribe route — `GET /api/unsubscribe/:userId/retention`)
+12. Retention-eligibilitet (cron kan testas manuellt via Admin API)
+13. Välkomstmail skickas bara en gång (guard mot duplicering)
+14. Connection request blockerat för overifierade användare
+15. Email_log har poster för alla skickade mail
+
+Varje test kontrollerar även att en `email_log`-post skapas med rätt `type`.
 
 Chattnotis-testet loggar in som userA och skapar meddelandet via `pb.collection("messages").create()` (collection rules kräver sender = @request.auth.id). Hooken körs och skickar mailet.
 
