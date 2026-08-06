@@ -103,11 +103,24 @@ export async function fetchDogImagesFromDb(): Promise<string[]> {
   try {
     const res = await fetch(`${PB_URL}/api/hundkrets/dog-gallery`);
     if (!res.ok) return [];
-    const data = (await res.json()) as Array<{ id?: string; image?: string }>;
+    const data = (await res.json()) as Array<{ id?: string; image?: string; image_key?: string }>;
     if (!Array.isArray(data)) return [];
+    const mediaBase =
+      (typeof import.meta !== "undefined" && import.meta.env?.VITE_MEDIA_URL
+        ? String(import.meta.env.VITE_MEDIA_URL)
+        : ""
+      ).replace(/\/$/, "");
     return data
-      .filter((d) => d?.id && d?.image)
-      .map((d) => `${PB_URL}/api/files/dogs/${d.id}/${d.image}`);
+      .map((d) => {
+        if (d?.image_key && mediaBase) {
+          return `${mediaBase}/o/${encodeURIComponent(d.image_key)}`;
+        }
+        if (d?.id && d?.image) {
+          return `${PB_URL}/api/files/dogs/${d.id}/${d.image}`;
+        }
+        return null;
+      })
+      .filter((u): u is string => typeof u === "string");
   } catch {
     return [];
   }

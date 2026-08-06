@@ -7,6 +7,7 @@ import { geocodeCity, geocodePostalCode } from "~/lib/geocode";
 import { lookupPostalCode } from "~/lib/postalCode";
 import { parseApiError } from "~/lib/errors";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
+import { avatarSrc, uploadToR2 } from "~/lib/media";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { Avatar } from "~/components/Avatar";
 import { PostalCodeInput, type PostalCodeValue } from "~/components/PostalCodeInput";
@@ -151,36 +152,12 @@ export default function OnboardingProfile() {
 
       const areaVal = addr.area ?? addr.city ?? "";
       const file = avatarFile();
+      let avatarKey: string | undefined;
       if (file) {
-        const fd = new FormData();
-        fd.append("name", name());
-        fd.append("phone", phone() || "");
-        fd.append("area", areaVal);
-        fd.append("city", addr.city ?? "");
-        fd.append("neighborhood", addr.neighborhood ?? "");
-        fd.append("address_private", addr.address_private ?? "");
-        fd.append("latitude", String(addr.latitude ?? ""));
-        fd.append("longitude", String(addr.longitude ?? ""));
-        fd.append("bio", bio() || "");
-        fd.append("breeds_owned_before", breedsOwnedBefore() || "");
-        fd.append("avatar", file);
-        const updated = await pb.collection("users").update(userId, fd);
-        pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, ...updated });
-      } else {
-        await pb.collection("users").update(userId, {
-          name: name(),
-          phone: phone(),
-          area: areaVal,
-          city: addr.city,
-          neighborhood: addr.neighborhood,
-          address_private: addr.address_private,
-          latitude: addr.latitude,
-          longitude: addr.longitude,
-          bio: bio() || undefined,
-          breeds_owned_before: breedsOwnedBefore() || undefined,
-        });
-        pb.authStore.save(pb.authStore.token!, {
-        ...pb.authStore.model,
+        const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
+        avatarKey = uploaded.objectKey;
+      }
+      const updated = await pb.collection("users").update(userId, {
         name: name(),
         phone: phone(),
         area: areaVal,
@@ -189,10 +166,11 @@ export default function OnboardingProfile() {
         address_private: addr.address_private,
         latitude: addr.latitude,
         longitude: addr.longitude,
-        bio: bio(),
-        breeds_owned_before: breedsOwnedBefore(),
-        });
-      }
+        bio: bio() || undefined,
+        breeds_owned_before: breedsOwnedBefore() || undefined,
+        ...(avatarKey ? { avatar_key: avatarKey } : {}),
+      });
+      pb.authStore.save(pb.authStore.token!, { ...pb.authStore.model, ...updated });
       showToast("Profil sparad");
       nav(isSitterOnly() ? "/onboarding/capacity" : "/onboarding/dogs");
     } catch (err: unknown) {
@@ -263,11 +241,14 @@ export default function OnboardingProfile() {
                 variant="profile"
                 value={avatarFile()}
                 onInput={setAvatarFile}
-                existingUrl={
-                  pb.authStore.model?.avatar && pb.authStore.model?.id
-                    ? `${import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}/api/files/users/${pb.authStore.model.id}/${pb.authStore.model.avatar}`
-                    : undefined
-                }
+                existingUrl={avatarSrc(
+                  {
+                    id: pb.authStore.model?.id,
+                    avatar: pb.authStore.model?.avatar,
+                    avatar_key: (pb.authStore.model as { avatar_key?: string } | null)?.avatar_key,
+                  },
+                  import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"
+                )}
                 hint="På mobil: ta selfie eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
               />
               <div class="form-group">

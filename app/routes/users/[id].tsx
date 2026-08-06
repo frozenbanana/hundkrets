@@ -24,6 +24,7 @@ import {
 import { parseApiError } from "~/lib/errors";
 import { showToast } from "~/lib/toast";
 import { AppShell } from "~/components/AppShell";
+import { ProfileMediaGrid } from "~/components/ProfileMediaGrid";
 
 function careTypeLabel(v: string | undefined): string {
   if (v === "daytime") return "Dagpassning";
@@ -424,6 +425,7 @@ export default function UserProfile() {
                       area={u.area}
                       id={u.id}
                       avatar={u.avatar}
+                      avatar_key={(u as { avatar_key?: string }).avatar_key}
                       baseUrl={baseUrl}
                       class="profile-avatar"
                       verified={u.verified}
@@ -763,6 +765,7 @@ export default function UserProfile() {
                       area={u.area}
                       id={u.id}
                       avatar={u.avatar}
+                      avatar_key={(u as { avatar_key?: string }).avatar_key}
                       baseUrl={baseUrl}
                       class="profile-avatar"
                       verified={u.verified}

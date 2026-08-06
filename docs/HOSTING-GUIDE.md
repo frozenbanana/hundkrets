@@ -31,6 +31,8 @@ Add or verify these routes:
 | `hundkrets.se`       | HTTP           | `http://localhost:3123` |
 | `api.hundkrets.se`   | HTTP           | `http://localhost:8099` |
 
+Media (`media.hundkrets.se`) is a **Cloudflare Worker + R2**, not a tunnel hostname — see Step 1b.
+
 **How to add a hostname:**
 
 1. Click **Configure** on your tunnel
@@ -43,6 +45,38 @@ Add or verify these routes:
 8. Save
 
 Repeat so you have both hostnames configured.
+
+---
+
+## Step 1b: Media host (R2 + Worker) — dog videos/images
+
+Binary media is **not** stored on the home server. Use Cloudflare R2 + a Worker on `media.hundkrets.se`.
+
+1. In Cloudflare Dashboard → **R2** → Create bucket `hundkrets-media` (keep private).
+2. From the repo:
+   ```bash
+   cd workers/media
+   npm install
+   # Uncomment [[r2_buckets]] in wrangler.toml (binding MEDIA_BUCKET → hundkrets-media)
+   npx wrangler secret put UPLOAD_SIGNING_SECRET
+   npx wrangler secret put MIGRATE_SECRET   # for one-off migration script
+   npx wrangler deploy
+   ```
+3. Attach custom domain **`media.hundkrets.se`** to the Worker (Workers → Custom Domains). Do **not** route this hostname through the home-server tunnel.
+4. Set in `app/.env` (and rebuild the app so Vite bakes it in):
+   ```bash
+   VITE_MEDIA_URL=https://media.hundkrets.se
+   ```
+5. Optional: migrate existing PocketBase dog photos / avatars:
+   ```bash
+   PB_URL=https://api.hundkrets.se \
+   MEDIA_URL=https://media.hundkrets.se \
+   PB_ADMIN_EMAIL=... PB_ADMIN_PASSWORD=... \
+   MIGRATE_SECRET=... \
+   node scripts/migrate-media-to-r2.mjs
+   ```
+
+See [workers/media/README.md](../workers/media/README.md).
 
 ---
 
@@ -202,3 +236,4 @@ Data in `pb_data` persists across restarts.
 | https://hundkrets.se | App (SolidJS frontend) |
 | https://api.hundkrets.se | PocketBase API + Admin UI |
 | https://api.hundkrets.se/_/ | PocketBase Admin |
+| https://media.hundkrets.se | R2 media Worker (uploads + delivery) |

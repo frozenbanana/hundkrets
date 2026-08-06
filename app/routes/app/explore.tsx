@@ -24,15 +24,15 @@ import { trackUmami } from "~/lib/analytics";
 import { ExcursionListCard } from "~/components/ExcursionListCard";
 import { ExcursionsMap } from "~/components/ExcursionsMap";
 import { MatchesMap } from "~/components/MatchesMap";
-import { MatchCards } from "./explore/MatchCard";
+import { MediaCard } from "~/components/MediaCard";
+import { MediaUploadSheet } from "~/components/MediaUploadSheet";
+import { fetchLatestMediaByOwners, type MediaRecord } from "~/lib/media";
 import { InterestModal } from "./explore/InterestModal";
 import { RespondModal } from "./explore/RespondModal";
 import type { Conn } from "./explore/types";
 import {
   DEFAULT_MAX_DISTANCE_KM,
   DISTANCE_STEPS_KM,
-  dateStr,
-  sizesStr,
   filterFromParams,
   buildMatchesUrl,
   buildMatchesParams,
@@ -85,11 +85,11 @@ export default function Matches() {
 
   const [maxDistanceKm, setMaxDistanceKm] = createSignal(DEFAULT_MAX_DISTANCE_KM);
 
-  type ExploreMode = "medlemmar" | "hundtraffar";
+  type ExploreMode = "flode" | "karta" | "hundtraffar";
 
   const exploreMode = createMemo((): ExploreMode => {
     const p = searchParams as Record<string, string | undefined>;
-    const forcesMedlemmar =
+    const forcesFlode =
       p.request === "true" ||
       p.request === "1" ||
       p.match === "true" ||
@@ -99,15 +99,18 @@ export default function Matches() {
       p.outgoing === "true" ||
       p.outgoing === "1" ||
       Boolean(p.user?.trim());
-    if (forcesMedlemmar) return "medlemmar";
+    if (forcesFlode) return "flode";
     if (p.utforsk === "hundtraffar") return "hundtraffar";
-    return "medlemmar";
+    if (p.utforsk === "karta") return "karta";
+    return "flode";
   });
 
   function setExploreModeTab(next: ExploreMode) {
     if (next === "hundtraffar") {
       markExploreExcursionsSeenNow();
       setSearchParams({ utforsk: "hundtraffar" }, { replace: true });
+    } else if (next === "karta") {
+      setSearchParams({ utforsk: "karta" }, { replace: true });
     } else {
       const p = new URLSearchParams(window.location.search);
       p.delete("utforsk");
@@ -126,7 +129,7 @@ export default function Matches() {
     setMatchSort(sort);
   });
   createEffect(() => {
-    if (exploreMode() !== "medlemmar") return;
+    if (exploreMode() === "hundtraffar") return;
     if (typeof window === "undefined") return;
     const url = buildMatchesUrl({
       filter: matchFilter(),
@@ -168,7 +171,7 @@ export default function Matches() {
     return () => mq.removeEventListener("change", handler);
   });
 
-  const isMobileMapView = () => isMobileViewport() && mobileViewMode() === "map" && (listings().length ?? 0) > 0;
+  const isMobileMapView = () => exploreMode() === "karta" && (listings().length ?? 0) > 0;
 
   const [exploreExcursionsData, { refetch: refetchExploreExcursions }] = createResource(
     () => pb.authStore.model?.id,
@@ -651,6 +654,36 @@ export default function Matches() {
     { userId: string; userName?: string } | undefined
   >();
   const [interestModalMessage, setInterestModalMessage] = createSignal("");
+  const [uploadSheetOpen, setUploadSheetOpen] = createSignal(false);
+  const [mediaByOwner, setMediaByOwner] = createSignal<Map<string, MediaRecord>>(new Map());
+
+  createEffect(() => {
+    const list = listings();
+    if (!list.length) {
+      setMediaByOwner(new Map());
+      return;
+    }
+    const ids = list.map((l) => l.user.id).filter(Boolean);
+    let cancelled = false;
+    fetchLatestMediaByOwners(ids)
+      .then((m) => {
+        if (!cancelled) setMediaByOwner(m);
+      })
+      .catch(() => {
+        if (!cancelled) setMediaByOwner(new Map());
+      });
+    onCleanup(() => {
+      cancelled = true;
+    });
+  });
+
+  async function quickInterest(userId: string) {
+    try {
+      await handleInterested(userId);
+    } catch {
+      /* toast already shown */
+    }
+  }
 
   function openInterestModal(userId: string, userName?: string) {
     setInterestModalTarget({ userId, userName });
@@ -997,7 +1030,7 @@ export default function Matches() {
 
   const showNextActionBanner = createMemo(() => {
     if (nextActionDismissed()) return false;
-    if (exploreMode() !== "medlemmar") return false;
+    if (exploreMode() !== "flode") return false;
     if (!data()) return false;
     const counts = tabCounts();
     return counts.outgoing === 0 && counts.not_matched > 0;
@@ -1045,7 +1078,7 @@ export default function Matches() {
 
   const filteredListings = createMemo(() => {
     const listings = matchFilteredListings();
-    if (isMobileViewport() && mobileViewMode() === "list") return listings;
+    if (exploreMode() !== "karta") return listings;
     const bounds = mapBounds();
     if (!bounds) return listings;
     return listings.filter((listing) => {
@@ -1075,18 +1108,28 @@ export default function Matches() {
                   role="tab"
                   class="explore-mode-tab"
                   classList={{
-                    "explore-mode-tab-active": exploreMode() === "medlemmar",
+                    "explore-mode-tab-active": exploreMode() === "flode",
                     "explore-mode-tab-with-marker": newMembersCount() > 0,
                   }}
-                  aria-selected={exploreMode() === "medlemmar"}
-                  onClick={() => setExploreModeTab("medlemmar")}
+                  aria-selected={exploreMode() === "flode"}
+                  onClick={() => setExploreModeTab("flode")}
                 >
-                  Medlemmar
+                  Flöde
                   <Show when={newMembersCount() > 0}>
                     <span class="explore-mode-tab-marker" aria-label={`${newMembersCount()} nya medlemmar`}>
                       ×
                     </span>
                   </Show>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  class="explore-mode-tab"
+                  classList={{ "explore-mode-tab-active": exploreMode() === "karta" }}
+                  aria-selected={exploreMode() === "karta"}
+                  onClick={() => setExploreModeTab("karta")}
+                >
+                  Karta
                 </button>
                 <button
                   type="button"
@@ -1110,7 +1153,7 @@ export default function Matches() {
             </h1>
           </div>
 
-          <Show when={exploreMode() === "medlemmar" && !introDismissed() && (!isMobileViewport() || listings().length === 0)}>
+          <Show when={(exploreMode() === "flode" || exploreMode() === "karta") && !introDismissed() && (!isMobileViewport() || listings().length === 0)}>
             <div class="page-hero">
               <div class="matches-intro-box">
                 <p style="color: var(--color-text-muted); margin: 0;">
@@ -1134,7 +1177,7 @@ export default function Matches() {
               </div>
             </div>
           </Show>
-          <Show when={exploreMode() === "medlemmar" && !pb.authStore.model?.area && !pb.authStore.model?.city}>
+          <Show when={(exploreMode() === "flode" || exploreMode() === "karta") && !pb.authStore.model?.area && !pb.authStore.model?.city}>
             <div class="profile-incomplete-card">
               <h3 style="margin: 0 0 0.5rem; color: var(--color-paw-dark);">
                 Profilen behöver uppdateras
@@ -1156,7 +1199,7 @@ export default function Matches() {
           </Show>
           <Show
             when={
-              exploreMode() === "medlemmar" &&
+              (exploreMode() === "flode" || exploreMode() === "karta") &&
               pb.authStore.model?.area &&
               !pb.authStore.model?.latitude &&
               !pb.authStore.model?.longitude
@@ -1173,7 +1216,7 @@ export default function Matches() {
           </Show>
           <Show
             when={
-              exploreMode() === "medlemmar" &&
+              (exploreMode() === "flode" || exploreMode() === "karta") &&
               !!pb.authStore.model?.area &&
               (myListingGaps().missingNeeds || myListingGaps().missingCapacity)
             }
@@ -1200,7 +1243,7 @@ export default function Matches() {
               </div>
             </div>
           </Show>
-          <Show when={exploreMode() === "medlemmar" && requestedMeUnseenCount() > 0}>
+          <Show when={(exploreMode() === "flode" || exploreMode() === "karta") && requestedMeUnseenCount() > 0}>
             <div class="explore-action-banner explore-action-banner-incoming">
               <p class="explore-action-banner-text">
                 {requestedMeUnseenCount() === 1
@@ -1246,10 +1289,10 @@ export default function Matches() {
               </div>
             </div>
           </Show>
-          <Show when={exploreMode() === "medlemmar" && data.loading && !data()}>
+          <Show when={(exploreMode() === "flode" || exploreMode() === "karta") && data.loading && !data()}>
             <p>Laddar...</p>
           </Show>
-          <Show when={exploreMode() === "medlemmar" && data.error}>
+          <Show when={(exploreMode() === "flode" || exploreMode() === "karta") && data.error}>
             <p style="color: #dc2626;">Kunde inte ladda matchningar: {data.error?.message}</p>
             <p style="color: var(--color-text-muted); font-size: 0.875rem;">
               Kontrollera att PocketBase körs på{" "}
@@ -1261,7 +1304,7 @@ export default function Matches() {
           </Show>
           <Show
             when={
-              exploreMode() === "medlemmar" &&
+              (exploreMode() === "flode" || exploreMode() === "karta") &&
               listings().length === 0 &&
               !data.loading &&
               pb.authStore.model?.area &&
@@ -1299,7 +1342,7 @@ export default function Matches() {
           </Show>
           <Show
             when={
-              exploreMode() === "medlemmar" &&
+              (exploreMode() === "flode" || exploreMode() === "karta") &&
               listings().length === 0 &&
               !data.loading &&
               pb.authStore.model?.area &&
@@ -1322,73 +1365,53 @@ export default function Matches() {
               </div>
             </div>
           </Show>
-          <Show when={exploreMode() === "medlemmar" && listings().length > 0}>
-            {/* Filterrad (rubrik Utforska + läge finns ovan) */}
-            <div class="matches-explore-header">
-                <span class="matches-explore-header-spacer" aria-hidden="true" />
-                <button
-                  type="button"
-                  class="matches-filter-icon-btn"
-                  classList={{ "matches-filter-icon-active": mobileFilterOpen() }}
-                  onClick={() => setMobileFilterOpen((o) => !o)}
-                  aria-label={mobileFilterOpen() ? "Dölj filter" : "Visa filter"}
-                  aria-expanded={mobileFilterOpen()}
-                >
-                  <Show when={mobileFilterOpen()} fallback={
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" role="img">
-                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                    </svg>
-                  }>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" role="img">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </Show>
-                </button>
+          <Show when={(exploreMode() === "flode" || exploreMode() === "karta") && listings().length > 0}>
+            <div class="flode-chip-row" role="tablist" aria-label="Kategori">
+              <button type="button" role="tab" class="flode-chip" classList={{ "flode-chip-active": matchFilter() === "all" }} onClick={() => handleFilterChange("all")}>Alla</button>
+              <button type="button" role="tab" class="flode-chip" classList={{ "flode-chip-active": matchFilter() === "matched" }} onClick={() => handleFilterChange("matched")}>Match</button>
+              <button type="button" role="tab" class="flode-chip" classList={{ "flode-chip-active": matchFilter() === "not_matched" }} onClick={() => handleFilterChange("not_matched")}>Lediga</button>
+              <button type="button" role="tab" class="flode-chip" classList={{ "flode-chip-active": matchFilter() === "outgoing" }} onClick={() => handleFilterChange("outgoing")}>Skickade</button>
+              <button type="button" role="tab" class="flode-chip flode-chip-with-badge" classList={{ "flode-chip-active": matchFilter() === "requested_me" }} onClick={() => handleFilterChange("requested_me")}>
+                Mottagna
+                <Show when={requestedMeUnseenCount() > 0}>
+                  <span class="flode-chip-badge">{requestedMeUnseenCount()}</span>
+                </Show>
+              </button>
+              <button
+                type="button"
+                class="flode-chip flode-chip-filter"
+                classList={{ "flode-chip-active": mobileFilterOpen() }}
+                onClick={() => setMobileFilterOpen((o) => !o)}
+                aria-expanded={mobileFilterOpen()}
+              >
+                Filtrera
+              </button>
             </div>
             <div
               class="matches-filter-section"
               classList={{ "matches-filter-section-open": mobileFilterOpen() }}
             >
               <div class="matches-filter-header">
-                <span class="matches-filter-title">Filter</span>
-                <button
-                  type="button"
-                  class="matches-filter-clear"
-                      onClick={handleClearFilters}
-                    >
+                <span class="matches-filter-title">Filtrera</span>
+                <button type="button" class="matches-filter-clear" onClick={handleClearFilters}>
                   Rensa
                 </button>
               </div>
               <div class="matches-filter-content">
                 <div class="matches-filter-group">
-                  <span class="matches-filter-label">Kategori</span>
-                      <div class="matches-filter-tabs" role="tablist">
-                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchFilter() === "all" }} onClick={() => handleFilterChange("all")}>Alla ({tabCounts().all})</button>
-                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchFilter() === "matched" }} onClick={() => handleFilterChange("matched")}>Matchade ({tabCounts().matched})</button>
-                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchFilter() === "not_matched" }} onClick={() => handleFilterChange("not_matched")}>Tillgängliga ({tabCounts().not_matched})</button>
-                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchFilter() === "outgoing" }} onClick={() => handleFilterChange("outgoing")}>Skickade ({tabCounts().outgoing})</button>
-                        <button type="button" role="tab" class="matches-filter-tab matches-filter-tab-with-badge" classList={{ "matches-filter-tab-active": matchFilter() === "requested_me" }} onClick={() => handleFilterChange("requested_me")}>
-                          <Show when={requestedMeUnseenCount() > 0} fallback={<>Mottagna ({tabCounts().requested_me})</>}>
-                            Mottagna <span class="matches-filter-tab-badge" aria-label={`${requestedMeUnseenCount()} nya`}>{requestedMeUnseenCount()}</span>
-                          </Show>
-                        </button>
-                      </div>
-                </div>
-                <div class="matches-filter-group">
                   <span class="matches-filter-label">Inkludera</span>
-                      <div class="matches-filter-tabs" role="group">
-                        <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeGive() }} onClick={() => handleExcludeToggle("give")} title="Inkludera de som vill bara passa hundar">Vill bara passa</button>
-                        <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeMutual() }} onClick={() => handleExcludeToggle("mutual")} title="Inkludera utbytare">Utbytare</button>
-                        <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeReceive() }} onClick={() => handleExcludeToggle("receive")} title="Inkludera de som vill bara få passning">Vill bara få passning</button>
-                      </div>
+                  <div class="matches-filter-tabs" role="group">
+                    <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeGive() }} onClick={() => handleExcludeToggle("give")} title="Inkludera de som vill bara passa hundar">Vill bara passa</button>
+                    <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeMutual() }} onClick={() => handleExcludeToggle("mutual")} title="Inkludera utbytare">Utbytare</button>
+                    <button type="button" class="matches-filter-tab" classList={{ "matches-filter-tab-active": !excludeReceive() }} onClick={() => handleExcludeToggle("receive")} title="Inkludera de som vill bara få passning">Vill bara få passning</button>
+                  </div>
                 </div>
                 <div class="matches-filter-group">
                   <span class="matches-filter-label">Sortera</span>
-                      <div class="matches-filter-tabs" role="tablist">
-                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "distance" }} onClick={() => handleSortChange("distance")}>Avstånd</button>
-                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "recent" }} onClick={() => handleSortChange("recent")}>Senaste</button>
-                        <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "active" }} onClick={() => handleSortChange("active")}>Senast aktiv</button>
+                  <div class="matches-filter-tabs" role="tablist">
+                    <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "distance" }} onClick={() => handleSortChange("distance")}>Avstånd</button>
+                    <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "recent" }} onClick={() => handleSortChange("recent")}>Senaste</button>
+                    <button type="button" role="tab" class="matches-filter-tab" classList={{ "matches-filter-tab-active": matchSort() === "active" }} onClick={() => handleSortChange("active")}>Senast aktiv</button>
                   </div>
                 </div>
               </div>
@@ -1547,111 +1570,78 @@ export default function Matches() {
             </Show>
           </Show>
         </div>
-        <Show when={exploreMode() === "medlemmar" && listings().length > 0}>
-          <div class="matches-mobile-toggle" aria-hidden="true">
-            <button
-              type="button"
-              class="matches-view-toggle-btn"
-              classList={{ "matches-view-toggle-active": mobileViewMode() === "list" }}
-              onClick={() => setMobileViewMode("list")}
-            >
-              Lista
-            </button>
-            <button
-              type="button"
-              class="matches-view-toggle-btn"
-              classList={{ "matches-view-toggle-active": mobileViewMode() === "map" }}
-              onClick={() => setMobileViewMode("map")}
-            >
-              Karta
-            </button>
-          </div>
-          </Show>
         </div>
-        <Show when={exploreMode() === "medlemmar" && listings().length > 0}>
-          <div class="matches-split-wrap">
-            <div
-              class="matches-split"
-              classList={{
-                "matches-split-list-only": mobileViewMode() === "list",
-                "matches-split-map-only": mobileViewMode() === "map",
-              }}
-            >
-            <div class="matches-map-panel">
-              <Show when={!isMobileViewport() || mobileViewMode() === "map"}>
-              <MatchesMap
-                listings={matchFilteredListings()}
-                mutualUserIds={(id) => isMutual(id)}
-                requestedMeUserIds={requestedMeUserIds()}
-                myLat={pb.authStore.model?.latitude}
-                myLon={pb.authStore.model?.longitude}
-                filterByBounds
-                onBoundsChange={setMapBounds}
-                selectedUserId={undefined}
-                hoveredUserId={!isMobileViewport() ? hoveredUserId() : undefined}
-                baseUrl={baseUrl}
-                style={{ height: "100%", "min-height": "400px" }}
-              />
-              </Show>
-            </div>
-            <div class="matches-list-panel" ref={(el) => (listContainerRef = el)}>
-              <Show when={filteredListings().length === 0} fallback={null}>
-                <div class="matches-empty-state">
-                  <p style="color: var(--color-text-muted); margin: 0;">
-                    {matchFilter() === "outgoing"
-                      ? 'Du har inte skickat några förfrågningar än. Bläddra bland Tillgängliga och klicka "Jag är intresserad" för att koppla ihop.'
-                      : matchFilter() === "requested_me"
-                        ? "Ingen har skickat förfrågan till dig än."
-                        : matchFilter() === "matched"
-                          ? 'Du har inga matchningar än. När ni båda klickar "Jag är intresserad" blir ni matchade.'
-                          : "Ingen att visa i denna vy. Prova att zooma ut på kartan eller byt filter."}
-                  </p>
-                  <div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                    <Show when={matchFilter() === "outgoing" || matchFilter() === "matched"}>
-                      <button
-                        type="button"
-                        class="btn"
-                        onClick={() => handleFilterChange("not_matched")}
-                      >
-                        Visa tillgängliga
-                      </button>
-                    </Show>
-                    <Show when={matchFilter() === "matched" || (searchParams as { match?: string }).match === "true"}>
-                      <button
-                        type="button"
-                        class="btn btn-secondary"
-                        onClick={handleClearFilters}
-                      >
-                        Återställ filter
-                      </button>
-                    </Show>
-                    <Show when={myListingGaps().missingNeeds}>
-                      <A href="/app/needs" class="btn btn-secondary">
-                        Lägg till behov
-                      </A>
-                    </Show>
-                    <Show when={myListingGaps().missingCapacity}>
-                      <A href="/app/capacity" class="btn btn-secondary">
-                        Lägg till kapacitet
-                      </A>
-                    </Show>
-                  </div>
-                </div>
-              </Show>
-              <Show when={filteredListings().length > 0}>
-                <MatchCards
-                  listings={filteredListings()}
-                  baseUrl={baseUrl}
-                  getConnections={() => (data()?.connections ?? []) as Conn[]}
-                  dateStr={dateStr}
-                  sizesStr={sizesStr}
-                  onOpenDetail={handleOpenDetail}
-                  onCardHover={!isMobileViewport() ? setHoveredUserId : undefined}
-                />
-              </Show>
-            </div>
+        <Show when={exploreMode() === "flode"}>
+          <div class="container flode-feed">
+            <Show when={filteredListings().length === 0}>
+              <div class="matches-empty-state">
+                <p style="color: var(--color-text-muted); margin: 0;">
+                  {matchFilter() === "outgoing"
+                    ? "Du har inte skickat några förfrågningar än. Bläddra i flödet och tryck hjärtat för att visa intresse."
+                    : matchFilter() === "requested_me"
+                      ? "Ingen har skickat förfrågan till dig än."
+                      : matchFilter() === "matched"
+                        ? "Du har inga matchningar än. När ni båda visar intresse blir ni matchade."
+                        : "Ingen att visa just nu. Prova ett annat filter eller ladda upp en video med +."}
+                </p>
+              </div>
+            </Show>
+            <Show when={filteredListings().length > 0}>
+              <div class="flode-grid">
+                <For each={filteredListings()}>
+                  {(listing) => (
+                    <MediaCard
+                      listing={listing}
+                      baseUrl={baseUrl}
+                      media={mediaByOwner().get(listing.user.id)}
+                      getConnections={() => (data()?.connections ?? []) as Conn[]}
+                      onOpenProfile={handleOpenDetail}
+                      onQuickInterest={quickInterest}
+                      onInterestWithMessage={openInterestModal}
+                    />
+                  )}
+                </For>
+              </div>
+            </Show>
           </div>
-            
+          <button
+            type="button"
+            class="media-fab"
+            aria-label="Ladda upp video"
+            title="Ladda upp video"
+            onClick={() => setUploadSheetOpen(true)}
+            data-umami-event="Open media upload"
+          >
+            +
+          </button>
+          <MediaUploadSheet
+            open={uploadSheetOpen()}
+            onClose={() => setUploadSheetOpen(false)}
+            onUploaded={() => {
+              const ids = listings().map((l) => l.user.id);
+              fetchLatestMediaByOwners(ids).then(setMediaByOwner).catch(() => {});
+            }}
+          />
+        </Show>
+        <Show when={exploreMode() === "karta" && listings().length > 0}>
+          <div class="matches-split-wrap matches-map-only-wrap">
+            <div class="matches-split matches-split-map-only">
+              <div class="matches-map-panel matches-map-panel-full">
+                <MatchesMap
+                  listings={matchFilteredListings()}
+                  mutualUserIds={(id) => isMutual(id)}
+                  requestedMeUserIds={requestedMeUserIds()}
+                  myLat={pb.authStore.model?.latitude}
+                  myLon={pb.authStore.model?.longitude}
+                  filterByBounds
+                  onBoundsChange={setMapBounds}
+                  selectedUserId={undefined}
+                  latestMediaByOwner={mediaByOwner()}
+                  baseUrl={baseUrl}
+                  style={{ height: "100%", "min-height": "70vh", "margin-top": "0", "border-radius": "0" }}
+                />
+              </div>
+            </div>
           </div>
         </Show>
         <Show when={exploreMode() === "hundtraffar" && !exploreExcursionsData.loading && !exploreExcursionsData.error}>

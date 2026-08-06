@@ -7,6 +7,8 @@ import { parseApiError } from "~/lib/errors";
 import { DogImage } from "~/components/DogImage";
 import { DogInfo } from "~/components/DogInfo";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
+import { VideoCaptureInput } from "~/components/VideoCaptureInput";
+import { saveMediaRecord, uploadToR2 } from "~/lib/media";
 import { ValidatedInput } from "~/components/ValidatedInput";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -81,22 +83,11 @@ export default function OnboardingDogs() {
       };
       const file = imageFile();
       if (file) {
-        const fd = new FormData();
-        fd.append("owner", userId);
-        fd.append("name", name());
-        fd.append("breed", breed());
-        fd.append("size", size());
-        fd.append("gender", gender());
-        if (age() !== "") fd.append("age", String(age()));
-        fd.append("temperament_new_people", temperamentNewPeople());
-        fd.append("temperament_new_dogs_female", temperamentNewDogsFemale());
-        fd.append("temperament_new_dogs_male", temperamentNewDogsMale());
-        fd.append("notes", notes());
-        fd.append("image", file);
-        await pb.collection("dogs").create(fd);
-      } else {
-        await pb.collection("dogs").create(data);
+        const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
+        data.image_key = uploaded.objectKey;
+        await saveMediaRecord({ objectKey: uploaded.objectKey, kind: "image" }).catch(() => {});
       }
+      await pb.collection("dogs").create(data);
       showToast("Hund tillagd");
       nav("/onboarding/needs");
     } catch (err: unknown) {
@@ -128,22 +119,11 @@ export default function OnboardingDogs() {
       };
       const file = imageFile();
       if (file) {
-        const fd = new FormData();
-        fd.append("owner", userId);
-        fd.append("name", name());
-        fd.append("breed", breed());
-        fd.append("size", size());
-        fd.append("gender", gender());
-        if (age() !== "") fd.append("age", String(age()));
-        fd.append("temperament_new_people", temperamentNewPeople());
-        fd.append("temperament_new_dogs_female", temperamentNewDogsFemale());
-        fd.append("temperament_new_dogs_male", temperamentNewDogsMale());
-        fd.append("notes", notes());
-        fd.append("image", file);
-        await pb.collection("dogs").create(fd);
-      } else {
-        await pb.collection("dogs").create(data);
+        const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
+        data.image_key = uploaded.objectKey;
+        await saveMediaRecord({ objectKey: uploaded.objectKey, kind: "image" }).catch(() => {});
       }
+      await pb.collection("dogs").create(data);
       setName("");
       setBreed("");
       setSize("medium");
@@ -186,6 +166,13 @@ export default function OnboardingDogs() {
             hint="På mobil: ta foto eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
             dropHint="Släpp bilden här"
           />
+          <div class="form-group" style="margin-top: 1rem;">
+            <label>Kort video (valfritt, max 15 s)</label>
+            <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem;">
+              Visa din hund i rörelse — du kan hoppa över och ladda upp senare.
+            </p>
+            <VideoCaptureInput compact />
+          </div>
           <div class="form-group">
             <label for="breed">Ras</label>
             <input id="breed" type="text" value={breed()} onInput={(e) => setBreed(e.currentTarget.value)} placeholder="T.ex. Labrador"/>

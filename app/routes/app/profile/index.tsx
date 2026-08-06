@@ -4,7 +4,9 @@ import confetti from "canvas-confetti";
 import { pb } from "~/lib/pocketbase";
 import { Avatar } from "~/components/Avatar";
 import { DogImage } from "~/components/DogImage";
+import { ProfileMediaGrid } from "~/components/ProfileMediaGrid";
 import { ProfileSettingsSection } from "~/components/ProfileSettingsSection";
+import { VideoCaptureInput } from "~/components/VideoCaptureInput";
 import { dateStr, genderLabel, sizeLabel } from "../explore/helpers";
 
 type TodoItem = {
@@ -262,6 +264,7 @@ export default function ProfileIndex() {
                       neighborhood={u.neighborhood}
                       id={u.id}
                       avatar={u.avatar}
+                      avatar_key={(u as { avatar_key?: string }).avatar_key}
                       baseUrl={baseUrl}
                     />
                     <div class="profile-card-profile-info">
@@ -274,6 +277,18 @@ export default function ProfileIndex() {
                       )}
                       {!u.bio && <p class="profile-card-muted">Ingen bio ännu.</p>}
                     </div>
+                  </div>
+                </div>
+
+                <div class="profile-card card" id="media">
+                  <div class="profile-card-header">
+                    <h2 class="profile-card-title">Media</h2>
+                  </div>
+                  <div class="profile-card-content">
+                    <VideoCaptureInput compact />
+                    <Show when={myId()}>
+                      {(id) => <div style="margin-top: 1rem;"><ProfileMediaGrid ownerId={id()} /></div>}
+                    </Show>
                   </div>
                 </div>
 

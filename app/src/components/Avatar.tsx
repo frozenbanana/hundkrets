@@ -1,3 +1,5 @@
+import { avatarSrc } from "~/lib/media";
+
 interface AvatarProps {
   name?: string;
   city?: string;
@@ -7,6 +9,8 @@ interface AvatarProps {
   id?: string;
   /** Avatar filename from PocketBase */
   avatar?: string;
+  /** R2 object key for avatar */
+  avatar_key?: string;
   /** Override src (e.g. blob URL for new file preview) – takes precedence over avatar */
   src?: string;
   baseUrl?: string;
@@ -24,9 +28,11 @@ export function Avatar(props: AvatarProps) {
 
   const src =
     props.src ??
-    (props.avatar && props.id && props.baseUrl
-      ? `${props.baseUrl}/api/files/users/${props.id}/${props.avatar}`
-      : placeholderUrl);
+    avatarSrc(
+      { id: props.id, avatar: props.avatar, avatar_key: props.avatar_key },
+      props.baseUrl ?? ""
+    ) ??
+    placeholderUrl;
 
   const showBadge = props.verified !== undefined;
 

@@ -10,7 +10,6 @@ async function loginAsAnna(page: Page) {
   await page.getByRole("button", { name: "Logga in" }).click();
   await page.waitForURL(/\/(app\/explore|onboarding)/, { timeout: 15_000 });
   if (page.url().includes("/onboarding")) {
-    // Seed users with area should now pass isOnboardingDone — fail loudly if not
     throw new Error(`Expected explore after login, landed on ${page.url()}`);
   }
 }
@@ -41,24 +40,32 @@ test.describe("Explore → profile", () => {
     expect(Array.isArray(body.dogs)).toBeTruthy();
   });
 
-  test("clicking a match card opens that member profile", async ({ page }) => {
+  test("Flöde shows media cards and opens profile", async ({ page }) => {
     await loginAsAnna(page);
     await page.goto("/app/explore");
     await expect(page.getByRole("heading", { name: /Utforska/i })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /Flöde/i })).toBeVisible();
 
-    const card = page.locator(".match-card").first();
+    const card = page.locator(".media-card").first();
     await expect(card).toBeVisible({ timeout: 20_000 });
-    const name = (await card.locator(".match-card-username").textContent())?.trim();
+    const name = (await card.locator(".media-card-name").textContent())?.trim();
     expect(name).toBeTruthy();
 
-    await card.click();
+    await card.locator(".media-card-media").click();
     await page.waitForURL(/\/users\/[^/?]+/, { timeout: 15_000 });
 
     await expect(page.getByText("Failed to load profile")).toHaveCount(0);
     await expect(page.getByText("Profilen hittades inte")).toHaveCount(0);
-    // Profile should show the member name somewhere in the hero
     await expect(page.getByRole("heading", { name: name! }).or(page.getByText(name!, { exact: true })).first()).toBeVisible({
       timeout: 15_000,
     });
+    await expect(page.getByRole("heading", { name: "Media" })).toBeVisible();
+  });
+
+  test("Karta tab shows full-page map", async ({ page }) => {
+    await loginAsAnna(page);
+    await page.goto("/app/explore?utforsk=karta");
+    await expect(page.getByRole("tab", { name: /Karta/i })).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator(".leaflet-container").first()).toBeVisible({ timeout: 20_000 });
   });
 });

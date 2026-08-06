@@ -18,6 +18,10 @@ pb_migrations/*.pb
 .env.local
 .env.*.local
 
+# Cloudflare Workers
+workers/**/.wrangler/
+workers/**/dist/
+
 # Deploy (contains secrets)
 scripts/deploy.sh
 

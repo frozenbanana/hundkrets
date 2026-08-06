@@ -5,6 +5,7 @@ import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
+import { saveMediaRecord, uploadToR2 } from "~/lib/media";
 
 export default function NewDog() {
   const nav = useNavigate();
@@ -37,34 +38,30 @@ export default function NewDog() {
       const userId = pb.authStore.model?.id;
       if (!userId) throw new Error("Not authenticated");
       const file = imageFile();
+      let imageKey: string | undefined;
       if (file) {
-        const fd = new FormData();
-        fd.append("owner", userId);
-        fd.append("name", name());
-        fd.append("breed", breed());
-        fd.append("size", size());
-        fd.append("gender", gender());
-        if (age() !== "") fd.append("age", String(age()));
-        fd.append("temperament_new_people", temperamentNewPeople());
-        fd.append("temperament_new_dogs_female", temperamentNewDogsFemale());
-        fd.append("temperament_new_dogs_male", temperamentNewDogsMale());
-        fd.append("notes", notes());
-        fd.append("image", file);
-        await pb.collection("dogs").create(fd);
-      } else {
-        await pb.collection("dogs").create({
-          owner: userId,
-          name: name(),
-          breed: breed() || undefined,
-          size: size(),
-          gender: gender(),
-          age: age() !== "" ? age() : undefined,
-          temperament_new_people: temperamentNewPeople() || undefined,
-          temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
-          temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
-          notes: notes() || undefined,
+        const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
+        imageKey = uploaded.objectKey;
+        await saveMediaRecord({
+          objectKey: imageKey,
+          kind: "image",
+        }).catch(() => {
+          /* dog image_key is enough; media row is best-effort for gallery */
         });
       }
+      await pb.collection("dogs").create({
+        owner: userId,
+        name: name(),
+        breed: breed() || undefined,
+        size: size(),
+        gender: gender(),
+        age: age() !== "" ? age() : undefined,
+        temperament_new_people: temperamentNewPeople() || undefined,
+        temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
+        temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
+        notes: notes() || undefined,
+        image_key: imageKey,
+      });
       showToast("Hund tillagd");
       const userType = (pb.authStore.model as { user_type?: string })?.user_type;
       if (userType === "sitter_only") {

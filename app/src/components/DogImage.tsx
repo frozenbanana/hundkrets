@@ -1,8 +1,9 @@
 import { createResource, Show } from "solid-js";
 import { fetchBreedImageUrl } from "~/lib/dog-ceo";
+import { dogImageSrc } from "~/lib/media";
 
 interface DogImageProps {
-  dog: { id?: string; name?: string; breed?: string; image?: string };
+  dog: { id?: string; name?: string; breed?: string; image?: string; image_key?: string };
   baseUrl: string;
   class?: string;
   style?: string | Record<string, string>;
@@ -11,8 +12,10 @@ interface DogImageProps {
 export function DogImage(props: DogImageProps) {
   const { dog, baseUrl, class: className, style } = props;
 
+  const src = () => dogImageSrc(dog, baseUrl);
+
   const [placeholderUrl] = createResource(
-    () => (dog.image ? null : dog.breed ?? ""),
+    () => (src() ? null : dog.breed ?? ""),
     (breed) => (breed !== null ? fetchBreedImageUrl(breed || undefined) : Promise.resolve(null))
   );
 
@@ -20,7 +23,7 @@ export function DogImage(props: DogImageProps) {
 
   return (
     <Show
-      when={dog.image}
+      when={src()}
       fallback={
         <Show
           when={placeholderUrl()}
@@ -40,7 +43,7 @@ export function DogImage(props: DogImageProps) {
       }
     >
       <img
-        src={`${baseUrl}/api/files/dogs/${dog.id}/${dog.image}`}
+        src={src()!}
         alt={dog.name ?? "Hund"}
         class={className ?? "dog-card-img"}
         style={styleValue}

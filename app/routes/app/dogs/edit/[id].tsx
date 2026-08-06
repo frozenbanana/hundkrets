@@ -5,6 +5,7 @@ import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 import { AppShell } from "~/components/AppShell";
 import { ImageCaptureInput } from "~/components/ImageCaptureInput";
+import { dogImageSrc, saveMediaRecord, uploadToR2 } from "~/lib/media";
 
 export default function EditDog() {
   const params = useParams();
@@ -57,32 +58,23 @@ export default function EditDog() {
     setLoading(true);
     try {
       const file = imageFile();
+      const payload: Record<string, unknown> = {
+        name: name(),
+        breed: breed() || undefined,
+        size: size(),
+        gender: gender(),
+        age: age() !== "" ? age() : undefined,
+        temperament_new_people: temperamentNewPeople() || undefined,
+        temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
+        temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
+        notes: notes() || undefined,
+      };
       if (file) {
-        const fd = new FormData();
-        fd.append("name", name());
-        fd.append("breed", breed());
-        fd.append("size", size());
-        fd.append("gender", gender());
-        if (age() !== "") fd.append("age", String(age()));
-        fd.append("temperament_new_people", temperamentNewPeople());
-        fd.append("temperament_new_dogs_female", temperamentNewDogsFemale());
-        fd.append("temperament_new_dogs_male", temperamentNewDogsMale());
-        fd.append("notes", notes());
-        fd.append("image", file);
-        await pb.collection("dogs").update(params.id, fd);
-      } else {
-        await pb.collection("dogs").update(params.id, {
-          name: name(),
-          breed: breed() || undefined,
-          size: size(),
-          gender: gender(),
-          age: age() !== "" ? age() : undefined,
-          temperament_new_people: temperamentNewPeople() || undefined,
-          temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
-          temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
-          notes: notes() || undefined,
-        });
+        const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
+        payload.image_key = uploaded.objectKey;
+        await saveMediaRecord({ objectKey: uploaded.objectKey, kind: "image" }).catch(() => {});
       }
+      await pb.collection("dogs").update(params.id, payload);
       showToast("Hund sparad");
       nav("/app/dogs");
     } catch (err: unknown) {
@@ -114,11 +106,10 @@ export default function EditDog() {
             value={imageFile()}
             onInput={setImageFile}
             previewShape="rect"
-            existingUrl={
-              dog()?.image && dog()?.id
-                ? `${import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"}/api/files/dogs/${dog()!.id}/${dog()!.image}`
-                : undefined
-            }
+            existingUrl={dogImageSrc(
+              { id: dog()?.id, image: dog()?.image, image_key: dog()?.image_key },
+              import.meta.env.VITE_POCKETBASE_URL || "http://127.0.0.1:8090"
+            )}
             hint="På mobil: ta foto eller välj från galleri. På dator: dra och släpp eller klicka för att välja."
             dropHint="Släpp bild här"
           />

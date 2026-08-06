@@ -1,0 +1,29 @@
+name = "hundkrets-media"
+main = "src/index.ts"
+compatibility_date = "2025-03-01"
+
+# R2 bucket (private). Custom domain media.hundkrets.se must point at THIS Worker,
+# not at a public R2 custom domain — the Worker enforces auth for members-only media.
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "hundkrets-media"
+
+[vars]
+PB_URL = "https://api.hundkrets.se"
+MEDIA_PREFIX = "production"
+MAX_IMAGE_BYTES = "5242880"
+MAX_VIDEO_BYTES = "26214400"
+
+# Secrets (set once per environment):
+#   npx wrangler secret put UPLOAD_SIGNING_SECRET
+#   npx wrangler secret put MIGRATE_SECRET
+
+# Local / staging Worker with development/ prefix:
+#   npx wrangler deploy --env development
+[env.development]
+name = "hundkrets-media-dev"
+vars = { PB_URL = "https://api.hundkrets.se", MEDIA_PREFIX = "development", MAX_IMAGE_BYTES = "5242880", MAX_VIDEO_BYTES = "26214400" }
+
+[[env.development.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "hundkrets-media"

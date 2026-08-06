@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import type { ListingWithDistance } from "~/lib/matching";
 import { approximateCoords } from "~/lib/geocode";
 import type { MapBounds } from "~/lib/geocode";
+import { avatarSrc, dogImageSrc, mediaObjectUrl, type MediaRecord } from "~/lib/media";
 
 function extractBounds(b: L.LatLngBounds): MapBounds {
   return {
@@ -30,6 +31,8 @@ interface Props {
   selectedUserId?: string;
   /** User ID of card being hovered (desktop) – marker grows slightly */
   hoveredUserId?: string;
+  /** Latest owner media for preview popups */
+  latestMediaByOwner?: Map<string, MediaRecord>;
   /** Base URL for avatar images */
   baseUrl: string;
   style?: Record<string, string>;
@@ -47,6 +50,7 @@ export function MatchesMap(props: Props) {
     const listings = props.listings;
     const selectedId = props.selectedUserId;
     const hoveredId = props.hoveredUserId;
+    const mediaMap = props.latestMediaByOwner;
     if (!el) return;
 
     const elChanged = prevEl !== el;
@@ -102,6 +106,7 @@ export function MatchesMap(props: Props) {
           name?: string;
           area?: string;
           avatar?: string;
+          avatar_key?: string;
           bio?: string;
         };
         if (typeof u.latitude !== "number" || typeof u.longitude !== "number") continue;
@@ -125,58 +130,53 @@ export function MatchesMap(props: Props) {
         });
 
         const avatarUrl =
-          u.avatar && u.id
-            ? `${props.baseUrl}/api/files/users/${u.id}/${u.avatar}`
-            : `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || "User")}&size=48&background=d4a574&color=ffffff`;
-        const bio = (u.bio || "").trim();
-        const bioTruncated = bio.length > 100 ? bio.slice(0, 97) + "..." : bio;
+          avatarSrc({ id: u.id, avatar: u.avatar, avatar_key: u.avatar_key }, props.baseUrl) ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || "User")}&size=48&background=d4a574&color=ffffff`;
         const profileUrl = `/users/${u.id}?from=explore`;
         const esc = (s: string) => s.replace(/</g, "&lt;").replace(/"/g, "&quot;");
-        const dogs = (listing.dogs ?? []) as { id?: string; image?: string; name?: string; breed?: string; age?: number }[];
-        const dogsHtml =
-          dogs.length > 0
-            ? dogs
-                .map((d) => {
-                  const imgUrl =
-                    d.image && d.id
-                      ? `${props.baseUrl}/api/files/dogs/${d.id}/${d.image}`
-                      : "";
-                  const ageStr = typeof d.age === "number" ? `${d.age} år` : "";
-                  const parts = [d.name || "Hund", ageStr, d.breed || ""].filter(Boolean);
-                  const infoStr = parts.join(" · ");
-                  return `
-                    <div class="map-popup-dog-row">
-                      ${imgUrl ? `<img src="${imgUrl}" alt="" class="map-popup-dog-img" />` : '<div class="map-popup-dog-placeholder">🐕</div>'}
-                      <span class="map-popup-dog-info">${esc(infoStr)}</span>
-                    </div>
-                  `;
-                })
-                .join("")
-            : "";
+
+        const media = u.id ? mediaMap?.get(u.id) : undefined;
+        let previewUrl = "";
+        let previewIsVideo = false;
+        if (media) {
+          if (media.kind === "video") {
+            previewUrl = mediaObjectUrl(media.poster_key || media.object_key) || "";
+            previewIsVideo = true;
+          } else {
+            previewUrl = mediaObjectUrl(media.object_key) || "";
+          }
+        }
+        if (!previewUrl) {
+          const dogs = (listing.dogs ?? []) as {
+            id?: string;
+            image?: string;
+            image_key?: string;
+            name?: string;
+          }[];
+          const d = dogs[0];
+          if (d) previewUrl = dogImageSrc(d, props.baseUrl) || "";
+        }
+
         const popupHtml = `
-          <div class="map-popup-mini-card">
-            <img src="${avatarUrl}" alt="" class="map-popup-avatar" />
-            <div class="map-popup-main">
-              <div class="map-popup-header">
-                <strong class="map-popup-name">${esc(u.name || "Okänd")}</strong>
-                <a href="${profileUrl}" class="map-popup-link" aria-label="Besök profil" title="Besök profil">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </a>
-              </div>
-              ${bioTruncated ? `<p class="map-popup-bio">${esc(bioTruncated)}</p>` : ""}
-              ${dogs.length > 0
-                ? `<div class="map-popup-dogs-section">
-                <span class="map-popup-dogs-label">Hund(ar)</span>
-                <div class="map-popup-dogs-list">${dogsHtml}</div>
-              </div>`
-                : '<p class="map-popup-no-dogs">Inga hundar registrerade</p>'}
+          <a href="${profileUrl}" class="map-popup-media-card">
+            <div class="map-popup-media-preview">
+              ${
+                previewUrl
+                  ? `<img src="${esc(previewUrl)}" alt="" class="map-popup-media-img" />`
+                  : `<div class="map-popup-media-placeholder">🐕</div>`
+              }
+              ${previewIsVideo ? `<span class="map-popup-media-play" aria-hidden="true">▶</span>` : ""}
+              <img src="${esc(avatarUrl)}" alt="" class="map-popup-media-avatar" />
             </div>
-          </div>
+            <div class="map-popup-media-caption">
+              <strong>${esc(u.name || "Okänd")}</strong>
+            </div>
+          </a>
         `;
 
         L.marker([lat, lon], { icon: providerIcon })
           .addTo(markerLayer!)
-          .bindPopup(popupHtml, { className: "map-popup-mini", closeButton: false });
+          .bindPopup(popupHtml, { className: "map-popup-mini map-popup-media", closeButton: false });
       }
 
       const layerCount = markerLayer.getLayers().length;
@@ -203,7 +203,6 @@ export function MatchesMap(props: Props) {
     }
 
     if (elChanged && props.filterByBounds && map && hasCoords) {
-      // First render: place all markers (no bounds filter) then fit to nearest
       updateMarkers(null, true);
 
       const allLayers = markerLayer!.getLayers() as L.Marker[];
@@ -219,7 +218,6 @@ export function MatchesMap(props: Props) {
         map.fitBounds(L.latLngBounds(nearest).pad(0.15), { maxZoom: 13, animate: false });
       }
 
-      // Re-run with actual bounds so the list syncs
       const b = map.getBounds();
       updateMarkers(b, true);
       props.onBoundsChange?.(extractBounds(b));
@@ -255,10 +253,10 @@ export function MatchesMap(props: Props) {
       ref={setMapRef}
       style={{
         height: props.style?.height ?? "350px",
-        minHeight: props.style?.["min-height"],
+        "min-height": props.style?.["min-height"],
         width: "100%",
-        borderRadius: props.style?.["border-radius"] ?? "var(--radius)",
-        marginTop: props.style?.["margin-top"] ?? "1rem",
+        "border-radius": props.style?.["border-radius"] ?? "var(--radius)",
+        "margin-top": props.style?.["margin-top"] ?? "1rem",
       }}
     />
   );

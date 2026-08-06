@@ -565,6 +565,12 @@ routerAdd("GET", "/api/hundkrets/dog-gallery", (e) => {
   var items = [];
   for (var i = 0; i < records.length && items.length < 50; i++) {
     var r = records[i];
+    var imageKey = "";
+    try {
+      imageKey = String(r.get("image_key") || r.getString("image_key") || "").trim();
+    } catch (_) {
+      imageKey = "";
+    }
     var img = "";
     try {
       img = String(r.get("image") || r.getString("image") || "").trim();
@@ -575,8 +581,8 @@ routerAdd("GET", "/api/hundkrets/dog-gallery", (e) => {
     if (Array.isArray(img)) {
       img = img.length > 0 ? String(img[0] || "").trim() : "";
     }
-    if (img) {
-      items.push({ id: r.id, image: img });
+    if (imageKey || img) {
+      items.push({ id: r.id, image: img || "", image_key: imageKey || "" });
     }
   }
   return e.json(200, items);
