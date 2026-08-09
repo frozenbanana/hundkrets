@@ -5122,6 +5122,40 @@ input[type="checkbox"] {
 .profile-media-section {
   margin-top: 1.5rem;
 }
+.profile-media-section-embedded {
+  margin-top: 0;
+}
+.profile-media-empty {
+  text-align: center;
+  padding: 1.25rem 0.75rem;
+}
+.profile-media-empty-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  color: var(--color-paw-dark);
+}
+.profile-media-empty-text {
+  margin: 0 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.flode-empty-upload {
+  max-width: 22rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+.flode-empty-upload-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  color: var(--color-paw-dark);
+}
+.flode-empty-upload-text {
+  margin: 0 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
 .profile-media-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -595,6 +595,14 @@ export default function UserProfile() {
                   </div>
                 </div>
 
+                <ProfileMediaGrid
+                  ownerId={u.id}
+                  isOwn={isOwnProfile()}
+                  onUploadClick={
+                    isOwnProfile() ? () => nav("/app/profile#media") : undefined
+                  }
+                />
+
                 {capacities.length > 0 && (
                   <section class="profile-section">
                     <h2>Kan passa hundar</h2>
@@ -934,6 +942,14 @@ export default function UserProfile() {
                     </Show>
                   </div>
                 </div>
+
+                <ProfileMediaGrid
+                  ownerId={u.id}
+                  isOwn={isOwnProfile()}
+                  onUploadClick={
+                    isOwnProfile() ? () => nav("/app/profile#media") : undefined
+                  }
+                />
 
                 {capacities.length > 0 && (
                   <section class="profile-section">

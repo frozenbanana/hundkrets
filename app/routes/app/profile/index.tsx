@@ -7,6 +7,7 @@ import { DogImage } from "~/components/DogImage";
 import { ProfileMediaGrid } from "~/components/ProfileMediaGrid";
 import { ProfileSettingsSection } from "~/components/ProfileSettingsSection";
 import { VideoCaptureInput } from "~/components/VideoCaptureInput";
+import { fetchOwnerMedia } from "~/lib/media";
 import { dateStr, genderLabel, sizeLabel } from "../explore/helpers";
 
 type TodoItem = {
@@ -63,6 +64,17 @@ export default function ProfileIndex() {
     }
   );
 
+  const [ownerMedia, { refetch: refetchOwnerMedia }] = createResource(
+    myId,
+    async (id) => {
+      if (!id) return [];
+      return fetchOwnerMedia(id, { limit: 1 });
+    }
+  );
+
+  const [showMediaCapture, setShowMediaCapture] = createSignal(false);
+  let mediaGridRefetch: (() => void) | undefined;
+
   const userTypeInfo = createMemo(() => {
     const data = profile();
     if (!data) return { isSitterOnly: false, isReceiverOnly: false };
@@ -112,6 +124,18 @@ export default function ProfileIndex() {
             ? `Lägg till bild på ${dogsWithoutImage.map((d) => d.name || "Hund").join(", ")}`
             : "Lägg till bild på dina hundar";
         todos.push({ id: "dog-images", label: dogImagesLabel, href: "/app/dogs", completed: hasDogImages });
+      }
+
+      const hasVideo =
+        !ownerMedia.loading &&
+        (ownerMedia() ?? []).some((m) => m.kind === "video");
+      if (dogs.length > 0 || hasVideo) {
+        todos.push({
+          id: "dog-video",
+          label: "Lägg till en kort video av din hund",
+          href: "/app/profile#media",
+          completed: hasVideo,
+        });
       }
 
       const hasNeeds = needs.length > 0;
@@ -285,9 +309,37 @@ export default function ProfileIndex() {
                     <h2 class="profile-card-title">Media</h2>
                   </div>
                   <div class="profile-card-content">
-                    <VideoCaptureInput compact />
+                    <Show when={showMediaCapture()}>
+                      <VideoCaptureInput
+                        compact
+                        onUploaded={() => {
+                          mediaGridRefetch?.();
+                          refetchOwnerMedia();
+                          setShowMediaCapture(false);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-secondary"
+                        style="margin: 0.75rem 0 1rem; width: 100%;"
+                        onClick={() => setShowMediaCapture(false)}
+                      >
+                        Avbryt
+                      </button>
+                    </Show>
                     <Show when={myId()}>
-                      {(id) => <div style="margin-top: 1rem;"><ProfileMediaGrid ownerId={id()} /></div>}
+                      {(id) => (
+                        <ProfileMediaGrid
+                          ownerId={id()}
+                          isOwn
+                          hideHeading
+                          hideEmptyCta={showMediaCapture()}
+                          onUploadClick={() => setShowMediaCapture(true)}
+                          onRefetchReady={(fn) => {
+                            mediaGridRefetch = fn;
+                          }}
+                        />
+                      )}
                     </Show>
                   </div>
                 </div>

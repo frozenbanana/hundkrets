@@ -48,6 +48,7 @@ export default function OnboardingDogs() {
   const [temperamentNewDogsMale, setTemperamentNewDogsMale] = createSignal("");
   const [notes, setNotes] = createSignal("");
   const [imageFile, setImageFile] = createSignal<File | null>(null);
+  const [videoUploaded, setVideoUploaded] = createSignal(false);
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
 
@@ -134,6 +135,7 @@ export default function OnboardingDogs() {
       setTemperamentNewDogsMale("");
       setNotes("");
       setImageFile(null);
+      setVideoUploaded(false);
       refetch();
       showToast("Hund tillagd");
     } catch (err: unknown) {
@@ -167,11 +169,25 @@ export default function OnboardingDogs() {
             dropHint="Släpp bilden här"
           />
           <div class="form-group" style="margin-top: 1rem;">
-            <label>Kort video (valfritt, max 15 s)</label>
+            <label>Visa hur din hund är i rörelse</label>
             <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem;">
-              Visa din hund i rörelse — du kan hoppa över och ladda upp senare.
+              Ett kort klipp (max 15 s) är det bästa sättet för andra att få en känsla för din hund.
+              Du kan fortsätta utan och ladda upp senare.
             </p>
-            <VideoCaptureInput compact />
+            <Show
+              when={!videoUploaded()}
+              fallback={
+                <p style="margin: 0; color: var(--color-paw-dark); font-weight: 500;">
+                  Video uppladdad — bra jobbat!
+                </p>
+              }
+            >
+              <VideoCaptureInput
+                compact
+                autoUpload
+                onUploaded={() => setVideoUploaded(true)}
+              />
+            </Show>
           </div>
           <div class="form-group">
             <label for="breed">Ras</label>

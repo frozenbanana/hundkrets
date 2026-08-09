@@ -1575,15 +1575,37 @@ export default function Matches() {
           <div class="container flode-feed">
             <Show when={filteredListings().length === 0}>
               <div class="matches-empty-state">
-                <p style="color: var(--color-text-muted); margin: 0;">
-                  {matchFilter() === "outgoing"
-                    ? "Du har inte skickat några förfrågningar än. Bläddra i flödet och tryck hjärtat för att visa intresse."
-                    : matchFilter() === "requested_me"
-                      ? "Ingen har skickat förfrågan till dig än."
-                      : matchFilter() === "matched"
-                        ? "Du har inga matchningar än. När ni båda visar intresse blir ni matchade."
-                        : "Ingen att visa just nu. Prova ett annat filter eller ladda upp en video med +."}
-                </p>
+                <Show
+                  when={
+                    matchFilter() !== "outgoing" &&
+                    matchFilter() !== "requested_me" &&
+                    matchFilter() !== "matched"
+                  }
+                  fallback={
+                    <p style="color: var(--color-text-muted); margin: 0;">
+                      {matchFilter() === "outgoing"
+                        ? "Du har inte skickat några förfrågningar än. Bläddra i flödet och tryck hjärtat för att visa intresse."
+                        : matchFilter() === "requested_me"
+                          ? "Ingen har skickat förfrågan till dig än."
+                          : "Du har inga matchningar än. När ni båda visar intresse blir ni matchade."}
+                    </p>
+                  }
+                >
+                  <div class="flode-empty-upload card">
+                    <p class="flode-empty-upload-title">Inget att bläddra i ännu</p>
+                    <p class="flode-empty-upload-text">
+                      Ladda upp ett kort klipp av din hund (max 15 s) — det är så andra får en känsla för er.
+                    </p>
+                    <button
+                      type="button"
+                      class="btn"
+                      onClick={() => setUploadSheetOpen(true)}
+                      data-umami-event="Flode empty upload CTA"
+                    >
+                      Ladda upp video
+                    </button>
+                  </div>
+                </Show>
               </div>
             </Show>
             <Show when={filteredListings().length > 0}>

@@ -1,4 +1,4 @@
-import { createResource, createSignal, For, Show } from "solid-js";
+import { createEffect, createResource, createSignal, For, onCleanup, Show } from "solid-js";
 import {
   fetchOwnerMedia,
   mediaObjectUrl,
@@ -9,12 +9,32 @@ import { pb } from "~/lib/pocketbase";
 import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 
-export function ProfileMediaGrid(props: { ownerId: string }) {
-  const [items] = createResource(
+export function ProfileMediaGrid(props: {
+  ownerId: string;
+  /** Own profile: richer empty state + upload CTA */
+  isOwn?: boolean;
+  /** Hide section heading when parent already shows "Media" */
+  hideHeading?: boolean;
+  /** Own empty-state / add CTA */
+  onUploadClick?: () => void;
+  /** Hide empty invite while capture UI is open above */
+  hideEmptyCta?: boolean;
+  /** Parent can call refetch after upload */
+  onRefetchReady?: (refetch: () => void) => void;
+}) {
+  const [items, { refetch }] = createResource(
     () => props.ownerId,
     (id) => fetchOwnerMedia(id, { limit: 60 })
   );
   const [active, setActive] = createSignal<MediaRecord | undefined>();
+
+  createEffect(() => {
+    props.onRefetchReady?.(refetch);
+  });
+
+  onCleanup(() => {
+    props.onRefetchReady?.(() => {});
+  });
 
   async function handleReport() {
     const m = active();
@@ -31,16 +51,42 @@ export function ProfileMediaGrid(props: { ownerId: string }) {
   const thumb = (m: MediaRecord) =>
     m.kind === "video" ? mediaObjectUrl(m.poster_key || m.object_key) : mediaObjectUrl(m.object_key);
 
+  const isEmpty = () => !items.loading && (items() ?? []).length === 0;
+  const hasItems = () => (items() ?? []).length > 0;
+  /** Hide empty section for other users; own profile keeps the invite CTA */
+  const showSection = () =>
+    items.loading || hasItems() || (!!props.isOwn && !props.hideEmptyCta);
+
   return (
-    <section class="profile-media-section">
-      <h2 style="margin: 0 0 0.75rem; font-size: 1.1rem;">Media</h2>
+    <Show when={showSection()}>
+    <section class="profile-media-section" classList={{ "profile-media-section-embedded": !!props.hideHeading }}>
+      <Show when={!props.hideHeading}>
+        <h2 style="margin: 0 0 0.75rem; font-size: 1.1rem;">Media</h2>
+      </Show>
       <Show when={items.loading}>
         <p style="color: var(--color-text-muted);">Laddar media…</p>
       </Show>
-      <Show when={!items.loading && (items() ?? []).length === 0}>
-        <p style="color: var(--color-text-muted); margin: 0;">Ingen media ännu.</p>
+
+      <Show when={isEmpty() && props.isOwn && !props.hideEmptyCta}>
+        <div class="profile-media-empty">
+          <p class="profile-media-empty-title">Inget klipp ännu</p>
+          <p class="profile-media-empty-text">
+            Ett kort klipp hjälper grannar känna din hund — max 15 sekunder räcker.
+          </p>
+          <Show when={props.onUploadClick}>
+            <button
+              type="button"
+              class="btn"
+              onClick={() => props.onUploadClick?.()}
+              data-umami-event="Profile media empty CTA"
+            >
+              Spela in / ladda upp
+            </button>
+          </Show>
+        </div>
       </Show>
-      <Show when={(items() ?? []).length > 0}>
+
+      <Show when={hasItems()}>
         <div class="profile-media-grid">
           <For each={items() ?? []}>
             {(m) => (
@@ -57,6 +103,17 @@ export function ProfileMediaGrid(props: { ownerId: string }) {
             )}
           </For>
         </div>
+        <Show when={props.isOwn && props.onUploadClick && !props.hideEmptyCta}>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            style="margin-top: 0.75rem;"
+            onClick={() => props.onUploadClick?.()}
+            data-umami-event="Profile media add more"
+          >
+            Lägg till video
+          </button>
+        </Show>
       </Show>
 
       <Show when={active()}>
@@ -91,5 +148,6 @@ export function ProfileMediaGrid(props: { ownerId: string }) {
         )}
       </Show>
     </section>
+    </Show>
   );
 }

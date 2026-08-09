@@ -14,6 +14,8 @@ interface VideoCaptureInputProps {
   onUploaded?: () => void;
   /** Compact mode for FAB sheet / onboarding */
   compact?: boolean;
+  /** Upload immediately after pick/record (onboarding) */
+  autoUpload?: boolean;
 }
 
 export function VideoCaptureInput(props: VideoCaptureInputProps) {
@@ -58,6 +60,34 @@ export function VideoCaptureInput(props: VideoCaptureInputProps) {
       return;
     }
     setFile(f);
+    if (props.autoUpload) {
+      void uploadFile(f);
+    }
+  }
+
+  async function uploadFile(f: File) {
+    setLoading(true);
+    setError("");
+    try {
+      const { poster, durationMs, width, height } = await extractVideoPoster(f);
+      await createMediaRecord({
+        file: f,
+        kind: "video",
+        visibility: visibility(),
+        posterFile: poster,
+        durationMs,
+        width,
+        height,
+        contentType: f.type || "video/webm",
+      });
+      showToast("Videon är uppladdad");
+      setFile(null);
+      props.onUploaded?.();
+    } catch (err) {
+      setError(parseApiError(err));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function startRecording() {
@@ -133,28 +163,7 @@ export function VideoCaptureInput(props: VideoCaptureInputProps) {
   async function handleUpload() {
     const f = file();
     if (!f) return;
-    setLoading(true);
-    setError("");
-    try {
-      const { poster, durationMs, width, height } = await extractVideoPoster(f);
-      await createMediaRecord({
-        file: f,
-        kind: "video",
-        visibility: visibility(),
-        posterFile: poster,
-        durationMs,
-        width,
-        height,
-        contentType: f.type || "video/webm",
-      });
-      showToast("Videon är uppladdad");
-      setFile(null);
-      props.onUploaded?.();
-    } catch (err) {
-      setError(parseApiError(err));
-    } finally {
-      setLoading(false);
-    }
+    await uploadFile(f);
   }
 
   const secs = () => Math.min(15, Math.ceil(elapsedMs() / 1000));
@@ -207,16 +216,18 @@ export function VideoCaptureInput(props: VideoCaptureInputProps) {
             <option value="members">Endast medlemmar</option>
           </select>
         </div>
-        <button
-          type="button"
-          class="btn"
-          style="width: 100%; margin-top: 0.5rem;"
-          disabled={!file() || loading()}
-          onClick={handleUpload}
-          data-umami-event="Upload dog video"
-        >
-          {loading() ? "Laddar upp…" : "Ladda upp (max 15 s)"}
-        </button>
+        <Show when={!props.autoUpload || !!file() || loading()}>
+          <button
+            type="button"
+            class="btn"
+            style="width: 100%; margin-top: 0.5rem;"
+            disabled={!file() || loading()}
+            onClick={handleUpload}
+            data-umami-event="Upload dog video"
+          >
+            {loading() ? "Laddar upp…" : props.autoUpload ? "Försök igen" : "Ladda upp (max 15 s)"}
+          </button>
+        </Show>
       </Show>
     </div>
   );
