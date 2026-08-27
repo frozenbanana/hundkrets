@@ -222,12 +222,17 @@ export async function reportMedia(mediaId: string, reason = ""): Promise<void> {
   });
 }
 
+async function listMedia(filter: string, perPage: number) {
+  try {
+    return await pb.collection("media").getList(1, perPage, { filter, sort: "-created" });
+  } catch {
+    return await pb.collection("media").getList(1, perPage, { filter });
+  }
+}
+
 export async function fetchOwnerMedia(ownerId: string, opts?: { limit?: number }): Promise<MediaRecord[]> {
   const limit = opts?.limit ?? 50;
-  const list = await pb.collection("media").getList(1, limit, {
-    filter: `owner = "${ownerId}"`,
-    sort: "-created",
-  });
+  const list = await listMedia(`owner = "${ownerId}"`, limit);
   return list.items as unknown as MediaRecord[];
 }
 
@@ -242,10 +247,7 @@ export async function fetchLatestMediaByOwners(ownerIds: string[]): Promise<Map<
   for (let i = 0; i < unique.length; i += chunkSize) {
     const chunk = unique.slice(i, i + chunkSize);
     const filter = chunk.map((id) => `owner = "${id}"`).join(" || ");
-    const list = await pb.collection("media").getList(1, chunk.length * 5, {
-      filter,
-      sort: "-created",
-    });
+    const list = await listMedia(filter, chunk.length * 5);
     for (const item of list.items as unknown as MediaRecord[]) {
       if (!map.has(item.owner)) map.set(item.owner, item);
     }

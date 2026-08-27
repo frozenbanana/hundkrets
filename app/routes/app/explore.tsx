@@ -26,6 +26,7 @@ import { ExcursionsMap } from "~/components/ExcursionsMap";
 import { MatchesMap } from "~/components/MatchesMap";
 import { MediaCard } from "~/components/MediaCard";
 import { MediaUploadSheet } from "~/components/MediaUploadSheet";
+import { InviteNeighborButton } from "~/components/InviteNeighborButton";
 import { fetchLatestMediaByOwners, type MediaRecord } from "~/lib/media";
 import { InterestModal } from "./explore/InterestModal";
 import { RespondModal } from "./explore/RespondModal";
@@ -1319,6 +1320,7 @@ export default function Matches() {
                   : "Ingen i ditt område än. Lägg till dina behov och kapacitet så att andra kan hitta dig."}
             </p>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+              <InviteNeighborButton />
               <Show when={nextDistanceStep()}>
                 <button
                   type="button"
@@ -1329,7 +1331,7 @@ export default function Matches() {
                 </button>
               </Show>
               <Show when={!userTypeInfo().isSitterOnly}>
-                <A href="/app/needs" class="btn">
+                <A href="/app/needs" class="btn btn-secondary">
                   Lägg till behov
                 </A>
               </Show>
@@ -1354,8 +1356,9 @@ export default function Matches() {
                 Det finns ingen att matcha med inom {maxDistanceKm()} km. Du kan:
               </p>
               <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+                <InviteNeighborButton />
                 <Show when={hasCoordinates() && nextDistanceStep()} fallback={null}>
-                  <button type="button" class="btn" onClick={handleIncreaseDistance}>
+                  <button type="button" class="btn btn-secondary" onClick={handleIncreaseDistance}>
                     Öka distansen till {nextDistanceStep()} km
                   </button>
                 </Show>
@@ -1582,28 +1585,59 @@ export default function Matches() {
                     matchFilter() !== "matched"
                   }
                   fallback={
-                    <p style="color: var(--color-text-muted); margin: 0;">
-                      {matchFilter() === "outgoing"
-                        ? "Du har inte skickat några förfrågningar än. Bläddra i flödet och tryck hjärtat för att visa intresse."
-                        : matchFilter() === "requested_me"
-                          ? "Ingen har skickat förfrågan till dig än."
-                          : "Du har inga matchningar än. När ni båda visar intresse blir ni matchade."}
-                    </p>
+                    <div class="flode-empty-upload card">
+                      <p class="flode-empty-upload-title">
+                        {matchFilter() === "outgoing"
+                          ? "Inga skickade förfrågningar"
+                          : matchFilter() === "requested_me"
+                            ? "Inga mottagna förfrågningar"
+                            : "Inga matchningar än"}
+                      </p>
+                      <p class="flode-empty-upload-text">
+                        {matchFilter() === "outgoing"
+                          ? "Bläddra bland lediga grannar och tryck Intresse för att koppla ihop."
+                          : matchFilter() === "requested_me"
+                            ? "Ingen har skickat förfrågan till dig än."
+                            : "När ni båda visar intresse blir ni matchade."}
+                      </p>
+                      <div class="flode-empty-actions">
+                        <button
+                          type="button"
+                          class="btn"
+                          onClick={() => handleFilterChange("not_matched")}
+                        >
+                          Visa lediga
+                        </button>
+                        <InviteNeighborButton variant="secondary" />
+                      </div>
+                    </div>
                   }
                 >
                   <div class="flode-empty-upload card">
-                    <p class="flode-empty-upload-title">Inget att bläddra i ännu</p>
+                    <p class="flode-empty-upload-title">Inga grannar att visa här</p>
                     <p class="flode-empty-upload-text">
-                      Ladda upp ett kort klipp av din hund (max 15 s) — det är så andra får en känsla för er.
+                      Bjud in en hundägare i närheten — ju fler lokalt, desto lättare att byta passning.
                     </p>
-                    <button
-                      type="button"
-                      class="btn"
-                      onClick={() => setUploadSheetOpen(true)}
-                      data-umami-event="Flode empty upload CTA"
-                    >
-                      Ladda upp video
-                    </button>
+                    <div class="flode-empty-actions">
+                      <InviteNeighborButton />
+                      <Show when={nextDistanceStep()}>
+                        <button
+                          type="button"
+                          class="btn btn-secondary"
+                          onClick={handleIncreaseDistance}
+                        >
+                          Öka avstånd till {nextDistanceStep()} km
+                        </button>
+                      </Show>
+                      <button
+                        type="button"
+                        class="btn btn-secondary"
+                        onClick={() => setUploadSheetOpen(true)}
+                        data-umami-event="Flode empty upload CTA"
+                      >
+                        Ladda upp video
+                      </button>
+                    </div>
                   </div>
                 </Show>
               </div>

@@ -7,6 +7,7 @@ import { DogImage } from "~/components/DogImage";
 import { ProfileMediaGrid } from "~/components/ProfileMediaGrid";
 import { ProfileSettingsSection } from "~/components/ProfileSettingsSection";
 import { VideoCaptureInput } from "~/components/VideoCaptureInput";
+import { InviteNeighborButton } from "~/components/InviteNeighborButton";
 import { fetchOwnerMedia } from "~/lib/media";
 import { dateStr, genderLabel, sizeLabel } from "../explore/helpers";
 
@@ -268,6 +269,9 @@ export default function ProfileIndex() {
                       {" · "}
                       <A href="/app/explore">Utforska</A>
                     </p>
+                    <div style="margin-top: 0.75rem;">
+                      <InviteNeighborButton />
+                    </div>
                   </Show>
                 </div>
               </Show>
@@ -299,6 +303,9 @@ export default function ProfileIndex() {
                           {u.bio.length > 100 ? u.bio.slice(0, 97) + "..." : u.bio}
                         </p>
                       )}
+                      <div style="margin-top: 0.75rem;">
+                        <InviteNeighborButton variant="secondary" />
+                      </div>
                       {!u.bio && <p class="profile-card-muted">Ingen bio ännu.</p>}
                     </div>
                   </div>

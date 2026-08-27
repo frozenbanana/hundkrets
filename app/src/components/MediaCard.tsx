@@ -218,15 +218,16 @@ export function MediaCard(props: {
             <button
               type="button"
               class="media-card-heart"
-              title="Visa intresse"
-              aria-label="Visa intresse"
+              title="Jag är intresserad"
+              aria-label="Jag är intresserad"
               data-umami-event="Quick interest"
               onClick={(e) => {
                 e.stopPropagation();
                 props.onQuickInterest(listing.user.id);
               }}
             >
-              ♥
+              <span aria-hidden="true">♥</span>
+              <span class="media-card-heart-label">Intresse</span>
             </button>
             <button
               type="button"

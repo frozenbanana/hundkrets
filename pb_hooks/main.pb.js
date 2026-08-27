@@ -136,7 +136,7 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function () {
     var urlMeta = $app.settings() && $app.settings().meta;
     var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
     var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
-    var matchesLink = baseUrl + "/app/explore?" + utmEmail;
+    var matchesLink = baseUrl + "/app/explore?not_matched=true&" + utmEmail;
     var settingsLink = baseUrl + "/app/settings?" + utmEmail;
     var unsubLink = baseUrl + "/api/unsubscribe/" + userId + "/retention";
 
@@ -159,15 +159,16 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function () {
     } else {
       html += "</p>";
     }
+    html += "<p style=\"margin-bottom: 20px;\">Skicka intresse till någon i närheten — det är så Hundkrets kommer igång.</p>";
     html += "<div style=\"text-align: center; margin: 30px 0;\">" +
-      "<a href=\"" + matchesLink + "\" style=\"background: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">Logga in och se alla</a></div></div>" +
+      "<a href=\"" + matchesLink + "\" style=\"background: #8b5a2b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">Skicka intresse till någon i ditt område</a></div></div>" +
       "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 15px; font-size: 14px; color: #7f8c8d;\">" +
       "<p style=\"margin: 0;\">Du får detta meddelande eftersom du inte har loggat in på över en vecka.</p>" +
       "<p style=\"margin: 10px 0 0 0;\"><a href=\"" + settingsLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Hantera e-postinställningar</a> • " +
       "<a href=\"" + unsubLink + "\" style=\"color: #7f8c8d; text-decoration: underline;\">Avsluta prenumeration</a></p></div></body></html>";
 
     try {
-      $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: userEmail }], subject: nearbyUsers.length + " nya hundägare i ditt område", html: html }));
+      $app.newMailClient().send(new MailerMessage({ from: from, to: [{ address: userEmail }], subject: nearbyUsers.length + " nya i ditt område — skicka intresse", html: html }));
       user.set("last_retention_email_sent", new Date().toISOString());
       $app.save(user);
       sentCount++;
@@ -559,8 +560,13 @@ routerAdd("GET", "/api/hundkrets/dog-gallery", (e) => {
   try {
     records = $app.findRecordsByFilter("dogs", "", "-created", 200, 0);
   } catch (err) {
-    $app.logger().warn("dog-gallery: query failed", "error", err);
-    return e.json(200, []);
+    $app.logger().warn("dog-gallery: sort by created failed, retrying unsorted", "error", err);
+    try {
+      records = $app.findRecordsByFilter("dogs", "", "", 200, 0);
+    } catch (err2) {
+      $app.logger().warn("dog-gallery: query failed", "error", err2);
+      return e.json(200, []);
+    }
   }
   var items = [];
   for (var i = 0; i < records.length && items.length < 50; i++) {
@@ -1301,7 +1307,7 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
   var urlMeta = $app.settings() && $app.settings().meta;
   var baseUrl = (urlMeta && urlMeta.appUrl) ? String(urlMeta.appUrl).replace(/\/$/, "") : "https://hundkrets.se";
   var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
-  var matchesLink = baseUrl + "/app/explore?" + utmEmail;
+  var matchesLink = baseUrl + "/app/explore?not_matched=true&" + utmEmail;
   var settingsLink = baseUrl + "/app/settings?" + utmEmail;
   var unsubLink = baseUrl + "/api/unsubscribe/" + user.id + "/retention";
 
@@ -1327,6 +1333,7 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
     html += "</p>";
   }
 
+  html += "<p style=\"margin-bottom: 20px;\">Skicka intresse till någon i närheten — det är så Hundkrets kommer igång.</p>";
   html += "<div style=\"text-align: center; margin: 30px 0;\">" +
     "<a href=\"" + matchesLink + "\" style=\"background: #8b5a2b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">Skicka intresse till någon i ditt område</a></div></div>" +
     "<div style=\"background: #f8f9fa; border-radius: 8px; padding: 15px; font-size: 14px; color: #7f8c8d;\">" +

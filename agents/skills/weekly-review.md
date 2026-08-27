@@ -29,13 +29,13 @@ breaking, and what should be prioritized.
 
 1. Run the audit script and collect raw data:
    ```bash
-   cd ~/Projects/hundkrets/agents/review-scripts && node weekly-review.mjs
+   cd ~/Projects/home-server/hundkrets/agents/review-scripts && node weekly-review.mjs
    ```
 
 2. Use the `run-weekly-review.sh` wrapper if you want week-over-week
    diff:
    ```bash
-   cd ~/Projects/hundkrets/agents/review-scripts && bash run-weekly-review.sh
+   cd ~/Projects/home-server/hundkrets/agents/review-scripts && bash run-weekly-review.sh
    ```
 
 3. Analyze the data from `~/Projects/review-screenshots/`:
@@ -64,10 +64,7 @@ breaking, and what should be prioritized.
 - **PocketBase admin collections** — total users, new users this week, total
   connection requests, total excursions, recent email log (last 30 entries with
   error status)
-- **Note**: `connection_requests` and `excursions` collections lack a `created`
-  field — weekly-filtered counts are unavailable for these. The `users`
-  collection does have it (PocketBase built-in). Weekly-filtered metrics show
-  -2 as sentinel value when unavailable.
+- **Note**: After autodate migration, `connection_requests` and `excursions` should have weekly `created` filters. If a weekly query fails, the script records `_error` and `totalItems: -1` — do not treat that as zero new activity.
 
 ### Admin Logs (Step 11)
 - Browser login to PocketBase admin at `/_/`, screenshot of dashboard and logs
@@ -120,12 +117,13 @@ Top Pages (7d):
 - HTTP 500s in admin logs (e.g. `dog-gallery` endpoint)
 - Email errors in `email_log` (check `error` field)
 - Registration redirect failures — should go to `/onboarding/choice` after registration
-- Umami returning all zeros — tracking script may not be installed on `hundkrets.se`
+- Umami returning all zeros — first check API timestamps (milliseconds) and website id; `script.js` is installed in `app/entry-server.tsx`
 
 ### Known limitations
-- `connection_requests` and `excursions` have no `created` field — can only get total counts, not weekly deltas
-- Account deletion via browser often fails (delete button not in standard locations) — PB SDK fallback handles this silently
-- Explore/excursion pages redirect to onboarding if user hasn't completed it — not an error, just flow dependent
+- Explore/excursion pages redirect to onboarding if the test user has not completed it — that is not a missing Create excursion button
+- Delete account lives on `/app/profile` in the danger zone (`Ta bort mitt konto`); `/app/settings` only redirects there
+- Umami zeros in the JSON report are often an API date-range/site-id issue, not a missing tracker. Stats are unix ms; current Umami returns numbers (`pageviews: 118`) not `{ value: n }`; top pages use `metrics?type=path` (not `type=url`).
+- Repo path: `/home/henry/Projects/home-server/hundkrets` (not `~/Projects/hundkrets`)
 
 ## Key Context
 

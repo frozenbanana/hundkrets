@@ -4979,8 +4979,23 @@ input[type="checkbox"] {
   padding: 0.25rem;
   color: var(--color-paw-dark, #8b5a2b);
 }
+.media-card-heart {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
 .media-card-heart:hover {
   color: #dc2626;
+}
+.media-card-heart-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.flode-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
 }
 .media-card-menu-wrap {
   position: relative;
