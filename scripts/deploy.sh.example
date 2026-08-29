@@ -1,41 +1,52 @@
 #!/bin/bash
 
-# Deploy Hundkrets to home server
-# Copy to deploy.sh and set SERVER_HOST, SERVER_USER, DEPLOY_PATH.
-# Use SSH keys for auth (no password in script).
+# Deploy Hundkrets to home server.
+# Copy to deploy.sh and adjust hosts if needed.
+# Prefer SSH keys. Uses the docker group (no sudo).
+#
+# SERVER_HOST defaults to the Tailscale name (MagicDNS). If Tailscale is down,
+# set it to the current LAN address explicitly, e.g.:
+#   SERVER_HOST=192.168.1.163 ./scripts/deploy.sh
 
-set -e
+set -euo pipefail
 
-SERVER_HOST="${SERVER_HOST:-192.168.0.242}"
+SERVER_HOST="${SERVER_HOST:-nixos}"
 SERVER_USER="${SERVER_USER:-henry}"
 DEPLOY_PATH="${DEPLOY_PATH:-/home/henry/Services/hundkrets}"
-NODE_BIN="${NODE_BIN:-npm}"
+VITE_POCKETBASE_URL="${VITE_POCKETBASE_URL:-https://api.hundkrets.se}"
 
-echo "🚀 Deploying Hundkrets to ${SERVER_USER}@${SERVER_HOST}..."
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
-# 1. Build frontend
-echo "📦 Building frontend..."
-cd app
-$NODE_BIN run build
-cd ..
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Working tree is dirty. Commit/push first, or set ALLOW_DIRTY=1 to deploy whatever is on origin."
+  if [[ "${ALLOW_DIRTY:-}" != "1" ]]; then
+    exit 1
+  fi
+fi
 
-# 2. Create deploy directory on server
-echo "📁 Creating deploy directory on server..."
-ssh ${SERVER_USER}@${SERVER_HOST} "mkdir -p ${DEPLOY_PATH}"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+echo "Pushing ${BRANCH}..."
+git push -u origin HEAD
 
-# 3. Copy relevant files to server
-echo "📤 Copying files to server..."
-scp -r app/dist/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/app/
-scp docker-compose.yml ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
-scp .env ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
-scp -r pb_migrations/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
-scp -r pb_hooks/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
-scp -r docker/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
-scp -r scripts/ ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
+echo "Deploying to ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}..."
+ssh "${SERVER_USER}@${SERVER_HOST}" bash -s <<EOF
+set -euo pipefail
+cd "${DEPLOY_PATH}"
+# Prefer the system Docker socket (SSH sessions may inherit a stale rootless DOCKER_HOST)
+unset DOCKER_HOST
+export DOCKER_HOST=unix:///var/run/docker.sock
+echo "📥 Pulling..."
+git fetch origin
+git checkout ${BRANCH}
+git pull --ff-only origin ${BRANCH}
+echo "🔨 Building (VITE_POCKETBASE_URL=${VITE_POCKETBASE_URL})..."
+export VITE_POCKETBASE_URL="${VITE_POCKETBASE_URL}"
+docker compose build --no-cache pocketbase app
+echo "🚀 Starting..."
+docker compose up -d
+docker compose ps
+echo "✅ Deploy finished at \$(date -Is)"
+EOF
 
-# 4. Start Docker Compose on server
-echo "🐳 Starting Docker Compose on server..."
-ssh ${SERVER_USER}@${SERVER_HOST} "cd ${DEPLOY_PATH} && export VITE_POCKETBASE_URL=http://localhost:8099 && docker compose up -d"
-
-echo "✅ Deployed successfully!"
-echo "📱 Access at: http://${SERVER_HOST}:3123"
+echo "Done. Site: https://hundkrets.se"

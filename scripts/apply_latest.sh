@@ -3,6 +3,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Prefer the system Docker socket (SSH sessions may inherit a stale rootless DOCKER_HOST)
+unset DOCKER_HOST
+export DOCKER_HOST=unix:///var/run/docker.sock
+
 echo "📥 Pulling latest code..."
 git pull --ff-only
 
