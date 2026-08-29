@@ -1,6 +1,7 @@
 import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import { getRequestsSeenAt, markRequestsSeen, requestsSeenVersion } from "~/lib/requestsSeen";
 import { parseApiError } from "~/lib/errors";
+import { requiresInterestVerification } from "~/lib/interest";
 import { showToast } from "~/lib/toast";
 import {
   createEffect,
@@ -679,6 +680,10 @@ export default function Matches() {
   });
 
   async function quickInterest(userId: string) {
+    if (requiresInterestVerification(isUserVerified())) {
+      openInterestModal(userId);
+      return;
+    }
     try {
       await handleInterested(userId);
     } catch {
@@ -698,7 +703,7 @@ export default function Matches() {
 
   async function submitInterestModal() {
     const target = interestModalTarget();
-    if (!target) return;
+    if (!target || requiresInterestVerification(isUserVerified())) return;
     try {
       await handleInterested(target.userId, interestModalMessage().trim() || undefined);
       closeInterestModal();
