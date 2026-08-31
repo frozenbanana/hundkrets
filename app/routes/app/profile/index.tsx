@@ -24,7 +24,7 @@ type ProfileData = {
   user: { id: string; name?: string; avatar?: string; area?: string; city?: string; neighborhood?: string; bio?: string; breeds_owned_before?: string; user_type?: "has_dogs" | "sitter_only" | "receiver_only" };
   needs: Array<{ id?: string; dog?: string; notes?: string } & Record<string, unknown>>;
   capacities: Array<{ id?: string; dog_sizes?: string | string[]; dog_genders?: string; max_dogs?: number; notes?: string } & Record<string, unknown>>;
-  dogs: Array<{ id?: string; name?: string; breed?: string; size?: string; gender?: string; age?: number; image?: string; notes?: string }>;
+  dogs: Array<{ id?: string; name?: string; breed?: string; size?: string; gender?: string; age?: number; image?: string; image_key?: string; notes?: string }>;
 };
 
 function needDateStr(n: { flexible_dates?: boolean; open_any_duration?: boolean; duration_specific?: string; start_date?: string; end_date?: string }) {
@@ -110,7 +110,9 @@ export default function ProfileIndex() {
       const hasDogs = dogs.length > 0;
       todos.push({ id: "dogs", label: "Lägg till dina hundar", href: "/app/dogs", completed: hasDogs });
 
-      const dogsWithoutImage = dogs.filter((d) => !(d.image as string)?.trim());
+      const dogsWithoutImage = dogs.filter(
+        (d) => !(d.image as string)?.trim() && !(d.image_key as string)?.trim()
+      );
       const hasDogImages = dogs.length === 0 || dogsWithoutImage.length === 0;
       if (dogs.length > 0) {
         const dogImagesLabel =
