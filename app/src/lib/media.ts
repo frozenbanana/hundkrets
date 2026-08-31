@@ -223,10 +223,12 @@ export async function reportMedia(mediaId: string, reason = ""): Promise<void> {
 }
 
 async function listMedia(filter: string, perPage: number) {
+  // requestKey: null avoids PocketBase auto-cancelling overlapping profile media fetches.
+  const opts = { filter, requestKey: null as null };
   try {
-    return await pb.collection("media").getList(1, perPage, { filter, sort: "-created" });
+    return await pb.collection("media").getList(1, perPage, { ...opts, sort: "-created" });
   } catch {
-    return await pb.collection("media").getList(1, perPage, { filter });
+    return await pb.collection("media").getList(1, perPage, opts);
   }
 }
 

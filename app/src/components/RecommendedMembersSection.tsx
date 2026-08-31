@@ -14,6 +14,8 @@ import { Avatar } from "~/components/Avatar";
 import { formatDogInfo } from "~/components/DogInfo";
 import { InterestModal } from "../../routes/app/explore/InterestModal";
 import { isUserVerified } from "~/lib/auth";
+import { canSubmitInterest } from "~/lib/interest";
+import { trackUmami } from "~/lib/analytics";
 import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 
@@ -117,7 +119,7 @@ export function RecommendedMembersSection(props: {
 
   async function submitInterestModal() {
     const target = interestModalTarget();
-    if (!target) return;
+    if (!target || !canSubmitInterest(isUserVerified())) return;
     const fromUserId = pb.authStore.model?.id;
     if (!fromUserId) return;
     setInterestSubmitting(true);
@@ -127,6 +129,7 @@ export function RecommendedMembersSection(props: {
         to_user: target.userId,
         ...(interestModalMessage().trim() && { message: interestModalMessage().trim() }),
       });
+      trackUmami("Interest sent");
       showToast("Intresse skickat");
       closeInterestModal();
       void refetch();
@@ -252,12 +255,6 @@ export function RecommendedMembersSection(props: {
                         <button
                           type="button"
                           class="btn"
-                          disabled={!isUserVerified()}
-                          title={
-                            !isUserVerified()
-                              ? "Verifiera din e-post för att skicka intresseanmälningar."
-                              : undefined
-                          }
                           onClick={() => openInterestModal(listing.user.id, listing.user.name)}
                         >
                           Skicka intresse

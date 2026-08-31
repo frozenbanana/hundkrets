@@ -17,8 +17,10 @@ const PB_URL =
 let cachedAdminPb: PocketBase | null = null;
 
 async function getAdminPb(): Promise<PocketBase | null> {
-  const email = process.env.PB_ADMIN_EMAIL;
-  const password = process.env.PB_ADMIN_PASSWORD;
+  const email =
+    process.env.PB_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL;
+  const password =
+    process.env.PB_ADMIN_PASSWORD || process.env.POCKETBASE_ADMIN_PASSWORD;
   if (!email || !password) return null;
   if (cachedAdminPb?.authStore.isValid) return cachedAdminPb;
   const pb = new PocketBase(PB_URL);
@@ -54,7 +56,7 @@ async function getPbClient(event: APIEvent): Promise<PocketBase> {
 }
 
 function pickPublicUser(u: Record<string, unknown>): Record<string, unknown> {
-  const allowed = ["id", "name", "avatar", "area", "city", "neighborhood", "bio", "breeds_owned_before", "verified", "user_type"];
+  const allowed = ["id", "name", "avatar", "avatar_key", "area", "city", "neighborhood", "bio", "breeds_owned_before", "verified", "user_type"];
   const out: Record<string, unknown> = {};
   for (const k of allowed) {
     if (k in u && u[k] !== undefined) out[k] = u[k];

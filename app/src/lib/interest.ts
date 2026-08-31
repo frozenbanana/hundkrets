@@ -4,3 +4,7 @@ export const INTEREST_VERIFICATION_MESSAGE =
 export function requiresInterestVerification(isVerified: boolean): boolean {
   return !isVerified;
 }
+
+export function canSubmitInterest(isVerified: boolean): boolean {
+  return !requiresInterestVerification(isVerified);
+}

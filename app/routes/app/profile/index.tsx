@@ -8,7 +8,7 @@ import { ProfileMediaGrid } from "~/components/ProfileMediaGrid";
 import { ProfileSettingsSection } from "~/components/ProfileSettingsSection";
 import { VideoCaptureInput } from "~/components/VideoCaptureInput";
 import { InviteNeighborButton } from "~/components/InviteNeighborButton";
-import { fetchOwnerMedia } from "~/lib/media";
+import type { MediaRecord } from "~/lib/media";
 import { dateStr, genderLabel, sizeLabel } from "../explore/helpers";
 
 type TodoItem = {
@@ -65,15 +65,8 @@ export default function ProfileIndex() {
     }
   );
 
-  const [ownerMedia, { refetch: refetchOwnerMedia }] = createResource(
-    myId,
-    async (id) => {
-      if (!id) return [];
-      return fetchOwnerMedia(id, { limit: 1 });
-    }
-  );
-
   const [showMediaCapture, setShowMediaCapture] = createSignal(false);
+  const [hasOwnerVideo, setHasOwnerVideo] = createSignal(false);
   let mediaGridRefetch: (() => void) | undefined;
 
   const userTypeInfo = createMemo(() => {
@@ -127,9 +120,7 @@ export default function ProfileIndex() {
         todos.push({ id: "dog-images", label: dogImagesLabel, href: "/app/dogs", completed: hasDogImages });
       }
 
-      const hasVideo =
-        !ownerMedia.loading &&
-        (ownerMedia() ?? []).some((m) => m.kind === "video");
+      const hasVideo = hasOwnerVideo();
       if (dogs.length > 0 || hasVideo) {
         todos.push({
           id: "dog-video",
@@ -321,7 +312,6 @@ export default function ProfileIndex() {
                         compact
                         onUploaded={() => {
                           mediaGridRefetch?.();
-                          refetchOwnerMedia();
                           setShowMediaCapture(false);
                         }}
                       />
@@ -342,6 +332,9 @@ export default function ProfileIndex() {
                           hideHeading
                           hideEmptyCta={showMediaCapture()}
                           onUploadClick={() => setShowMediaCapture(true)}
+                          onItemsChange={(items: MediaRecord[]) => {
+                            setHasOwnerVideo(items.some((m) => m.kind === "video"));
+                          }}
                           onRefetchReady={(fn) => {
                             mediaGridRefetch = fn;
                           }}

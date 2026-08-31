@@ -21,6 +21,8 @@ export function ProfileMediaGrid(props: {
   hideEmptyCta?: boolean;
   /** Parent can call refetch after upload */
   onRefetchReady?: (refetch: () => void) => void;
+  /** Notify parent when media list changes (e.g. profile quick actions). */
+  onItemsChange?: (items: MediaRecord[]) => void;
 }) {
   const [items, { refetch }] = createResource(
     () => props.ownerId,
@@ -30,6 +32,13 @@ export function ProfileMediaGrid(props: {
 
   createEffect(() => {
     props.onRefetchReady?.(refetch);
+  });
+
+  createEffect(() => {
+    const loaded = items();
+    if (!items.loading && loaded) {
+      props.onItemsChange?.(loaded);
+    }
   });
 
   onCleanup(() => {
