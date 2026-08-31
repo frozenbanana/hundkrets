@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   INTEREST_VERIFICATION_MESSAGE,
+  canSubmitInterest,
   requiresInterestVerification,
 } from "./interest";
 
@@ -12,5 +13,10 @@ describe("interest verification", () => {
 
   it("keeps verified members on the one-step send path", () => {
     expect(requiresInterestVerification(true)).toBe(false);
+  });
+
+  it("blocks recommended/onboarding submit until verified", () => {
+    expect(canSubmitInterest(false)).toBe(false);
+    expect(canSubmitInterest(true)).toBe(true);
   });
 });
