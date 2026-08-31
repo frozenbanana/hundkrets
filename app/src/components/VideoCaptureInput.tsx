@@ -196,7 +196,6 @@ export function VideoCaptureInput(props: VideoCaptureInputProps) {
             <input
               type="file"
               accept="video/*"
-              capture="environment"
               hidden
               onChange={(e) => acceptFile(e.currentTarget.files?.[0] ?? null)}
             />
