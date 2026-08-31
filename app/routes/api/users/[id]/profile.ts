@@ -65,7 +65,7 @@ function pickPublicUser(u: Record<string, unknown>): Record<string, unknown> {
 }
 
 function pickPublicDog(d: Record<string, unknown>): Record<string, unknown> {
-  const allowed = ["id", "name", "breed", "size", "gender", "age", "image", "notes", "temperament_new_people", "temperament_new_dogs_female", "temperament_new_dogs_male"];
+  const allowed = ["id", "name", "breed", "size", "gender", "age", "image", "image_key", "notes", "temperament_new_people", "temperament_new_dogs_female", "temperament_new_dogs_male"];
   const out: Record<string, unknown> = {};
   for (const k of allowed) {
     if (k in d && d[k] !== undefined) out[k] = d[k];

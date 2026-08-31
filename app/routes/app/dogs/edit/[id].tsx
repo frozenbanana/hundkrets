@@ -72,6 +72,8 @@ export default function EditDog() {
       if (file) {
         const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
         payload.image_key = uploaded.objectKey;
+        // Clear legacy PocketBase file so profile/API fallbacks cannot show the old photo.
+        payload.image = null;
         await saveMediaRecord({ objectKey: uploaded.objectKey, kind: "image" }).catch(() => {});
       }
       await pb.collection("dogs").update(params.id, payload);
