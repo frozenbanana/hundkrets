@@ -231,29 +231,36 @@ export default function ExcursionsPage() {
   const [excursions, { refetch: refetchExcursions }] = createResource(async () => {
     try {
       setListError("");
-      const me = pb.authStore.model?.id;
-      const [excursionsRaw, interestsRaw, commentsRaw, usersRaw] = await Promise.all([
-        pb.collection("excursions").getFullList<{
-          id: string;
-          title: string;
-          description?: string;
-          start_at: string;
-          duration_hours?: number;
-          meeting_area: string;
-          meeting_map_url?: string;
-          meeting_latitude?: number;
-          meeting_longitude?: number;
-          visibility: ExcursionVisibility;
-          status: string;
-          host_user: string;
-        }>({
-          filter: 'status = "scheduled"',
-          sort: "start_at",
-        }),
-        pb.collection("excursion_interests").getFullList<{ excursion: string; user: string }>(),
-        pb.collection("excursion_comments").getFullList<{ excursion: string }>(),
-        pb.collection("users").getFullList<{ id: string; name?: string }>(),
-      ]);
+      const me = pb.authStore.isValid ? pb.authStore.model?.id : undefined;
+      const excursionsRaw = await pb.collection("excursions").getFullList<{
+        id: string;
+        title: string;
+        description?: string;
+        start_at: string;
+        duration_hours?: number;
+        meeting_area: string;
+        meeting_map_url?: string;
+        meeting_latitude?: number;
+        meeting_longitude?: number;
+        visibility: ExcursionVisibility;
+        status: string;
+        host_user: string;
+      }>({
+        filter: 'status = "scheduled"',
+        sort: "start_at",
+      });
+
+      // Guests can list public excursions. Interests, comments, and member names stay behind auth.
+      let interestsRaw: { excursion: string; user: string }[] = [];
+      let commentsRaw: { excursion: string }[] = [];
+      let usersRaw: { id: string; name?: string }[] = [];
+      if (me) {
+        [interestsRaw, commentsRaw, usersRaw] = await Promise.all([
+          pb.collection("excursion_interests").getFullList<{ excursion: string; user: string }>(),
+          pb.collection("excursion_comments").getFullList<{ excursion: string }>(),
+          pb.collection("users").getFullList<{ id: string; name?: string }>(),
+        ]);
+      }
 
       const userNameById = new Map(usersRaw.map((u) => [u.id, u.name ?? ""]));
       const interestCountByExcursion = new Map();
@@ -556,6 +563,10 @@ export default function ExcursionsPage() {
     }
   }
 
+  const isLoggedIn = () => pb.authStore.isValid && !!pb.authStore.model?.id;
+  const guestRegisterHref = () =>
+    `/register?redirect=${encodeURIComponent("/app/excursions")}`;
+
   async function submitComment() {
     const id = selectedExcursionId();
     if (!id) return;
@@ -579,7 +590,7 @@ export default function ExcursionsPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell allowGuest>
       <div class="container excursions-page">
         <div class="page-hero excursions-page-header">
           <div>
@@ -588,12 +599,22 @@ export default function ExcursionsPage() {
               Planera hundpromenader och träffar med andra i Hundkrets.
             </p>
           </div>
-          <A href="/app/excursions/create" class="btn excursions-new-btn" data-umami-event="Excursion create click">
-            <span aria-hidden="true">＋</span>
-            <span>Ny hundträff</span>
-          </A>
+          <Show
+            when={isLoggedIn()}
+            fallback={
+              <A href={guestRegisterHref()} class="btn excursions-new-btn">
+                Skapa konto
+              </A>
+            }
+          >
+            <A href="/app/excursions/create" class="btn excursions-new-btn" data-umami-event="Excursion create click">
+              <span aria-hidden="true">＋</span>
+              <span>Ny hundträff</span>
+            </A>
+          </Show>
         </div>
 
+        <Show when={isLoggedIn()}>
         <section class="card" style="padding: 1rem;">
           <h2 style="margin-top: 0;">Mina uppkommande hundträffar</h2>
           <Show when={listError()}>
@@ -624,6 +645,7 @@ export default function ExcursionsPage() {
             </Show>
           </Show>
         </section>
+        </Show>
 
         <section class="card" style="padding: 1rem;">
           <h2 style="margin-top: 0;">Kommande hundträffar</h2>
@@ -634,12 +656,27 @@ export default function ExcursionsPage() {
             <Show
               when={upcomingExcursions().length > 0}
               fallback={
-                <div style="display: grid; gap: 0.6rem;">
-                  <p style="margin: 0;">Det finns inga hundträffar än. Varför inte skapa en?</p>
-                  <A href="/app/excursions/create" class="btn excursions-new-btn" style="justify-self: start;">
-                    Skapa hundträff
-                  </A>
-                </div>
+                <Show
+                  when={isLoggedIn()}
+                  fallback={
+                    <div class="profile-cta-guest" style="display: grid; gap: 0.6rem; justify-items: start;">
+                      <p style="margin: 0;">Inga kommande hundträffar just nu.</p>
+                      <p style="margin: 0; color: var(--color-text-muted);">
+                        Skapa konto för att delta och skapa egna hundträffar.
+                      </p>
+                      <A href={guestRegisterHref()} class="btn">
+                        Skapa konto
+                      </A>
+                    </div>
+                  }
+                >
+                  <div style="display: grid; gap: 0.6rem;">
+                    <p style="margin: 0;">Det finns inga hundträffar än. Varför inte skapa en?</p>
+                    <A href="/app/excursions/create" class="btn excursions-new-btn" style="justify-self: start;">
+                      Skapa hundträff
+                    </A>
+                  </div>
+                </Show>
               }
             >
               <div style="display: grid; gap: 0.75rem;">
@@ -657,6 +694,7 @@ export default function ExcursionsPage() {
                       meeting_latitude={item.meeting_latitude}
                       meeting_longitude={item.meeting_longitude}
                       meeting_map_url={item.meeting_map_url}
+                      hideSocialCounts={!isLoggedIn()}
                     />
                   )}
                 </For>
@@ -665,6 +703,7 @@ export default function ExcursionsPage() {
           </Show>
         </section>
 
+        <Show when={isLoggedIn()}>
         <section class="card excursions-past-section" style="padding: 1rem;">
           <h2 style="margin-top: 0;">Mina passerade hundträffar</h2>
           <Show when={!excursions.loading} fallback={<p>Laddar hundträffar...</p>}>
@@ -694,6 +733,7 @@ export default function ExcursionsPage() {
             </Show>
           </Show>
         </section>
+        </Show>
 
         <Show when={selectedDetail()}>
           {(detail) => (

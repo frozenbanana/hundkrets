@@ -16,6 +16,9 @@ services:
       dockerfile: docker/pocketbase/Dockerfile
     volumes:
       - pb_data:/pb/pb_data
+    environment:
+      # Optional. When unset, PocketBase stores a generated unsubscribe secret in internal_secrets.
+      RETENTION_UNSUBSCRIBE_SECRET: ${RETENTION_UNSUBSCRIBE_SECRET:-}
     restart: unless-stopped
     # Expose for direct access (optional - remove if using nginx only)
     ports:
