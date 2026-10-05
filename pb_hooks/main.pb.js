@@ -3,6 +3,67 @@
 
 $app.logger().info("Hundkrets pb_hooks loaded v2");
 
+// Prefer RETENTION_UNSUBSCRIBE_SECRET. Otherwise create one in internal_secrets
+// so links keep working across restarts without an unsigned fallback.
+function retentionUnsubscribeSecret() {
+  try {
+    var fromEnv = String($os.getenv("RETENTION_UNSUBSCRIBE_SECRET") || "").trim();
+    if (fromEnv) return fromEnv;
+  } catch (err) {}
+
+  try {
+    var existing = $app.findFirstRecordByFilter(
+      "internal_secrets",
+      "key = 'retention_unsubscribe'"
+    );
+    var stored = String(existing.get("value") || "").trim();
+    if (stored) return stored;
+  } catch (err) {}
+
+  try {
+    var col = $app.findCollectionByNameOrId("internal_secrets");
+    var created = new Record(col);
+    var generated = $security.randomString(48);
+    created.set("key", "retention_unsubscribe");
+    created.set("value", generated);
+    $app.save(created);
+    return generated;
+  } catch (err) {
+    try {
+      var raced = $app.findFirstRecordByFilter(
+        "internal_secrets",
+        "key = 'retention_unsubscribe'"
+      );
+      var racedValue = String(raced.get("value") || "").trim();
+      if (racedValue) return racedValue;
+    } catch (again) {}
+    $app.logger().warn("Retention unsubscribe secret unavailable", "error", err);
+    return "";
+  }
+}
+
+function retentionUnsubscribeUrl(baseUrl, userId) {
+  var mod = require(__hooks + "/retention_unsubscribe.js");
+  var secret = retentionUnsubscribeSecret();
+  var base = String(baseUrl || "").replace(/\/$/, "");
+  if (!secret || !userId) return base + "/app/settings";
+  return mod.link(baseUrl, userId, secret, function (message, key) {
+    return $security.hs256(message, key);
+  });
+}
+
+function retentionUnsubscribeTokenFromRequest(e) {
+  try {
+    var info = e.requestInfo();
+    if (info && info.query && info.query.token) return String(info.query.token);
+  } catch (err) {}
+  try {
+    var query = e.request.url.query();
+    if (query && typeof query.get === "function") return String(query.get("token") || "");
+  } catch (err) {}
+  return "";
+}
+
 // Shared utility functions are in hk_utils.js (loaded via require() inside handlers
 // because PocketBase goja JSVM isolates each handler's scope).
 
@@ -138,7 +199,7 @@ cronAdd("weekly_retention_emails", "0 9 * * 1", function () {
     var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
     var matchesLink = baseUrl + "/app/explore?not_matched=true&" + utmEmail;
     var settingsLink = baseUrl + "/app/settings?" + utmEmail;
-    var unsubLink = baseUrl + "/api/unsubscribe/" + userId + "/retention";
+    var unsubLink = retentionUnsubscribeUrl(baseUrl, userId);
 
     var names = [];
     for (var k = 0; k < Math.min(3, nearbyUsers.length); k++) {
@@ -1309,7 +1370,7 @@ function sendRetentionEmail(user, newUserCount, nearbyUsers) {
   var utmEmail = "utm_source=email&utm_medium=retention&utm_campaign=weekly_update";
   var matchesLink = baseUrl + "/app/explore?not_matched=true&" + utmEmail;
   var settingsLink = baseUrl + "/app/settings?" + utmEmail;
-  var unsubLink = baseUrl + "/api/unsubscribe/" + user.id + "/retention";
+  var unsubLink = retentionUnsubscribeUrl(baseUrl, user.id);
 
   var names = [];
   for (var i = 0; i < Math.min(3, nearbyUsers.length); i++) {
@@ -1435,8 +1496,16 @@ function runWeeklyRetentionJob() {
 routerAdd("GET", "/api/unsubscribe/{userId}/{type}", (e) => {
   var userId = e.pathParams.userId;
   var type = e.pathParams.type;
+  var token = retentionUnsubscribeTokenFromRequest(e);
+  var mod = require(__hooks + "/retention_unsubscribe.js");
+  var secret = retentionUnsubscribeSecret();
+  var valid = mod.isValid(userId, type, token, secret, function (message, key) {
+    return $security.hs256(message, key);
+  }, function (left, right) {
+    return $security.equal(left, right);
+  });
 
-  if (!userId || type !== "retention") {
+  if (!valid) {
     return e.json(400, { error: "Invalid unsubscribe request" });
   }
 
@@ -1452,6 +1521,16 @@ routerAdd("GET", "/api/unsubscribe/{userId}/{type}", (e) => {
 });
 
 routerAdd("POST", "/api/test/retention-emails", function (e) {
+  var allowed = false;
+  try {
+    allowed = !!(e.hasSuperuserAuth && e.hasSuperuserAuth());
+  } catch (authErr) {
+    allowed = false;
+  }
+  if (!allowed) {
+    return e.json(401, { error: "Unauthorized" });
+  }
+
   $app.logger().info("Manual retention email test triggered");
   try {
     var result = runWeeklyRetentionJob();

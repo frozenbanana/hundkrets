@@ -29,6 +29,8 @@ export type ExcursionListCardProps = {
   hideMapThumb?: boolean;
   /** Optional edit link for own excursions */
   editHref?: string;
+  /** Guests cannot load interest and comment counts, so hide those figures. */
+  hideSocialCounts?: boolean;
   /** Notify parent when card hover starts/ends (desktop interactions). */
   onHoverChange?: (id: string | undefined) => void;
 };
@@ -138,14 +140,16 @@ export function ExcursionListCard(props: ExcursionListCardProps) {
             <span class="excursions-list-card__stat excursions-list-card__stat--duration" title="Beräknad längd">
               {durationText()}
             </span>
-            <span class="excursions-list-card__stat" title="Antal som kommer">
-              <IconHeart class="excursions-list-card__stat-icon" />
-              {props.interest_count}
-            </span>
-            <span class="excursions-list-card__stat" title="Antal kommentarer">
-              <IconComment class="excursions-list-card__stat-icon" />
-              {props.comment_count}
-            </span>
+            <Show when={!props.hideSocialCounts}>
+              <span class="excursions-list-card__stat" title="Antal som kommer">
+                <IconHeart class="excursions-list-card__stat-icon" />
+                {props.interest_count}
+              </span>
+              <span class="excursions-list-card__stat" title="Antal kommentarer">
+                <IconComment class="excursions-list-card__stat-icon" />
+                {props.comment_count}
+              </span>
+            </Show>
           </div>
         </div>
         <div
