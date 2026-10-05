@@ -29,8 +29,8 @@ export function isReceiverOnly(): boolean {
 
 /**
  * Whether the user can use the main app.
- * Prefer explicit `onboarding_complete`, but also allow users who already have an area
- * (legacy / seed / abandoned mid-flow after saving location) so they aren't trapped on choice.
+ * `onboarding_complete === false` is always unfinished, even if an area is already saved.
+ * Area is a fallback only for legacy records where the field is missing (`null` or `undefined`).
  */
 export function isOnboardingDone(user: {
   onboarding_complete?: boolean | null;
@@ -38,5 +38,16 @@ export function isOnboardingDone(user: {
 } | null | undefined): boolean {
   if (!user) return false;
   if (user.onboarding_complete === true) return true;
+  if (user.onboarding_complete === false) return false;
   return Boolean(user.area && String(user.area).trim());
+}
+
+/** Skip or save-and-continue from needs. Receivers go straight to recommendations. */
+export function pathAfterNeeds(receiverOnly: boolean): "/onboarding/recommendations" | "/onboarding/capacity" {
+  return receiverOnly ? "/onboarding/recommendations" : "/onboarding/capacity";
+}
+
+/** Skip and save-and-continue from capacity both land on recommendations. */
+export function pathAfterCapacity(): "/onboarding/recommendations" {
+  return "/onboarding/recommendations";
 }

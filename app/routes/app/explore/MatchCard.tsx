@@ -5,7 +5,7 @@ import { DogImage } from "~/components/DogImage";
 import { HandLeftIcon, HandRightIcon } from "./ExchangeTypeIcon";
 import type { Conn } from "./types";
 import type { ListingItem } from "./helpers";
-import { canPassStr, formatLastLoginAgo, getFirstDog, getExchangeType, isPassOnly } from "./helpers";
+import { canPassStr, formatLastLoginAgo, getFirstDog, getExchangeType, isPassOnly, personCardPresentation } from "./helpers";
 
 export function MatchCard(props: {
   listing: ListingItem;
@@ -45,6 +45,8 @@ export function MatchCard(props: {
     return conns().some((x) => x.from_user === m && x.to_user === listing.user.id);
   };
   const firstDog = () => getFirstDog(listing);
+  const presentation = () => personCardPresentation(listing);
+  const noDog = () => presentation().layout === "profile";
   const passOnly = () => isPassOnly(listing);
   const exchangeType = () => getExchangeType(listing);
   const firstNeed = () => listing.needs[0];
@@ -77,6 +79,7 @@ export function MatchCard(props: {
       classList={{
         "match-card-pass-only-layout": passOnly(),
         "match-card-receive-only": exchangeType() === "receive",
+        "match-card-no-dog": noDog(),
       }}
       data-listing-id={listing.user.id}
       onClick={() => onOpenDetail(listing.user.id)}
@@ -143,9 +146,11 @@ export function MatchCard(props: {
           <div class="match-card-info-text">
             <div class="match-card-need-section">
               <Show
-                when={!passOnly()}
+                when={!noDog() && !passOnly()}
                 fallback={
-                  <p class="match-card-main match-card-pass-only-text">Erbjuder passning</p>
+                  <p class="match-card-main match-card-pass-only-text">
+                    {presentation().headline ?? "Erbjuder passning"}
+                  </p>
                 }
               >
                 <p class="match-card-main">
@@ -199,27 +204,29 @@ export function MatchCard(props: {
                   : "Öppna · skicka intresse"}
           </div>
         </div>
-        <div class="match-card-image">
-          <Show
-            when={!passOnly() && firstDog()}
-            fallback={
-              <Avatar
-                name={listing.user.name}
-                city={listing.user.city}
-                neighborhood={listing.user.neighborhood}
-                area={listing.user.area}
-                id={listing.user.id}
-                avatar={listing.user.avatar}
-                baseUrl={baseUrl}
-                class="match-card-img"
-              />
-            }
-          >
-            {(dog) => (
-              <DogImage dog={dog()} baseUrl={baseUrl} class="match-card-img" />
-            )}
-          </Show>
-        </div>
+        <Show when={!noDog()}>
+          <div class="match-card-image">
+            <Show
+              when={firstDog()}
+              fallback={
+                <Avatar
+                  name={listing.user.name}
+                  city={listing.user.city}
+                  neighborhood={listing.user.neighborhood}
+                  area={listing.user.area}
+                  id={listing.user.id}
+                  avatar={listing.user.avatar}
+                  baseUrl={baseUrl}
+                  class="match-card-img"
+                />
+              }
+            >
+              {(dog) => (
+                <DogImage dog={dog()} baseUrl={baseUrl} class="match-card-img" />
+              )}
+            </Show>
+          </div>
+        </Show>
       </div>
     </div>
   );

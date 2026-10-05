@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createEffect, createResource, createSignal, For, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { isOnboardingDone, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { isOnboardingDone, isReceiverOnly, isSitterOnly, pathAfterNeeds } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 import { DogImage } from "~/components/DogImage";
@@ -92,13 +92,8 @@ export default function OnboardingNeeds() {
         data.end_date = endDate();
       }
       await pb.collection("watch_needs").create(data);
-      if (isReceiverOnly()) {
-        showToast("Behov tillagt");
-        nav("/onboarding/recommendations");
-      } else {
-        showToast("Behov tillagt");
-        nav("/onboarding/capacity");
-      }
+      showToast("Behov tillagt");
+      nav(pathAfterNeeds(isReceiverOnly()));
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -107,11 +102,7 @@ export default function OnboardingNeeds() {
   }
 
   async function handleSkip() {
-    if (isReceiverOnly()) {
-      nav("/app/explore");
-    } else {
-      nav("/onboarding/capacity");
-    }
+    nav(pathAfterNeeds(isReceiverOnly()));
   }
 
   const hasDogs = () => dogs() && dogs()!.length > 0;

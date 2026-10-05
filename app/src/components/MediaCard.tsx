@@ -11,7 +11,7 @@ import { showToast } from "~/lib/toast";
 import { parseApiError } from "~/lib/errors";
 import type { Conn } from "../../routes/app/explore/types";
 import type { ListingItem } from "../../routes/app/explore/helpers";
-import { getFirstDog, formatLastLoginAgo } from "../../routes/app/explore/helpers";
+import { getFirstDog, formatLastLoginAgo, personCardPresentation } from "../../routes/app/explore/helpers";
 
 export function MediaCard(props: {
   listing: ListingItem;
@@ -51,6 +51,8 @@ export function MediaCard(props: {
   };
 
   const firstDog = () => getFirstDog(listing);
+  const presentation = () => personCardPresentation(listing);
+  const profileLayout = () => presentation().layout === "profile" && !props.media;
   const locationStr = () => {
     const loc = listing.user.neighborhood || listing.user.city || listing.user.area;
     const dist =
@@ -118,6 +120,7 @@ export function MediaCard(props: {
   return (
     <article
       class="media-card"
+      classList={{ "media-card-no-dog": profileLayout() }}
       data-listing-id={listing.user.id}
       onMouseEnter={() => videoUrl() && startPlay()}
       onMouseLeave={stopPlay}
@@ -126,6 +129,43 @@ export function MediaCard(props: {
       onPointerCancel={onPointerUp}
       onPointerLeave={onPointerUp}
     >
+      <Show
+        when={!profileLayout()}
+        fallback={
+          <div
+            class="media-card-profile"
+            role="button"
+            tabIndex={0}
+            onClick={() => props.onOpenProfile(listing.user.id)}
+            onKeyDown={(e) => e.key === "Enter" && props.onOpenProfile(listing.user.id)}
+          >
+            <Avatar
+              id={listing.user.id}
+              name={listing.user.name}
+              avatar={listing.user.avatar}
+              avatar_key={(listing.user as { avatar_key?: string }).avatar_key}
+              baseUrl={baseUrl}
+              size="md"
+            />
+            <div class="media-card-profile-copy">
+              <strong class="media-card-name">{listing.user.name || "Okänd"}</strong>
+              <span class="media-card-role">{presentation().headline}</span>
+              <Show when={locationStr()}>
+                <span class="media-card-loc">{locationStr()}</span>
+              </Show>
+            </div>
+            <Show when={mutual()}>
+              <span class="media-card-badge">matchad</span>
+            </Show>
+            <Show when={!mutual() && requestedMe()}>
+              <span class="media-card-badge media-card-badge-request">Vill ha kontakt</span>
+            </Show>
+            <Show when={!mutual() && requestedOutgoing()}>
+              <span class="media-card-badge media-card-badge-outgoing">Intresse skickat</span>
+            </Show>
+          </div>
+        }
+      >
       <div
         class="media-card-media"
         role="button"
@@ -199,15 +239,18 @@ export function MediaCard(props: {
           <span class="media-card-badge media-card-badge-outgoing">Intresse skickat</span>
         </Show>
       </div>
+      </Show>
 
       <div class="media-card-footer">
         <div class="media-card-meta" onClick={() => props.onOpenProfile(listing.user.id)}>
-          <strong class="media-card-name">{listing.user.name || "Okänd"}</strong>
-          <Show when={firstDog()}>
-            {(dog) => <span class="media-card-dog">{dog().name}</span>}
-          </Show>
-          <Show when={locationStr()}>
-            <span class="media-card-loc">{locationStr()}</span>
+          <Show when={!profileLayout()}>
+            <strong class="media-card-name">{listing.user.name || "Okänd"}</strong>
+            <Show when={firstDog()}>
+              {(dog) => <span class="media-card-dog">{dog().name}</span>}
+            </Show>
+            <Show when={locationStr()}>
+              <span class="media-card-loc">{locationStr()}</span>
+            </Show>
           </Show>
           <Show when={formatLastLoginAgo((listing.user as { last_login_at?: string }).last_login_at)}>
             {(ago) => <span class="media-card-ago">{ago()}</span>}
