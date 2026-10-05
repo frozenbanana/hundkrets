@@ -2760,6 +2760,52 @@ input[type="checkbox"] {
   margin-top: 0.15rem;
 }
 
+/* Person utan hund: ingen tom bildyta, profilen fyller kortet */
+.match-card-no-dog {
+  aspect-ratio: auto;
+  max-height: none;
+  min-height: 0;
+}
+
+.match-card-no-dog .match-card-body {
+  flex-direction: column;
+}
+
+.match-card-no-dog .match-card-info {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 0.9rem 1rem 0.85rem;
+}
+
+.match-card-no-dog .match-card-header {
+  margin-bottom: 0.55rem;
+  padding-right: 6.5rem;
+}
+
+.match-card-no-dog .match-card-avatar {
+  width: 48px;
+  height: 48px;
+}
+
+.match-card-no-dog .match-card-username {
+  font-size: 1.05rem;
+}
+
+.match-card-no-dog .match-card-main {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-paw-dark);
+}
+
+.match-card-no-dog .match-card-footer {
+  margin-top: 0.7rem;
+}
+
+.match-card-no-dog .match-card-cta-hint {
+  margin-top: 0.65rem;
+  margin-bottom: 0.1rem;
+}
+
 /* Mobile list/map toggle - visible only on small screens */
 .matches-mobile-toggle {
   display: none;
@@ -3147,6 +3193,14 @@ input[type="checkbox"] {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.need-card-no-dog .need-card-content {
+  padding: 0.85rem 1rem 0.35rem;
+}
+
+.need-card-no-dog .need-card-footer {
+  margin-top: 0.65rem;
 }
 
 .need-card-title {
@@ -3657,6 +3711,43 @@ input[type="checkbox"] {
   margin: 0 0 1rem;
 }
 
+.recommended-member-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: var(--shadow-paw);
+}
+
+.recommended-member-row--no-dog {
+  background: linear-gradient(180deg, rgba(212, 165, 116, 0.2), rgba(255, 255, 255, 0.72));
+}
+
+.recommended-member-role {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(139, 90, 43, 0.12);
+  color: var(--color-paw-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .recommended-member-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
 /* Rekommendationsrader: avatar i col1 över två rader; namn + meta staplat tajt i col2 */
 .recommended-member-row__body {
   display: grid;
@@ -3868,6 +3959,25 @@ input[type="checkbox"] {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+}
+
+.profile-card-dog-item--no-dog {
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(212, 165, 116, 0.18), rgba(255, 255, 255, 0.4));
+  border: 1px solid rgba(139, 90, 43, 0.12);
+}
+
+.profile-card-no-dog-mark {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(139, 90, 43, 0.12);
+  font-size: 1.25rem;
 }
 .profile-card-dog-img {
   width: 48px;
@@ -4914,6 +5024,43 @@ input[type="checkbox"] {
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--color-fur) 35%, #fff);
+}
+
+.media-card-no-dog {
+  background: linear-gradient(180deg, rgba(212, 165, 116, 0.22), #fff 42%);
+}
+
+.media-card-profile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1rem 0.35rem;
+  cursor: pointer;
+  min-height: 5.5rem;
+}
+
+.media-card-profile-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding-right: 5.5rem;
+}
+
+.media-card-role {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-paw-dark);
+}
+
+.media-card-no-dog .media-card-footer {
+  align-items: center;
+  padding-top: 0.35rem;
+}
+
+.media-card-no-dog .media-card-actions {
+  margin-left: auto;
 }
 .media-card-avatar-corner {
   position: absolute;

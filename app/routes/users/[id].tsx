@@ -648,6 +648,24 @@ export default function UserProfile() {
                           const needDogs = dogIds.map((id) => getDog(id)).filter(Boolean) as DogRecord[];
                           const needWithNotes = n;
                           return (
+                            <Show
+                              when={needDogs.length > 0}
+                              fallback={
+                                <div class="need-card need-card-no-dog">
+                                  <div class="need-card-content">
+                                    <strong class="need-card-title">Passningsbehov</strong>
+                                    {n.notes && (
+                                      <p class="need-card-notes">
+                                        <span class="need-card-label">Behov:</span> {n.notes}
+                                      </p>
+                                    )}
+                                    <div class="need-card-footer">
+                                      <span class="need-card-label">Datum:</span> {dateStr(n)}
+                                    </div>
+                                  </div>
+                                </div>
+                              }
+                            >
                             <For each={needDogs}>
                               {(d) => (
                               <div class="need-card">
@@ -711,6 +729,7 @@ export default function UserProfile() {
                               </div>
                             )}
                             </For>
+                            </Show>
                           );
                         }}
                       </For>
@@ -996,6 +1015,24 @@ export default function UserProfile() {
                           const needDogs = dogIds.map((id) => getDog(id)).filter(Boolean) as DogRecord[];
                           const needWithNotes = n;
                           return (
+                            <Show
+                              when={needDogs.length > 0}
+                              fallback={
+                                <div class="need-card need-card-no-dog">
+                                  <div class="need-card-content">
+                                    <strong class="need-card-title">Passningsbehov</strong>
+                                    {n.notes && (
+                                      <p class="need-card-notes">
+                                        <span class="need-card-label">Behov:</span> {n.notes}
+                                      </p>
+                                    )}
+                                    <div class="need-card-footer">
+                                      <span class="need-card-label">Datum:</span> {dateStr(n)}
+                                    </div>
+                                  </div>
+                                </div>
+                              }
+                            >
                             <For each={needDogs}>
                               {(d) => (
                               <div class="need-card">
@@ -1059,6 +1096,7 @@ export default function UserProfile() {
                               </div>
                             )}
                             </For>
+                            </Show>
                           );
                         }}
                       </For>

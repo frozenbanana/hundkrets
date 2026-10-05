@@ -60,35 +60,51 @@ export default function OnboardingDogs() {
     }
   );
 
-  async function handleSaveAndContinue() {
-    if (!name().trim()) {
-      nav("/onboarding/needs");
-      return;
+  async function createDog() {
+    const userId = pb.authStore.model?.id;
+    if (!userId) throw new Error("Not authenticated");
+    const data: Record<string, unknown> = {
+      owner: userId,
+      name: name(),
+      breed: breed() || undefined,
+      size: size(),
+      gender: gender(),
+      age: age() !== "" ? age() : undefined,
+      temperament_new_people: temperamentNewPeople() || undefined,
+      temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
+      temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
+      notes: notes() || undefined,
+    };
+    const file = imageFile();
+    if (file) {
+      const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
+      data.image_key = uploaded.objectKey;
+      await saveMediaRecord({ objectKey: uploaded.objectKey, kind: "image" }).catch(() => {});
     }
+    await pb.collection("dogs").create(data);
+  }
+
+  function resetDogForm() {
+    setName("");
+    setBreed("");
+    setSize("medium");
+    setGender("male");
+    setAge("");
+    setTemperamentNewPeople("");
+    setTemperamentNewDogsFemale("");
+    setTemperamentNewDogsMale("");
+    setNotes("");
+    setImageFile(null);
+    setVideoUploaded(false);
+  }
+
+  async function handleSaveAndContinue(e: Event) {
+    e.preventDefault();
+    if (!name().trim()) return;
     setError("");
     setLoading(true);
     try {
-      const userId = pb.authStore.model?.id;
-      if (!userId) throw new Error("Not authenticated");
-      const data: Record<string, unknown> = {
-        owner: userId,
-        name: name(),
-        breed: breed() || undefined,
-        size: size(),
-        gender: gender(),
-        age: age() !== "" ? age() : undefined,
-        temperament_new_people: temperamentNewPeople() || undefined,
-        temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
-        temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
-        notes: notes() || undefined,
-      };
-      const file = imageFile();
-      if (file) {
-        const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
-        data.image_key = uploaded.objectKey;
-        await saveMediaRecord({ objectKey: uploaded.objectKey, kind: "image" }).catch(() => {});
-      }
-      await pb.collection("dogs").create(data);
+      await createDog();
       showToast("Hund tillagd");
       nav("/onboarding/needs");
     } catch (err: unknown) {
@@ -98,44 +114,16 @@ export default function OnboardingDogs() {
     }
   }
 
-  async function handleAddDog(e: Event) {
-    e.preventDefault();
-    if (!name().trim()) return;
+  async function handleAddAnotherDog() {
+    if (!name().trim()) {
+      setError("Ange hundens namn");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
-      const userId = pb.authStore.model?.id;
-      if (!userId) throw new Error("Not authenticated");
-      const data: Record<string, unknown> = {
-        owner: userId,
-        name: name(),
-        breed: breed() || undefined,
-        size: size(),
-        gender: gender(),
-        age: age() !== "" ? age() : undefined,
-        temperament_new_people: temperamentNewPeople() || undefined,
-        temperament_new_dogs_female: temperamentNewDogsFemale() || undefined,
-        temperament_new_dogs_male: temperamentNewDogsMale() || undefined,
-        notes: notes() || undefined,
-      };
-      const file = imageFile();
-      if (file) {
-        const uploaded = await uploadToR2(file, { kind: "image", contentType: file.type || "image/jpeg" });
-        data.image_key = uploaded.objectKey;
-        await saveMediaRecord({ objectKey: uploaded.objectKey, kind: "image" }).catch(() => {});
-      }
-      await pb.collection("dogs").create(data);
-      setName("");
-      setBreed("");
-      setSize("medium");
-      setGender("male");
-      setAge("");
-      setTemperamentNewPeople("");
-      setTemperamentNewDogsFemale("");
-      setTemperamentNewDogsMale("");
-      setNotes("");
-      setImageFile(null);
-      setVideoUploaded(false);
+      await createDog();
+      resetDogForm();
       refetch();
       showToast("Hund tillagd");
     } catch (err: unknown) {
@@ -153,7 +141,7 @@ export default function OnboardingDogs() {
         <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
           Lägg till hundar om du har (valfritt). Du kan lägga till fler senare från översikten.
         </p>
-        <form onSubmit={handleAddDog}>
+        <form onSubmit={handleSaveAndContinue}>
           {error() && <p class="form-error" role="alert" style="margin-bottom: 1rem;">{error()}</p>}
           <div class="form-group">
             <label for="name">Hundens namn *</label>
@@ -242,14 +230,28 @@ export default function OnboardingDogs() {
             <label for="notes">Anteckningar (valfritt)</label>
             <textarea id="notes" value={notes()} onInput={(e) => setNotes(e.currentTarget.value)} placeholder="T.ex. speciella behov, diet, mediciner" rows={4} />
           </div>
-        <button type="submit" class="btn" disabled={loading()} data-umami-event="Onboarding dogs submit">
-          {loading() ? "Sparar..." : "Spara och fortsätt"}
-        </button>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="submit" class="btn" disabled={loading()} data-umami-event="Onboarding dogs submit">
+              {loading() ? "Sparar..." : "Spara och fortsätt"}
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              disabled={loading()}
+              onClick={() => handleAddAnotherDog()}
+              data-umami-event="Onboarding dogs add another"
+            >
+              {loading() ? "Sparar..." : "Lägg till ytterligare hund"}
+            </button>
+            <button type="button" class="btn btn-secondary" onClick={() => nav("/onboarding/needs")} data-umami-event="Onboarding dogs skip">
+              Skippa
+            </button>
+          </div>
         </form>
         <Show when={dogs() && dogs()!.length > 0}>
           <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--color-fur);">
             <h3>Dina hundar</h3>
-            <p style="font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">Lägg till fler hundar nedan om du vill.</p>
+            <p style="font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">Du kan lägga till fler hundar med formuläret ovan.</p>
             <For each={dogs()}>
               {(dog) => (
                 <div class="dog-card" style="margin-bottom: 0.75rem;">
@@ -262,14 +264,6 @@ export default function OnboardingDogs() {
             </For>
           </div>
         </Show>
-        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button type="button" class="btn" disabled={loading()} onClick={() => handleSaveAndContinue()}>
-            {loading() ? "Sparar..." : "Spara och fortsätt"}
-          </button>
-          <button type="button" class="btn btn-secondary" onClick={() => nav("/onboarding/needs")} data-umami-event="Onboarding dogs skip">
-            Skippa
-          </button>
-        </div>
       </div>
     </OnboardingShell>
   );

@@ -194,6 +194,26 @@ export function isPassOnly(listing: ListingItem): boolean {
   return listing.dogs.length === 0 && listing.needs.length === 0 && listing.capacities.length > 0;
 }
 
+export type PersonCardLayout = "photo" | "profile";
+
+/**
+ * Cards for someone without a dog use a profile layout instead of an empty photo frame.
+ * Headline is only set for the profile layout.
+ */
+export function personCardPresentation(listing: {
+  dogs: unknown[];
+  needs: unknown[];
+  capacities: unknown[];
+}): { layout: PersonCardLayout; headline: string | null } {
+  if (listing.dogs.length > 0) return { layout: "photo", headline: null };
+  const hasNeeds = listing.needs.length > 0;
+  const hasCapacity = listing.capacities.length > 0;
+  if (!hasNeeds && hasCapacity) return { layout: "profile", headline: "Erbjuder passning" };
+  if (hasNeeds && !hasCapacity) return { layout: "profile", headline: "Söker passning" };
+  if (hasNeeds && hasCapacity) return { layout: "profile", headline: "Söker och erbjuder passning" };
+  return { layout: "profile", headline: "Ingen hund registrerad" };
+}
+
 export function isNeedOnly(listing: ListingItem): boolean {
   return listing.needs.length > 0 && listing.capacities.length === 0;
 }

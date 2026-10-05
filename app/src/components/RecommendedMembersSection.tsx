@@ -12,6 +12,7 @@ import {
 import { pb } from "~/lib/pocketbase";
 import { Avatar } from "~/components/Avatar";
 import { formatDogInfo } from "~/components/DogInfo";
+import { personCardPresentation } from "../../routes/app/explore/helpers";
 import { InterestModal } from "../../routes/app/explore/InterestModal";
 import { isUserVerified } from "~/lib/auth";
 import { canSubmitInterest } from "~/lib/interest";
@@ -51,9 +52,6 @@ function dogSummaryLine(dogs: Dog[]): string | null {
   });
   return summary ? `Hund: ${summary}` : null;
 }
-
-const rowBox =
-  "display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.75rem 1rem; padding: 0.85rem 1rem; border-radius: var(--radius); border: 1px solid var(--color-border); background: rgba(255,255,255,0.55); box-shadow: var(--shadow-paw);";
 
 export function RecommendedMembersSection(props: {
   profileFrom: "onboarding" | "chats";
@@ -168,7 +166,7 @@ export function RecommendedMembersSection(props: {
         <p>Laddar rekommendationer...</p>
       </Show>
 
-      <Show when={!data.loading && !canShowRecommendations()}>
+      <Show when={!data.loading && props.profileFrom !== "onboarding" && !canShowRecommendations()}>
         <p style="margin-bottom: 1rem;">
           Lägg till behov eller kapacitet för att få personliga rekommendationer.
         </p>
@@ -182,7 +180,13 @@ export function RecommendedMembersSection(props: {
         </div>
       </Show>
 
-      <Show when={!data.loading && canShowRecommendations() && (data()?.top.length ?? 0) === 0}>
+      <Show
+        when={
+          !data.loading &&
+          (data()?.top.length ?? 0) === 0 &&
+          (props.profileFrom === "onboarding" || canShowRecommendations())
+        }
+      >
         <p style="margin-bottom: 1rem;">
           Vi hittade inga tydliga matchningar just nu. Du kan fortfarande hitta fler i Utforska.
         </p>
@@ -203,9 +207,13 @@ export function RecommendedMembersSection(props: {
                   ? `/users/${listing.user.id}?from=chat`
                   : `/users/${listing.user.id}?from=${props.profileFrom}`;
               const dogLine = dogSummaryLine(listing.dogs);
+              const presentation = personCardPresentation(listing);
               const displayName = listing.user.name || "Okänd användare";
               return (
-                <div style={rowBox}>
+                <div
+                  class="recommended-member-row"
+                  classList={{ "recommended-member-row--no-dog": presentation.layout === "profile" }}
+                >
                   <div class="recommended-member-row__body">
                     <A
                       href={profileHref}
@@ -239,7 +247,14 @@ export function RecommendedMembersSection(props: {
                           </div>
                         )}
                       </For>
-                      <Show when={dogLine}>
+                      <Show
+                        when={dogLine}
+                        fallback={
+                          <Show when={presentation.headline}>
+                            {(headline) => <span class="recommended-member-role">{headline()}</span>}
+                          </Show>
+                        }
+                      >
                         {(text) => (
                           <div style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.35rem;">
                             {text()}

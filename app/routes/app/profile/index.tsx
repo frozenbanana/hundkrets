@@ -414,13 +414,21 @@ export default function ProfileIndex() {
                             // Handle dog as either single ID or array of IDs
                             const dogIds = Array.isArray(need.dog) ? need.dog : need.dog ? [need.dog] : [];
                             const needDogs = dogIds.map((id) => data().dogs.find((d) => d.id === id)).filter(Boolean) as ProfileData["dogs"];
-                            const dogNames = needDogs.map((d) => d.name).join(", ") || "Hund";
-                            const firstDog = needDogs[0] ?? { name: "Hund" };
+                            const dogNames = needDogs.map((d) => d.name).filter(Boolean).join(", ");
+                            const firstDog = needDogs[0];
                             return (
-                              <div class="profile-card-dog-item">
-                                <DogImage dog={firstDog} baseUrl={baseUrl} class="profile-card-dog-img" />
+                              <div
+                                class="profile-card-dog-item"
+                                classList={{ "profile-card-dog-item--no-dog": !firstDog }}
+                              >
+                                <Show
+                                  when={firstDog}
+                                  fallback={<span class="profile-card-no-dog-mark" aria-hidden="true">🐾</span>}
+                                >
+                                  {(dog) => <DogImage dog={dog()} baseUrl={baseUrl} class="profile-card-dog-img" />}
+                                </Show>
                                 <div>
-                                  <p class="profile-card-dog-name">{dogNames}</p>
+                                  <p class="profile-card-dog-name">{dogNames || "Passningsbehov"}</p>
                                   <p class="profile-card-dog-meta">
                                     {needDateStr(need)}
                                     {need.notes && <span class="profile-card-list-notes"> • {need.notes}</span>}

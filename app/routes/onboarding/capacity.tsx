@@ -2,7 +2,7 @@ import { useNavigate } from "@solidjs/router";
 import { showToast } from "~/lib/toast";
 import { createSignal, onMount, Show } from "solid-js";
 import { pb } from "~/lib/pocketbase";
-import { isOnboardingDone, isReceiverOnly, isSitterOnly } from "~/lib/onboarding";
+import { isOnboardingDone, isReceiverOnly, isSitterOnly, pathAfterCapacity } from "~/lib/onboarding";
 import { parseApiError } from "~/lib/errors";
 import { OnboardingShell } from "~/components/OnboardingShell";
 
@@ -77,7 +77,7 @@ export default function OnboardingCapacity() {
       }
       await pb.collection("watch_capacity").create(data);
       showToast("Kapacitet tillagd");
-      nav("/onboarding/recommendations");
+      nav(pathAfterCapacity());
     } catch (err: unknown) {
       setError(parseApiError(err));
     } finally {
@@ -86,7 +86,7 @@ export default function OnboardingCapacity() {
   }
 
   async function handleSkip() {
-    nav("/app/explore");
+    nav(pathAfterCapacity());
   }
 
   return (
